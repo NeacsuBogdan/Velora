@@ -1,32 +1,28 @@
 import Link from "next/link";
 
-import { Badge, Button, Panel, StatTile } from "@velora/ui";
+import { Badge, Panel, StatTile } from "@velora/ui";
 
-const featuredCategories = [
-  {
-    title: "Phones & Wearables",
-    description: "Flagship devices, accessories, and everyday essentials."
-  },
-  {
-    title: "Home & Kitchen",
-    description: "Reliable appliances, smart home gear, and compact upgrades."
-  },
-  {
-    title: "Gaming & Entertainment",
-    description: "Consoles, peripherals, and premium leisure equipment."
-  }
+import { OverviewPanel } from "../components/overview-panel";
+import { getDomainOverview } from "../lib/storefront-api";
+
+const featuredMoments = [
+  "Phones & Wearables",
+  "Operations-led pricing",
+  "Checkout reservations"
 ];
 
-const platformAreas = [
-  "Storefront UX",
-  "Admin operations",
-  "Seller workflows",
-  "Search projections",
-  "Payments and webhooks",
-  "Inventory reservations"
-];
+const primaryLinkClass =
+  "inline-flex items-center justify-center rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white shadow-[0_16px_40px_rgba(215,38,56,0.25)] transition-colors hover:bg-[var(--accent-dark)]";
 
-export default function HomePage(): React.JSX.Element {
+const secondaryLinkClass =
+  "inline-flex items-center justify-center rounded-full border border-[var(--stroke)] bg-white px-5 py-3 text-sm font-semibold text-[var(--foreground)] transition-colors hover:border-[var(--foreground)]";
+
+export default async function HomePage(): Promise<React.JSX.Element> {
+  const [catalogOverview, promotionOverview] = await Promise.all([
+    getDomainOverview("/catalog/overview"),
+    getDomainOverview("/promotions/overview")
+  ]);
+
   return (
     <main className="mx-auto flex min-h-screen max-w-7xl flex-col px-6 py-8 lg:px-10">
       <header className="flex flex-col gap-6 rounded-[32px] border border-[var(--stroke)] bg-white/80 px-6 py-5 shadow-[0_20px_60px_rgba(16,32,47,0.08)] backdrop-blur md:flex-row md:items-center md:justify-between">
@@ -41,9 +37,9 @@ export default function HomePage(): React.JSX.Element {
         </div>
         <nav className="flex flex-wrap items-center gap-4 text-sm font-medium text-[var(--muted)]">
           <Link href="/">Home</Link>
-          <Link href="/">Categories</Link>
-          <Link href="/">Search</Link>
-          <Link href="/">Account</Link>
+          <Link href="/categories">Categories</Link>
+          <Link href="/login">Login</Link>
+          <Link href="/account">Account</Link>
         </nav>
       </header>
 
@@ -55,14 +51,18 @@ export default function HomePage(): React.JSX.Element {
               Build a serious marketplace before adding serious complexity.
             </h1>
             <p className="max-w-2xl text-lg leading-8 text-[var(--muted)]">
-              Velora starts with clean product boundaries, enforceable contracts,
-              and infrastructure that already anticipates inventory, search,
-              payments, and operational back-office work.
+              Velora now serves live API-backed foundation data into the
+              storefront shell, including catalog, promotions, and authenticated
+              account surfaces.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Button>Browse foundation</Button>
-            <Button variant="secondary">Account shell</Button>
+            <Link className={primaryLinkClass} href="/categories">
+              Browse foundation
+            </Link>
+            <Link className={secondaryLinkClass} href="/account">
+              Account shell
+            </Link>
           </div>
         </div>
 
@@ -74,23 +74,23 @@ export default function HomePage(): React.JSX.Element {
             <div className="grid gap-4 sm:grid-cols-2">
               <StatTile
                 className="border-white/10 bg-white/8 text-white"
-                label="Apps"
-                value="3"
-                detail="Storefront, admin, and API shells are in the workspace."
+                label="Catalog"
+                value={(catalogOverview?.metrics.products ?? 0).toString()}
+                detail="Products currently visible in the seeded API catalog."
               />
               <StatTile
                 className="border-white/10 bg-white/8 text-white"
-                label="Shared packages"
-                value="5"
-                detail="UI, config, contracts, domain, and test utilities."
+                label="Promotions"
+                value={(promotionOverview?.metrics.activePromotions ?? 0).toString()}
+                detail="Active price incentives wired into the API layer."
               />
             </div>
             <div className="rounded-3xl border border-white/10 bg-white/8 p-5">
               <p className="text-sm font-semibold text-white/90">
-                Architecture direction
+                Foundation focus
               </p>
               <ul className="mt-3 grid gap-2 text-sm text-white/70">
-                {platformAreas.map((item) => (
+                {featuredMoments.map((item) => (
                   <li key={item}>{item}</li>
                 ))}
               </ul>
@@ -99,20 +99,19 @@ export default function HomePage(): React.JSX.Element {
         </Panel>
       </section>
 
-      <section className="grid gap-5 pb-10 md:grid-cols-3">
-        {featuredCategories.map((category) => (
-          <Panel key={category.title}>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
-              Featured category
-            </p>
-            <h2 className="mt-4 font-[var(--font-heading)] text-2xl font-bold tracking-tight">
-              {category.title}
-            </h2>
-            <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
-              {category.description}
-            </p>
-          </Panel>
-        ))}
+      <section className="grid gap-5 pb-10 md:grid-cols-2">
+        <OverviewPanel
+          title="Catalog snapshot"
+          eyebrow="Live API feed"
+          overview={catalogOverview}
+          emptyCopy="The catalog service is unavailable. Start the API to see the live seeded categories and counts."
+        />
+        <OverviewPanel
+          title="Promotion snapshot"
+          eyebrow="Pricing surface"
+          overview={promotionOverview}
+          emptyCopy="Promotion metrics will appear here once the API responds."
+        />
       </section>
     </main>
   );

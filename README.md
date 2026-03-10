@@ -10,7 +10,8 @@ Current status on March 10, 2026:
 
 - Stage 0 workspace foundation is complete.
 - Stage 1 API, schema, and auth foundation is complete.
-- Stage 2 storefront integration is next.
+- Stage 2 storefront foundation is complete.
+- Stage 3 catalog depth, listing experience, and product detail work is next.
 
 ## High-level architecture
 

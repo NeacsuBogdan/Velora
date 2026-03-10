@@ -3,7 +3,7 @@
 ## Stage checklist
 
 - [x] Stage 0 - Repo audit, bootstrap, workspace foundation
-- [ ] Stage 1 - API foundation, auth, core data model
+- [x] Stage 1 - API foundation, auth, core data model
 - [ ] Stage 2 - Storefront foundation
 - [ ] Stage 3 - Catalog, category, product detail, search UX
 - [ ] Stage 4 - Cart, inventory, stock reservation
@@ -27,14 +27,26 @@
 - Added initial environment examples, README, and repository documentation baseline.
 - Verified `pnpm install`, `pnpm lint`, `pnpm typecheck`, `pnpm build`, and `pnpm test`.
 
+### Stage 1
+
+- Added a Prisma-backed PostgreSQL schema covering the initial commerce entities and enums.
+- Added committed migrations plus Prisma 7 configuration and client generation hooks.
+- Replaced placeholder database scripts with working `db:migrate`, `db:migrate:dev`, and `db:seed` commands.
+- Added deterministic seed data for roles, demo accounts, seller, catalog, pricing, inventory, checkout, orders, promotions, search sync, and audit records.
+- Implemented cookie-based session auth with persistent session records, role metadata, and protected route support.
+- Added foundational Nest modules for users, catalog, inventory, cart, checkout, payments, orders, promotions, search sync, and audit.
+- Added backend auth tests and verified a live login/session/orders smoke flow against the seeded database.
+- Resolved local infrastructure port conflicts by moving Postgres to host port `5433` and removing unnecessary OpenSearch diagnostics port exposure.
+- Verified `pnpm db:migrate`, `pnpm db:seed`, `pnpm --filter @velora/api test`, `pnpm --filter @velora/api build`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.
+
 ## Important implementation notes
 
 - Internal packages are designed to build independently so the apps can consume stable outputs.
-- Stage 0 intentionally keeps database migration and seed scripts as placeholders until the schema lands in Stage 1.
+- Prisma 7 requires `prisma.config.ts` plus a PostgreSQL driver adapter at runtime; the API now uses the official `pg` adapter path consistently in app code and seeds.
 - The workspace already includes the mandatory top-level scripts so later stages can evolve without changing the developer workflow contract.
 
 ## Known follow-up items
 
-- Implement the NestJS API runtime, configuration module, health endpoint, and first domain modules.
-- Add the transactional schema and deterministic seed pipeline.
-- Replace placeholder database scripts with real migration and seed commands.
+- Build the storefront auth screens, account shell, and initial API integration.
+- Expand catalog browsing from Stage 1 overview endpoints into customer-facing listing and product detail flows.
+- Deepen test coverage from auth basics into integration, concurrency, and end-to-end coverage in later stages.

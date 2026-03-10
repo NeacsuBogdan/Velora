@@ -9,7 +9,8 @@ Velora is designed as a portfolio-grade commerce platform that demonstrates how 
 Current status on March 10, 2026:
 
 - Stage 0 workspace foundation is complete.
-- Stage 1 API, schema, and auth work is next.
+- Stage 1 API, schema, and auth foundation is complete.
+- Stage 2 storefront integration is next.
 
 ## High-level architecture
 
@@ -59,7 +60,7 @@ Base variables currently expected:
 - `NEXT_PUBLIC_API_URL`
 - `PORT`
 - `API_PREFIX`
-- `DATABASE_URL`
+- `DATABASE_URL` (defaults to local Postgres on port `5433`)
 - `REDIS_URL`
 - `OPENSEARCH_URL`
 - `STRIPE_SECRET_KEY`
@@ -92,7 +93,11 @@ See [`.env.example`](/C:/Users/bogdan/Desktop/2026%20-%20PROJECTS/Velora/.env.ex
 
 ## Seed instructions
 
-Database migrations and seeds will be wired into `apps/api` during Stage 1. The scripts already exist so the workflow shape remains stable from the start.
+Database migrations and seeds are wired through Prisma in `apps/api`.
+
+1. Start infrastructure with `pnpm infra:up`.
+2. Apply committed migrations with `pnpm db:migrate`.
+3. Seed deterministic demo data with `pnpm db:seed`.
 
 ## Demo accounts
 

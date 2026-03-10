@@ -1,7 +1,8 @@
 import "reflect-metadata";
 
-import { Logger, ValidationPipe } from "@nestjs/common";
+import { Logger } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
+import cookieParser from "cookie-parser";
 
 import { AppModule } from "./modules/app.module";
 
@@ -12,13 +13,14 @@ async function bootstrap(): Promise<void> {
 
   const logger = new Logger("Bootstrap");
   app.setGlobalPrefix(process.env.API_PREFIX ?? "api");
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      transform: true,
-      forbidUnknownValues: true
-    })
-  );
+  app.enableCors({
+    credentials: true,
+    origin: [
+      process.env.NEXT_PUBLIC_STOREFRONT_URL ?? "http://localhost:3000",
+      process.env.NEXT_PUBLIC_ADMIN_URL ?? "http://localhost:3001"
+    ]
+  });
+  app.use(cookieParser());
 
   const port = Number(process.env.PORT ?? "4000");
   await app.listen(port);

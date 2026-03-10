@@ -7,7 +7,7 @@ export const runtimeEnvSchema = z.object({
 export const apiEnvSchema = runtimeEnvSchema.extend({
   PORT: z.coerce.number().int().positive().default(4000),
   API_PREFIX: z.string().default("api"),
-  DATABASE_URL: z.string().default("postgresql://velora:velora@localhost:5432/velora"),
+  DATABASE_URL: z.string().default("postgresql://velora:velora@localhost:5433/velora"),
   REDIS_URL: z.string().default("redis://localhost:6379"),
   OPENSEARCH_URL: z.string().default("http://localhost:9200"),
   STRIPE_SECRET_KEY: z.string().default("sk_test_placeholder"),

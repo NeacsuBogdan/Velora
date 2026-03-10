@@ -8,6 +8,7 @@
     "pnpm": ">=10.0.0"
   },
   "scripts": {
+    "postinstall": "pnpm --filter @velora/api run db:generate",
     "build:packages": "turbo build --filter=@velora/ui --filter=@velora/contracts --filter=@velora/domain --filter=@velora/config --filter=@velora/test-utils",
     "dev": "pnpm run build:packages && turbo dev --filter=@velora/ui --filter=@velora/contracts --filter=@velora/domain --filter=@velora/config --filter=@velora/test-utils --filter=@velora/storefront --filter=@velora/admin --filter=@velora/api",
     "dev:storefront": "pnpm run build:packages && pnpm --filter @velora/storefront dev",

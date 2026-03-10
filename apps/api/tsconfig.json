@@ -11,5 +11,5 @@
     "noEmit": true,
     "outDir": "dist"
   },
-  "include": ["src/**/*.ts", "scripts/**/*.ts"]
+  "include": ["src/**/*.ts", "prisma/**/*.ts", "vitest.config.ts"]
 }

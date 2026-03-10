@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: velora
       POSTGRES_PASSWORD: velora
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -42,7 +42,6 @@ services:
       bootstrap.memory_lock: "true"
     ports:
       - "9200:9200"
-      - "9600:9600"
     ulimits:
       memlock:
         soft: -1

@@ -1,0 +1,47 @@
+{
+  "name": "velora",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.30.0",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=10.0.0"
+  },
+  "scripts": {
+    "build:packages": "turbo build --filter=@velora/ui --filter=@velora/contracts --filter=@velora/domain --filter=@velora/config --filter=@velora/test-utils",
+    "dev": "pnpm run build:packages && turbo dev --filter=@velora/ui --filter=@velora/contracts --filter=@velora/domain --filter=@velora/config --filter=@velora/test-utils --filter=@velora/storefront --filter=@velora/admin --filter=@velora/api",
+    "dev:storefront": "pnpm run build:packages && pnpm --filter @velora/storefront dev",
+    "dev:admin": "pnpm run build:packages && pnpm --filter @velora/admin dev",
+    "dev:api": "pnpm run build:packages && pnpm --filter @velora/api dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "test:e2e": "playwright test --pass-with-no-tests",
+    "db:migrate": "pnpm --filter @velora/api db:migrate",
+    "db:seed": "pnpm --filter @velora/api db:seed",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down -v",
+    "format": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@next/eslint-plugin-next": "^16.1.6",
+    "@playwright/test": "^1.58.2",
+    "@types/node": "^25.4.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "globals": "^17.4.0",
+    "prettier": "^3.8.1",
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
+    "turbo": "^2.8.15",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.57.0",
+    "vitest": "^4.0.18"
+  }
+}

@@ -10,6 +10,7 @@ export const apiEnvSchema = runtimeEnvSchema.extend({
   DATABASE_URL: z.string().default("postgresql://velora:velora@localhost:5433/velora"),
   REDIS_URL: z.string().default("redis://localhost:6379"),
   OPENSEARCH_URL: z.string().default("http://localhost:9200"),
+  OPENSEARCH_INDEX: z.string().default("velora_products_v1"),
   STRIPE_SECRET_KEY: z.string().default("sk_test_placeholder"),
   STRIPE_WEBHOOK_SECRET: z.string().default("whsec_placeholder")
 });

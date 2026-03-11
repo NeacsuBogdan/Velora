@@ -14,6 +14,7 @@ import { InventoryModule } from "./inventory/inventory.module";
 import { OrdersModule } from "./orders/orders.module";
 import { PaymentsModule } from "./payments/payments.module";
 import { PromotionsModule } from "./promotions/promotions.module";
+import { SearchModule } from "./search/search.module";
 import { SearchSyncModule } from "./search-sync/search-sync.module";
 import { UsersModule } from "./users/users.module";
 
@@ -34,6 +35,7 @@ import { UsersModule } from "./users/users.module";
     PaymentsModule,
     OrdersModule,
     PromotionsModule,
+    SearchModule,
     SearchSyncModule,
     AuditModule
   ]

@@ -479,6 +479,7 @@ model Cart {
   userId           String?
   status           CartStatus        @default(ACTIVE)
   currency         String            @default("RON")
+  couponCode       String?
   idempotencyKey   String?           @unique
   subtotal         Int               @default(0)
   discountTotal    Int               @default(0)
@@ -519,6 +520,7 @@ model CheckoutSession {
   status               CheckoutStatus     @default(STARTED)
   amount               Int
   currency             String             @default("RON")
+  pricingSnapshot      Json?
   reservationExpiresAt DateTime?
   idempotencyKey       String             @unique
   createdAt            DateTime           @default(now())

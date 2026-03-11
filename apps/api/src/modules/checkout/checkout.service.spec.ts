@@ -68,20 +68,30 @@ describe("CheckoutService", () => {
       currency: "RON"
     });
     cartService.prepareCartForCheckout.mockResolvedValue({
-      id: "cart-1",
-      currency: "RON",
-      total: 329900,
-      items: [
-        {
-          listingId: "listing-1",
-          quantity: 1,
-          listing: {
-            inventoryItem: {
-              id: "inventory-1"
+      cart: {
+        id: "cart-1",
+        currency: "RON",
+        total: 329900,
+        items: [
+          {
+            listingId: "listing-1",
+            quantity: 1,
+            listing: {
+              inventoryItem: {
+                id: "inventory-1"
+              }
             }
           }
-        }
-      ]
+        ]
+      },
+      pricing: {
+        subtotal: 329900,
+        discountTotal: 0,
+        total: 329900,
+        currency: "RON",
+        couponCode: null,
+        discounts: []
+      }
     });
 
     const result = await checkoutService.createCheckoutSession(

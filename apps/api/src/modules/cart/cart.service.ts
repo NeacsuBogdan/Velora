@@ -6,6 +6,7 @@ import {
 import { Prisma } from "@prisma/client";
 import {
   addCartItemRequestSchema,
+  applyCouponRequestSchema,
   cartDetailSchema,
   checkoutReservationSummarySchema,
   domainOverviewSchema,
@@ -16,6 +17,8 @@ import {
 
 import { PrismaService } from "../database/prisma.service";
 import { InventoryService } from "../inventory/inventory.service";
+import type { PricingSnapshot } from "../promotions/pricing.helpers";
+import { PromotionsService } from "../promotions/promotions.service";
 import {
   buildSearchDocument,
   searchProjectionListingInclude
@@ -44,7 +47,8 @@ type CartRecord = Prisma.CartGetPayload<typeof cartRecordInclude>;
 export class CartService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly inventoryService: InventoryService
+    private readonly inventoryService: InventoryService,
+    private readonly promotionsService: PromotionsService
   ) {}
 
   async getOverview(viewer: AuthenticatedUser) {
@@ -91,9 +95,12 @@ export class CartService {
 
       const cart = await this.getOrCreateActiveCartRecord(tx, viewer.id);
       await this.refreshCartItemSnapshots(tx, cart.id);
-      await this.recalculateCartTotals(tx, cart.id);
+      const pricing = await this.promotionsService.repriceCartWithinTransaction(
+        tx,
+        cart.id
+      );
 
-      return this.buildCartResponse(tx, cart.id);
+      return this.buildCartResponse(tx, cart.id, pricing);
     });
   }
 
@@ -115,7 +122,10 @@ export class CartService {
         "Cart contents changed before payment."
       );
 
-      const { projection } = await this.requirePurchasableListing(tx, input.listingId);
+      const { projection } = await this.requirePurchasableListing(
+        tx,
+        input.listingId
+      );
       const existing = await tx.cartItem.findUnique({
         where: {
           cartId_listingId: {
@@ -181,9 +191,75 @@ export class CartService {
       });
 
       await this.refreshCartItemSnapshots(tx, cart.id);
-      await this.recalculateCartTotals(tx, cart.id);
+      const pricing = await this.promotionsService.repriceCartWithinTransaction(
+        tx,
+        cart.id
+      );
 
-      return this.buildCartResponse(tx, cart.id);
+      return this.buildCartResponse(tx, cart.id, pricing);
+    });
+  }
+
+  async applyCoupon(viewer: AuthenticatedUser, rawInput: unknown) {
+    const input = applyCouponRequestSchema.parse(rawInput);
+    const normalizedCouponCode = input.couponCode.trim().toUpperCase();
+
+    return this.prisma.$transaction(async (tx) => {
+      const cart = await this.getOrCreateActiveCartRecord(tx, viewer.id);
+      await this.invalidateActiveCheckoutSessions(
+        tx,
+        cart.id,
+        viewer.id,
+        "Coupon state changed before payment."
+      );
+
+      await tx.cart.update({
+        where: {
+          id: cart.id
+        },
+        data: {
+          couponCode: normalizedCouponCode
+        }
+      });
+
+      await this.refreshCartItemSnapshots(tx, cart.id);
+      const pricing = await this.promotionsService.repriceCartWithinTransaction(
+        tx,
+        cart.id
+      );
+
+      if (
+        !pricing.discounts.some(
+          (discount) => discount.couponCode === normalizedCouponCode
+        )
+      ) {
+        await tx.cart.update({
+          where: {
+            id: cart.id
+          },
+          data: {
+            couponCode: null
+          }
+        });
+
+        throw new ConflictException(
+          "The coupon is inactive or not applicable to the current cart."
+        );
+      }
+
+      await tx.auditLog.create({
+        data: {
+          actorUserId: viewer.id,
+          entityType: "CART",
+          entityId: cart.id,
+          action: "CART_COUPON_APPLIED",
+          details: {
+            couponCode: normalizedCouponCode
+          }
+        }
+      });
+
+      return this.buildCartResponse(tx, cart.id, pricing);
     });
   }
 
@@ -272,9 +348,12 @@ export class CartService {
       });
 
       await this.refreshCartItemSnapshots(tx, cartItem.cartId);
-      await this.recalculateCartTotals(tx, cartItem.cartId);
+      const pricing = await this.promotionsService.repriceCartWithinTransaction(
+        tx,
+        cartItem.cartId
+      );
 
-      return this.buildCartResponse(tx, cartItem.cartId);
+      return this.buildCartResponse(tx, cartItem.cartId, pricing);
     });
   }
 
@@ -324,25 +403,74 @@ export class CartService {
       });
 
       await this.refreshCartItemSnapshots(tx, cartItem.cartId);
-      await this.recalculateCartTotals(tx, cartItem.cartId);
+      const pricing = await this.promotionsService.repriceCartWithinTransaction(
+        tx,
+        cartItem.cartId
+      );
 
-      return this.buildCartResponse(tx, cartItem.cartId);
+      return this.buildCartResponse(tx, cartItem.cartId, pricing);
+    });
+  }
+
+  async removeCoupon(viewer: AuthenticatedUser) {
+    return this.prisma.$transaction(async (tx) => {
+      const cart = await this.getOrCreateActiveCartRecord(tx, viewer.id);
+      await this.invalidateActiveCheckoutSessions(
+        tx,
+        cart.id,
+        viewer.id,
+        "Coupon state changed before payment."
+      );
+
+      await tx.cart.update({
+        where: {
+          id: cart.id
+        },
+        data: {
+          couponCode: null
+        }
+      });
+
+      await this.refreshCartItemSnapshots(tx, cart.id);
+      const pricing = await this.promotionsService.repriceCartWithinTransaction(
+        tx,
+        cart.id
+      );
+
+      await tx.auditLog.create({
+        data: {
+          actorUserId: viewer.id,
+          entityType: "CART",
+          entityId: cart.id,
+          action: "CART_COUPON_REMOVED"
+        }
+      });
+
+      return this.buildCartResponse(tx, cart.id, pricing);
     });
   }
 
   async prepareCartForCheckout(
     tx: DatabaseClient,
     userId: string
-  ): Promise<CartRecord> {
+  ): Promise<{ cart: CartRecord; pricing: PricingSnapshot }> {
     const cart = await this.getOrCreateActiveCartRecord(tx, userId);
     await this.refreshCartItemSnapshots(tx, cart.id);
-    await this.recalculateCartTotals(tx, cart.id);
-    return this.loadCartRecord(tx, cart.id);
+    const pricing = await this.promotionsService.repriceCartWithinTransaction(
+      tx as Prisma.TransactionClient,
+      cart.id
+    );
+
+    return {
+      cart: await this.loadCartRecord(tx, cart.id),
+      pricing
+    };
   }
 
   private async buildCartResponse(
     tx: DatabaseClient,
-    cartId: string
+    cartId: string,
+    pricing: PricingSnapshot
   ): Promise<CartDetail> {
     const [cart, activeCheckout] = await Promise.all([
       this.loadCartRecord(tx, cartId),
@@ -382,12 +510,33 @@ export class CartService {
     });
 
     const notes = [];
+    const couponDiscountApplied = pricing.couponCode
+      ? pricing.discounts.some(
+          (discount) => discount.couponCode === pricing.couponCode
+        )
+      : false;
 
     if (items.length === 0) {
       notes.push("Your cart is empty. Add an item from a product detail page.");
     } else {
       notes.push("Inventory is only reserved once checkout starts.");
-      notes.push("Cart pricing is refreshed against the live catalog before reservations are created.");
+      notes.push(
+        "Cart pricing is refreshed against the live catalog before reservations are created."
+      );
+    }
+
+    if (pricing.couponCode && couponDiscountApplied) {
+      notes.push(`Coupon ${pricing.couponCode} is currently applied.`);
+    } else if (pricing.couponCode) {
+      notes.push(
+        `Coupon ${pricing.couponCode} is attached but not currently eligible for a discount.`
+      );
+    }
+
+    if (pricing.discounts.length > 0) {
+      notes.push(
+        `${pricing.discounts.length} promotion adjustment(s) are reflected in the cart total.`
+      );
     }
 
     if (items.some((item) => !item.canFulfill)) {
@@ -406,6 +555,7 @@ export class CartService {
       cartId: cart.id,
       status: cart.status,
       currency: cart.currency,
+      couponCode: pricing.couponCode,
       itemCount: items.reduce((count, item) => count + item.quantity, 0),
       totals: {
         subtotal: {
@@ -422,6 +572,7 @@ export class CartService {
         }
       },
       items,
+      discounts: pricing.discounts,
       activeCheckout,
       notes
     });
@@ -527,34 +678,6 @@ export class CartService {
         }
       });
     }
-  }
-
-  private async recalculateCartTotals(tx: DatabaseClient, cartId: string) {
-    const cartItems = await tx.cartItem.findMany({
-      where: {
-        cartId
-      },
-      select: {
-        quantity: true,
-        unitPrice: true
-      }
-    });
-
-    const subtotal = cartItems.reduce(
-      (sum, item) => sum + item.unitPrice * item.quantity,
-      0
-    );
-
-    await tx.cart.update({
-      where: {
-        id: cartId
-      },
-      data: {
-        subtotal,
-        discountTotal: 0,
-        total: subtotal
-      }
-    });
   }
 
   private async getOrCreateActiveCartRecord(

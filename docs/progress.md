@@ -8,7 +8,7 @@
 - [x] Stage 3 - Catalog, category, product detail, search UX
 - [x] Stage 4 - Cart, inventory, stock reservation
 - [x] Stage 5 - Checkout, orders, payments
-- [ ] Stage 6 - Promotions and pricing engine
+- [x] Stage 6 - Promotions and pricing engine
 - [ ] Stage 7 - Customer account and order history
 - [ ] Stage 8 - Admin backoffice
 - [ ] Stage 9 - Seller portal
@@ -81,6 +81,20 @@
 - Added Stage 5 API tests for payment-attempt idempotency, successful settlement into an order, and duplicate webhook replay handling.
 - Verified `pnpm --filter @velora/api lint`, `pnpm --filter @velora/api typecheck`, `pnpm --filter @velora/api test`, `pnpm --filter @velora/storefront lint`, `pnpm --filter @velora/storefront typecheck`, plus root `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.
 
+### Stage 6
+
+- Replaced the placeholder promotions module with a real promotion service, controller, pricing snapshot helper, and deterministic rule engine that now evaluates percentage, fixed amount, cart threshold, category discount, and buy-x-get-y promotions.
+- Expanded the shared contracts package with promotion management payloads, coupon application requests, discount summary shapes, and cart/checkout/order discount breakdowns so pricing data stays consistent across API and frontend apps.
+- Added cart-level coupon support with customer endpoints to apply or remove coupon codes, persistent coupon state on the active cart, and automatic repricing on every cart mutation.
+- Added checkout pricing snapshots so the payment settlement flow now freezes discount decisions at checkout time and persists applied discount snapshots into the created order.
+- Extended order detail mapping so confirmation and later account/backoffice surfaces can show discount lineage alongside totals and refunds.
+- Added richer promotion seed data for automatic phone discounts, cart-threshold savings, buy-x-get-y coverage, coupon-backed welcome pricing, and an exclusive VIP coupon path.
+- Added storefront coupon controls plus cart, checkout, and confirmation UI sections that surface discount breakdowns instead of only net totals.
+- Replaced the admin placeholder landing page with a session-aware promotion console that can sign in with the seeded admin account and create or update live promotion rules and optional coupons against the Stage 6 API.
+- Added promotion-engine unit coverage plus pricing snapshot service coverage, then kept the existing cart, checkout, and payment tests green against the new discount-aware shapes.
+- Verified `pnpm --filter @velora/api lint`, `pnpm --filter @velora/api typecheck`, `pnpm --filter @velora/api test`, `pnpm --filter @velora/storefront lint`, `pnpm --filter @velora/storefront typecheck`, `pnpm --filter @velora/admin lint`, `pnpm --filter @velora/admin typecheck`, plus root `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.
+- Attempted `pnpm db:migrate` and `pnpm db:seed`, but local infrastructure verification was blocked because Docker Desktop and the Docker engine were not running during this session.
+
 ## Important implementation notes
 
 - Internal packages are designed to build independently so the apps can consume stable outputs.
@@ -91,10 +105,11 @@
 - Search remains projection-based: PostgreSQL stays the source of truth while OpenSearch is treated as a recoverable index that can fall back to in-process filtering during local development failures.
 - App-level TypeScript path mappings are now scoped at the Nest API layer so local workspace typechecking can resolve shared-package source directly without breaking package-level builds.
 - Stage 5 keeps checkout deterministic in local development: placeholder Stripe credentials activate a controlled sandbox path, while real `sk_test_` and `whsec_` values switch the same service over to live Stripe test-mode PaymentIntent and webhook verification behavior.
+- Stage 6 now freezes pricing at checkout boundaries by storing a pricing snapshot on the checkout session, which prevents later admin promotion changes from mutating already-started payment flows.
 
 ## Known follow-up items
 
-- Implement the Stage 6 promotion engine so cart and order pricing no longer remain purely list-price based across checkout settlement.
 - Extend Stage 5 refund handling into richer administrative flows and customer-facing refund visibility in later account and backoffice stages.
 - Add end-to-end browser coverage for the checkout success, failure, and retry paths once the admin and seller flows are also in place.
 - Surface payment and order timelines more deeply inside the customer account area during Stage 7.
+- Bring the local Docker stack back up and rerun `pnpm db:migrate` plus `pnpm db:seed` so the richer Stage 6 promotion set is exercised against the live local database again.

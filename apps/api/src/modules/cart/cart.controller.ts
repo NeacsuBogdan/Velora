@@ -39,6 +39,15 @@ export class CartController {
     return this.cartService.addItem(viewer, body);
   }
 
+  @Post("coupon")
+  @Roles("CUSTOMER")
+  applyCoupon(
+    @CurrentUser() viewer: AuthenticatedUser,
+    @Body() body: unknown
+  ) {
+    return this.cartService.applyCoupon(viewer, body);
+  }
+
   @Patch("items/:itemId")
   @Roles("CUSTOMER")
   updateItem(
@@ -56,5 +65,11 @@ export class CartController {
     @Param("itemId") itemId: string
   ) {
     return this.cartService.removeItem(viewer, itemId);
+  }
+
+  @Delete("coupon")
+  @Roles("CUSTOMER")
+  removeCoupon(@CurrentUser() viewer: AuthenticatedUser) {
+    return this.cartService.removeCoupon(viewer);
   }
 }

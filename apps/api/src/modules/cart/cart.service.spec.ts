@@ -159,11 +159,19 @@ describe("CartService", () => {
     )
   };
 
+  const promotionsService = {
+    repriceCartWithinTransaction: vi.fn()
+  };
+
   let cartService: CartService;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    cartService = new CartService(prisma as never, inventoryService as never);
+    cartService = new CartService(
+      prisma as never,
+      inventoryService as never,
+      promotionsService as never
+    );
     inventoryService.releaseExpiredReservationsWithinTransaction.mockResolvedValue({
       releasedReservations: 0,
       inventoryItemsAdjusted: 0
@@ -174,6 +182,14 @@ describe("CartService", () => {
         inventoryItemsAdjusted: 0
       }
     );
+    promotionsService.repriceCartWithinTransaction.mockResolvedValue({
+      subtotal: 659800,
+      discountTotal: 0,
+      total: 659800,
+      currency: "RON",
+      couponCode: null,
+      discounts: []
+    });
   });
 
   it("adds a catalog listing to the active cart and recalculates totals", async () => {
@@ -209,20 +225,7 @@ describe("CartService", () => {
     tx.sellerProductListing.findUnique.mockResolvedValue(listing);
     tx.cartItem.findUnique.mockResolvedValue(null);
     tx.cartItem.upsert.mockResolvedValue(itemRecord);
-    tx.cartItem.findMany.mockImplementation(
-      ({ select }: { select?: { quantity: true; unitPrice: true } }) =>
-        Promise.resolve(
-          select
-            ? [
-                {
-                  quantity: 2,
-                  unitPrice: 329900
-                }
-              ]
-            : [itemRecord]
-        )
-    );
-    tx.cart.update.mockResolvedValue(undefined);
+    tx.cartItem.findMany.mockResolvedValue([itemRecord]);
     tx.cart.findUnique.mockResolvedValue({
       id: "cart-1",
       status: "ACTIVE",
@@ -253,16 +256,10 @@ describe("CartService", () => {
     );
 
     expect(tx.cartItem.upsert).toHaveBeenCalled();
-    expect(tx.cart.update).toHaveBeenCalledWith({
-      where: {
-        id: "cart-1"
-      },
-      data: {
-        subtotal: 659800,
-        discountTotal: 0,
-        total: 659800
-      }
-    });
+    expect(promotionsService.repriceCartWithinTransaction).toHaveBeenCalledWith(
+      tx,
+      "cart-1"
+    );
     expect(result.itemCount).toBe(2);
     expect(result.items[0]?.canFulfill).toBe(true);
     expect(result.totals.total.amount).toBe(659800);

@@ -342,6 +342,33 @@ export const checkoutStatusSchema = z.enum([
 
 export type CheckoutStatus = z.infer<typeof checkoutStatusSchema>;
 
+export const promotionTypeSchema = z.enum([
+  "PERCENTAGE",
+  "FIXED_AMOUNT",
+  "CART_THRESHOLD",
+  "CATEGORY_DISCOUNT",
+  "BUY_X_GET_Y"
+]);
+
+export type PromotionType = z.infer<typeof promotionTypeSchema>;
+
+export const promotionStackingModeSchema = z.enum([
+  "STACKABLE",
+  "EXCLUSIVE"
+]);
+
+export type PromotionStackingMode = z.infer<
+  typeof promotionStackingModeSchema
+>;
+
+export const couponStatusSchema = z.enum([
+  "ACTIVE",
+  "DISABLED",
+  "EXPIRED"
+]);
+
+export type CouponStatus = z.infer<typeof couponStatusSchema>;
+
 export const paymentStatusSchema = z.enum([
   "PENDING",
   "REQUIRES_ACTION",
@@ -372,6 +399,126 @@ export const createCheckoutSessionRequestSchema = z.object({
 
 export type CreateCheckoutSessionRequest = z.infer<
   typeof createCheckoutSessionRequestSchema
+>;
+
+export const promotionRuleConfigurationSchema = z.object({
+  percentage: z.number().positive().max(100).optional(),
+  amount: z.number().int().positive().optional(),
+  thresholdAmount: z.number().int().nonnegative().optional(),
+  categorySlugs: z.array(z.string().min(1)).optional(),
+  listingIds: z.array(z.string().min(1)).optional(),
+  buyQuantity: z.number().int().positive().optional(),
+  getQuantity: z.number().int().positive().optional()
+});
+
+export type PromotionRuleConfiguration = z.infer<
+  typeof promotionRuleConfigurationSchema
+>;
+
+export const appliedDiscountSummarySchema = z.object({
+  promotionId: z.string().nullable(),
+  couponCode: z.string().nullable(),
+  label: z.string(),
+  amount: moneySchema,
+  description: z.string().nullable()
+});
+
+export type AppliedDiscountSummary = z.infer<
+  typeof appliedDiscountSummarySchema
+>;
+
+export const applyCouponRequestSchema = z.object({
+  couponCode: z
+    .string()
+    .trim()
+    .min(3)
+    .max(40)
+    .regex(/^[A-Z0-9_-]+$/)
+});
+
+export type ApplyCouponRequest = z.infer<typeof applyCouponRequestSchema>;
+
+export const promotionRuleSummarySchema = z.object({
+  ruleId: z.string(),
+  name: z.string(),
+  configuration: promotionRuleConfigurationSchema
+});
+
+export type PromotionRuleSummary = z.infer<
+  typeof promotionRuleSummarySchema
+>;
+
+export const couponSummarySchema = z.object({
+  couponId: z.string(),
+  code: z.string(),
+  status: couponStatusSchema,
+  usageLimit: z.number().int().positive().nullable(),
+  usedCount: z.number().int().nonnegative(),
+  startsAt: z.string().datetime().nullable(),
+  endsAt: z.string().datetime().nullable()
+});
+
+export type CouponSummary = z.infer<typeof couponSummarySchema>;
+
+export const promotionSummarySchema = z.object({
+  promotionId: z.string(),
+  name: z.string(),
+  code: z.string().nullable(),
+  description: z.string(),
+  type: promotionTypeSchema,
+  stackingMode: promotionStackingModeSchema,
+  priority: z.number().int(),
+  isActive: z.boolean(),
+  startsAt: z.string().datetime().nullable(),
+  endsAt: z.string().datetime().nullable(),
+  rules: z.array(promotionRuleSummarySchema),
+  coupons: z.array(couponSummarySchema),
+  updatedAt: z.string().datetime()
+});
+
+export type PromotionSummary = z.infer<typeof promotionSummarySchema>;
+
+export const upsertPromotionRequestSchema = z.object({
+  name: z.string().min(3).max(120),
+  code: z
+    .string()
+    .trim()
+    .min(3)
+    .max(40)
+    .regex(/^[A-Z0-9_-]+$/)
+    .nullable()
+    .optional(),
+  description: z.string().min(8).max(400),
+  type: promotionTypeSchema,
+  stackingMode: promotionStackingModeSchema,
+  priority: z.number().int().min(0).max(1000),
+  isActive: z.boolean().default(true),
+  startsAt: z.string().datetime().nullable().optional(),
+  endsAt: z.string().datetime().nullable().optional(),
+  rule: z.object({
+    name: z.string().min(3).max(120),
+    configuration: promotionRuleConfigurationSchema
+  }),
+  coupons: z
+    .array(
+      z.object({
+        code: z
+          .string()
+          .trim()
+          .min(3)
+          .max(40)
+          .regex(/^[A-Z0-9_-]+$/),
+        status: couponStatusSchema.default("ACTIVE"),
+        usageLimit: z.number().int().positive().nullable().optional(),
+        startsAt: z.string().datetime().nullable().optional(),
+        endsAt: z.string().datetime().nullable().optional()
+      })
+    )
+    .default([])
+});
+
+export type UpsertPromotionRequest = z.infer<
+  typeof upsertPromotionRequestSchema
 >;
 
 export const cartItemDetailSchema = z.object({
@@ -427,6 +574,7 @@ export const cartDetailSchema = z.object({
   cartId: z.string(),
   status: z.enum(["ACTIVE", "CONVERTED", "ABANDONED"]),
   currency: z.string().length(3),
+  couponCode: z.string().nullable(),
   itemCount: z.number().int().nonnegative(),
   totals: z.object({
     subtotal: moneySchema,
@@ -434,6 +582,7 @@ export const cartDetailSchema = z.object({
     total: moneySchema
   }),
   items: z.array(cartItemDetailSchema),
+  discounts: z.array(appliedDiscountSummarySchema),
   activeCheckout: checkoutReservationSummarySchema.nullable(),
   notes: z.array(z.string())
 });
@@ -515,6 +664,7 @@ export const checkoutSessionDetailSchema = z.object({
   amount: moneySchema,
   reservationExpiresAt: z.string().datetime().nullable(),
   reservations: z.array(checkoutReservationLineSchema),
+  discounts: z.array(appliedDiscountSummarySchema),
   paymentAttempts: z.array(paymentAttemptSummarySchema),
   order: orderSummarySchema.nullable()
 });
@@ -566,6 +716,7 @@ export type OrderStatusHistoryEntry = z.infer<
 
 export const orderDetailSchema = orderSummarySchema.extend({
   items: z.array(orderItemDetailSchema),
+  discounts: z.array(appliedDiscountSummarySchema),
   statusHistory: z.array(orderStatusHistoryEntrySchema),
   refunds: z.array(refundSummarySchema)
 });

@@ -606,62 +606,161 @@ async function seedCatalogAndCommerce(): Promise<void> {
     }
   });
 
-  const promotion = await prisma.promotion.upsert({
-    where: { code: "WELCOME5" },
-    update: {
-      name: "Welcome 5%",
-      description: "A simple Stage 1 pricing seed.",
-      type: PromotionType.PERCENTAGE,
-      stackingMode: PromotionStackingMode.STACKABLE,
-      priority: 10,
-      isActive: true
-    },
-    create: {
+  const promotionSeeds = [
+    {
       name: "Welcome 5%",
       code: "WELCOME5",
-      description: "A simple Stage 1 pricing seed.",
+      description: "Coupon-backed onboarding discount for first cart validation flows.",
       type: PromotionType.PERCENTAGE,
       stackingMode: PromotionStackingMode.STACKABLE,
       priority: 10,
-      isActive: true
-    }
-  });
-
-  await prisma.promotionRule.upsert({
-    where: { id: "seed-stage1-promotion-rule" },
-    update: {
-      promotionId: promotion.id,
-      name: "5 percent off order total",
-      configuration: { percentage: 5 }
+      ruleId: "seed-stage6-promotion-rule-welcome",
+      ruleName: "5 percent off order total",
+      configuration: { percentage: 5 },
+      coupons: [
+        {
+          code: "DEMO5",
+          status: CouponStatus.ACTIVE,
+          usageLimit: 100
+        }
+      ]
     },
-    create: {
-      id: "seed-stage1-promotion-rule",
-      promotionId: promotion.id,
-      name: "5 percent off order total",
-      configuration: { percentage: 5 }
-    }
-  });
-
-  await prisma.coupon.upsert({
-    where: { code: "DEMO5" },
-    update: {
-      promotionId: promotion.id,
-      status: CouponStatus.ACTIVE,
-      usageLimit: 100
+    {
+      name: "Phones launch 10%",
+      code: "PHONE10",
+      description: "Automatic category discount for phone listings in the seeded catalog.",
+      type: PromotionType.CATEGORY_DISCOUNT,
+      stackingMode: PromotionStackingMode.STACKABLE,
+      priority: 20,
+      ruleId: "seed-stage6-promotion-rule-phone10",
+      ruleName: "10 percent off phones",
+      configuration: {
+        categorySlugs: ["phones"],
+        percentage: 10
+      },
+      coupons: []
     },
-    create: {
-      promotionId: promotion.id,
-      code: "DEMO5",
-      status: CouponStatus.ACTIVE,
-      usageLimit: 100
+    {
+      name: "Basket 150 RON",
+      code: "BASKET150",
+      description: "Threshold discount once the seeded cart reaches a higher basket value.",
+      type: PromotionType.CART_THRESHOLD,
+      stackingMode: PromotionStackingMode.STACKABLE,
+      priority: 30,
+      ruleId: "seed-stage6-promotion-rule-basket150",
+      ruleName: "150 RON off orders above threshold",
+      configuration: {
+        thresholdAmount: 700000,
+        amount: 15000
+      },
+      coupons: []
+    },
+    {
+      name: "TV & audio 3 for 2",
+      code: "AUDIO3FOR2",
+      description: "Bundle logic seed for buy-x-get-y coverage in the promotion engine.",
+      type: PromotionType.BUY_X_GET_Y,
+      stackingMode: PromotionStackingMode.STACKABLE,
+      priority: 40,
+      ruleId: "seed-stage6-promotion-rule-audio3for2",
+      ruleName: "Buy two get one free in TV & audio",
+      configuration: {
+        categorySlugs: ["tv-audio"],
+        buyQuantity: 2,
+        getQuantity: 1
+      },
+      coupons: []
+    },
+    {
+      name: "VIP 250 RON",
+      code: "VIP250",
+      description: "Exclusive fixed discount reserved for a dedicated coupon flow.",
+      type: PromotionType.FIXED_AMOUNT,
+      stackingMode: PromotionStackingMode.EXCLUSIVE,
+      priority: 5,
+      ruleId: "seed-stage6-promotion-rule-vip250",
+      ruleName: "250 RON off as an exclusive promotion",
+      configuration: {
+        amount: 25000
+      },
+      coupons: [
+        {
+          code: "VIP250",
+          status: CouponStatus.ACTIVE,
+          usageLimit: 25
+        }
+      ]
     }
-  });
+  ];
+
+  const promotionRecords = new Map<string, { id: string }>();
+
+  for (const promotionSeed of promotionSeeds) {
+    const promotionRecord = await prisma.promotion.upsert({
+      where: { code: promotionSeed.code },
+      update: {
+        name: promotionSeed.name,
+        description: promotionSeed.description,
+        type: promotionSeed.type,
+        stackingMode: promotionSeed.stackingMode,
+        priority: promotionSeed.priority,
+        isActive: true
+      },
+      create: {
+        name: promotionSeed.name,
+        code: promotionSeed.code,
+        description: promotionSeed.description,
+        type: promotionSeed.type,
+        stackingMode: promotionSeed.stackingMode,
+        priority: promotionSeed.priority,
+        isActive: true
+      }
+    });
+
+    promotionRecords.set(promotionSeed.code, {
+      id: promotionRecord.id
+    });
+
+    await prisma.promotionRule.upsert({
+      where: { id: promotionSeed.ruleId },
+      update: {
+        promotionId: promotionRecord.id,
+        name: promotionSeed.ruleName,
+        configuration: promotionSeed.configuration
+      },
+      create: {
+        id: promotionSeed.ruleId,
+        promotionId: promotionRecord.id,
+        name: promotionSeed.ruleName,
+        configuration: promotionSeed.configuration
+      }
+    });
+
+    for (const coupon of promotionSeed.coupons) {
+      await prisma.coupon.upsert({
+        where: { code: coupon.code },
+        update: {
+          promotionId: promotionRecord.id,
+          status: coupon.status,
+          usageLimit: coupon.usageLimit
+        },
+        create: {
+          promotionId: promotionRecord.id,
+          code: coupon.code,
+          status: coupon.status,
+          usageLimit: coupon.usageLimit
+        }
+      });
+    }
+  }
+
+  const welcomePromotion = promotionRecords.get("WELCOME5");
 
   await prisma.appliedDiscountSnapshot.upsert({
     where: { id: "seed-stage1-discount-snapshot" },
     update: {
       orderId: order.id,
-      promotionId: promotion.id,
+      promotionId: welcomePromotion?.id,
       couponCode: "DEMO5",
       label: "Welcome 5%",
       amount: 22500,
@@ -670,7 +769,7 @@ async function seedCatalogAndCommerce(): Promise<void> {
     create: {
       id: "seed-stage1-discount-snapshot",
       orderId: order.id,
-      promotionId: promotion.id,
+      promotionId: welcomePromotion?.id,
       couponCode: "DEMO5",
       label: "Welcome 5%",
       amount: 22500,

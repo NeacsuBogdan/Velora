@@ -122,6 +122,31 @@ export default async function OrderConfirmationPage({
                     </span>
                   </div>
                 </div>
+
+                {order.discounts.length ? (
+                  <div className="mt-6 grid gap-3 text-sm">
+                    {order.discounts.map((discount) => (
+                      <div
+                        key={`${discount.label}-${discount.couponCode ?? "auto"}`}
+                        className="rounded-[24px] border border-[var(--stroke)] bg-white/70 p-4"
+                      >
+                        <div className="flex items-center justify-between gap-4">
+                          <span className="font-medium text-[var(--foreground)]">
+                            {discount.label}
+                          </span>
+                          <span className="font-semibold text-[var(--foreground)]">
+                            -{formatMoney(discount.amount)}
+                          </span>
+                        </div>
+                        {discount.couponCode ? (
+                          <p className="mt-2 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+                            Coupon {discount.couponCode}
+                          </p>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
               </Panel>
 
               <div className="grid gap-4">

@@ -22,7 +22,11 @@ import { AuditService } from "../audit/audit.service";
 import { CheckoutService } from "../checkout/checkout.service";
 import { PrismaService } from "../database/prisma.service";
 import { InventoryService } from "../inventory/inventory.service";
-import { mapOrderDetail } from "../orders/order.helpers";
+import {
+  mapOrderDetail,
+  orderDetailInclude
+} from "../orders/order.helpers";
+import { pricingSnapshotSchema } from "../promotions/pricing.helpers";
 
 type PrismaTransactionClient = Prisma.TransactionClient;
 
@@ -353,31 +357,7 @@ export class PaymentsService {
       where: {
         id: orderId
       },
-      include: {
-        paymentAttempt: {
-          include: {
-            refunds: true
-          }
-        },
-        items: {
-          include: {
-            listing: {
-              include: {
-                seller: true
-              }
-            },
-            product: true
-          },
-          orderBy: {
-            createdAt: "asc"
-          }
-        },
-        statusHistory: {
-          orderBy: {
-            createdAt: "asc"
-          }
-        }
-      }
+      include: orderDetailInclude.include
     });
 
     if (!order || !order.paymentAttempt) {
@@ -486,42 +466,14 @@ export class PaymentsService {
       where: {
         id: order.id
       },
-      include: {
-        items: {
-          include: {
-            listing: {
-              include: {
-                seller: true
-              }
-            },
-            product: true
-          },
-          orderBy: {
-            createdAt: "asc"
-          }
-        },
-        paymentAttempt: {
-          include: {
-            refunds: {
-              orderBy: {
-                createdAt: "desc"
-              }
-            }
-          }
-        },
-        statusHistory: {
-          orderBy: {
-            createdAt: "asc"
-          }
-        }
-      }
+      include: orderDetailInclude.include
     });
 
     if (!refreshedOrder) {
       throw new NotFoundException(`Order ${orderId} was not found.`);
     }
 
-    return mapOrderDetail(refreshedOrder as never);
+    return mapOrderDetail(refreshedOrder);
   }
 
   private async buildConfirmationResponse(
@@ -707,6 +659,17 @@ export class PaymentsService {
     }
 
     let order = paymentAttempt.checkoutSession.order;
+    const pricingSnapshot =
+      pricingSnapshotSchema
+        .safeParse(paymentAttempt.checkoutSession.pricingSnapshot)
+        .data ?? {
+        subtotal: paymentAttempt.checkoutSession.cart.subtotal,
+        discountTotal: paymentAttempt.checkoutSession.cart.discountTotal,
+        total: paymentAttempt.checkoutSession.cart.total,
+        currency: paymentAttempt.currency,
+        couponCode: paymentAttempt.checkoutSession.cart.couponCode ?? null,
+        discounts: []
+      };
 
     if (!order) {
       const sellerIds = new Set(
@@ -728,10 +691,22 @@ export class PaymentsService {
           status: "PAID",
           paymentStatus: "SUCCEEDED",
           currency: paymentAttempt.currency,
-          subtotal: paymentAttempt.checkoutSession.cart.subtotal,
-          discountTotal: paymentAttempt.checkoutSession.cart.discountTotal,
-          total: paymentAttempt.checkoutSession.cart.total,
+          subtotal: pricingSnapshot.subtotal,
+          discountTotal: pricingSnapshot.discountTotal,
+          total: pricingSnapshot.total,
           placedAt: new Date(),
+          discountSnapshots: {
+            create: pricingSnapshot.discounts.map((discount) => ({
+              promotionId: discount.promotionId ?? undefined,
+              couponCode: discount.couponCode ?? undefined,
+              label: discount.label,
+              amount: discount.amount.amount,
+              currency: discount.amount.currency,
+              metadata: {
+                description: discount.description
+              }
+            }))
+          },
           items: {
             create: paymentAttempt.checkoutSession.cart.items.map((item) => ({
               listingId: item.listingId,
@@ -777,7 +752,10 @@ export class PaymentsService {
           paymentStatus: "SUCCEEDED",
           status: "PAID",
           placedAt: order.placedAt ?? new Date(),
-          paymentAttemptId: paymentAttempt.id
+          paymentAttemptId: paymentAttempt.id,
+          subtotal: pricingSnapshot.subtotal,
+          discountTotal: pricingSnapshot.discountTotal,
+          total: pricingSnapshot.total
         }
       });
     }

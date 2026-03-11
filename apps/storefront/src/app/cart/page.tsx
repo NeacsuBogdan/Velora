@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { Badge, Panel } from "@velora/ui";
 
+import { CartCouponForm } from "../../components/cart-coupon-form";
 import { CartItemActions } from "../../components/cart-item-actions";
 import { StartCheckoutButton } from "../../components/start-checkout-button";
 import { StorefrontChrome } from "../../components/storefront-chrome";
@@ -209,6 +210,33 @@ export default async function CartPage(): Promise<React.JSX.Element> {
                   <span className="font-semibold">{cart.itemCount}</span>
                 </div>
               </div>
+
+              <CartCouponForm couponCode={cart.couponCode} />
+
+              {cart.discounts.length ? (
+                <div className="grid gap-3 text-sm">
+                  {cart.discounts.map((discount) => (
+                    <div
+                      key={`${discount.label}-${discount.couponCode ?? "auto"}`}
+                      className="rounded-[24px] border border-[var(--stroke)] bg-white/70 p-4"
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="font-medium text-[var(--foreground)]">
+                          {discount.label}
+                        </span>
+                        <span className="font-semibold text-[var(--foreground)]">
+                          -{formatMoney(discount.amount)}
+                        </span>
+                      </div>
+                      {discount.couponCode ? (
+                        <p className="mt-2 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+                          Coupon {discount.couponCode}
+                        </p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
 
               <StartCheckoutButton
                 activeCheckoutSessionId={cart.activeCheckout?.checkoutSessionId}

@@ -21,6 +21,7 @@ import {
   mapOrderSummary,
   orderSummaryInclude
 } from "../orders/order.helpers";
+import { pricingSnapshotSchema } from "../promotions/pricing.helpers";
 import {
   buildSearchDocument,
   searchProjectionListingInclude
@@ -173,7 +174,10 @@ export class CheckoutService {
         });
       }
 
-      const cart = await this.cartService.prepareCartForCheckout(tx, viewer.id);
+      const { cart, pricing } = await this.cartService.prepareCartForCheckout(
+        tx,
+        viewer.id
+      );
 
       if (cart.items.length === 0) {
         throw new BadRequestException("The cart is empty.");
@@ -215,8 +219,9 @@ export class CheckoutService {
           cartId: cart.id,
           userId: viewer.id,
           status: "STARTED",
-          amount: cart.total,
-          currency: cart.currency,
+          amount: pricing.total,
+          currency: pricing.currency,
+          pricingSnapshot: pricing as Prisma.InputJsonValue,
           idempotencyKey,
           reservationExpiresAt
         }
@@ -288,6 +293,10 @@ export class CheckoutService {
   }
 
   private mapCheckoutSessionDetail(checkoutSession: CheckoutDetailRecord) {
+    const pricingSnapshot =
+      pricingSnapshotSchema.safeParse(checkoutSession.pricingSnapshot).data ??
+      null;
+
     return checkoutSessionDetailSchema.parse({
       checkoutSessionId: checkoutSession.id,
       cartId: checkoutSession.cartId,
@@ -313,6 +322,7 @@ export class CheckoutService {
           expiresAt: reservation.expiresAt.toISOString()
         };
       }),
+      discounts: pricingSnapshot?.discounts ?? [],
       paymentAttempts: checkoutSession.paymentAttempts.map((attempt) =>
         paymentAttemptSummarySchema.parse({
           attemptId: attempt.id,

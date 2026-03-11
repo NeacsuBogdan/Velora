@@ -18,6 +18,11 @@ export type OrderSummaryRecord = Prisma.OrderGetPayload<typeof orderSummaryInclu
 export const orderDetailInclude =
   Prisma.validator<Prisma.OrderDefaultArgs>()({
     include: {
+      discountSnapshots: {
+        orderBy: {
+          createdAt: "asc"
+        }
+      },
       items: {
         include: {
           listing: {
@@ -98,6 +103,22 @@ export function mapOrderDetail(order: OrderDetailRecord) {
         amount: item.totalPrice,
         currency: order.currency
       }
+    })),
+    discounts: order.discountSnapshots.map((discount) => ({
+      promotionId: discount.promotionId ?? null,
+      couponCode: discount.couponCode ?? null,
+      label: discount.label,
+      amount: {
+        amount: discount.amount,
+        currency: discount.currency
+      },
+      description:
+        typeof discount.metadata === "object" &&
+        discount.metadata &&
+        "description" in discount.metadata &&
+        typeof discount.metadata.description === "string"
+          ? discount.metadata.description
+          : null
     })),
     statusHistory: order.statusHistory.map((entry) => ({
       status: entry.status,

@@ -1,20 +1,23 @@
-import { Badge, Button, Panel, StatTile } from "@velora/ui";
+import { Badge, Panel, StatTile } from "@velora/ui";
 
-const controls = [
-  "Catalog readiness",
-  "Order operations",
-  "Inventory controls",
-  "Promotion governance"
-];
+import { AdminLoginForm } from "../components/admin-login-form";
+import { PromotionConsole } from "../components/promotion-console";
+import {
+  getPromotions,
+  getPromotionsOverview,
+  getSession
+} from "../lib/admin-api";
 
-const pendingTracks = [
-  "Auth and role enforcement",
-  "Transactional schema and migrations",
-  "Deterministic seeds and demo accounts",
-  "Admin CRUD and operational tools"
-];
+export const dynamic = "force-dynamic";
 
-export default function AdminHomePage(): React.JSX.Element {
+export default async function AdminHomePage(): Promise<React.JSX.Element> {
+  const session = await getSession();
+  const isAdmin =
+    session?.user.roles.some((role) => role.code === "ADMIN") ?? false;
+  const [overview, promotions] = isAdmin
+    ? await Promise.all([getPromotionsOverview(), getPromotions()])
+    : [null, null];
+
   return (
     <main className="min-h-screen px-6 py-8 lg:px-10">
       <div className="mx-auto max-w-7xl space-y-8">
@@ -24,65 +27,72 @@ export default function AdminHomePage(): React.JSX.Element {
               <Badge>Admin workspace</Badge>
               <div>
                 <h1 className="font-[var(--font-heading)] text-4xl font-semibold tracking-tight">
-                  Operational visibility starts before CRUD exists.
+                  Promotion governance is now wired to the live pricing engine.
                 </h1>
-                <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--muted)]">
-                  The admin surface is already separated from the storefront so
-                  catalog, inventory, promotions, and incident tooling can
-                  evolve with clear ownership.
+                <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--muted)]">
+                  Use the seeded admin account to manage promotion rules and
+                  optional coupons. Every saved change feeds the cart repricing
+                  and checkout snapshot path used by the customer storefront.
                 </p>
               </div>
             </div>
-            <div className="flex gap-3">
-              <Button>System status</Button>
-              <Button variant="secondary">Stage plan</Button>
+
+            <div className="rounded-[28px] border border-[var(--stroke)] bg-white/80 px-5 py-4 text-sm text-[var(--muted)] shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
+              {session ? (
+                <>
+                  Signed in as{" "}
+                  <span className="font-semibold text-[var(--foreground)]">
+                    {session.user.email}
+                  </span>
+                </>
+              ) : (
+                "Admin session not established yet."
+              )}
             </div>
           </div>
         </header>
 
-        <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-          {controls.map((item, index) => (
-            <StatTile
-              key={item}
-              label={`Control ${index + 1}`}
-              value={item}
-              detail="Structured domains are already separated in the monorepo."
-            />
-          ))}
-        </section>
+        {isAdmin ? (
+          <>
+            <section className="grid gap-5 md:grid-cols-3">
+              <StatTile
+                detail="Promotion records loaded from the transactional source of truth."
+                label="Promotions"
+                value={String(overview?.metrics.promotions ?? promotions?.length ?? 0)}
+              />
+              <StatTile
+                detail="Coupons linked to promotions and eligible for cart repricing."
+                label="Coupons"
+                value={String(overview?.metrics.coupons ?? 0)}
+              />
+              <StatTile
+                detail="Currently active promotions eligible for storefront evaluation."
+                label="Active"
+                value={String(overview?.metrics.activePromotions ?? 0)}
+              />
+            </section>
 
-        <section className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
-          <Panel>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
-              Delivery track
-            </p>
-            <div className="mt-5 grid gap-4">
-              {pendingTracks.map((item) => (
-                <div
-                  key={item}
-                  className="rounded-3xl border border-[var(--stroke)] bg-white px-5 py-4"
-                >
-                  <p className="text-sm font-medium text-[var(--foreground)]">
-                    {item}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </Panel>
+            <PromotionConsole initialPromotions={promotions ?? []} />
+          </>
+        ) : (
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
+            <Panel>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
+                Access required
+              </p>
+              <h2 className="mt-4 font-[var(--font-heading)] text-3xl font-semibold tracking-tight">
+                Sign in with the seeded admin account to manage promotions.
+              </h2>
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--muted)]">
+                The console writes directly to the Stage 6 promotion endpoints,
+                so authentication is required before rule updates and coupon
+                changes can be submitted.
+              </p>
+            </Panel>
 
-          <Panel className="bg-[linear-gradient(180deg,#0f172a,#1e293b)] text-white">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/55">
-              Next milestone
-            </p>
-            <h2 className="mt-4 font-[var(--font-heading)] text-3xl font-semibold">
-              Stage 1
-            </h2>
-            <p className="mt-4 text-sm leading-7 text-white/70">
-              Bring up the NestJS API with the transactional schema, access
-              control, demo identities, and seed workflow.
-            </p>
-          </Panel>
-        </section>
+            <AdminLoginForm />
+          </div>
+        )}
       </div>
     </main>
   );

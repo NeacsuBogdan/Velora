@@ -28,6 +28,7 @@ function createCheckoutDetail(overrides: Record<string, unknown> = {}) {
     },
     reservationExpiresAt: "2026-03-12T10:15:00.000Z",
     reservations: [],
+    discounts: [],
     paymentAttempts: [],
     order: {
       orderId: "order-1",

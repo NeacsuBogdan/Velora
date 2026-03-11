@@ -12,5 +12,5 @@ export function middleware(request: NextRequest): NextResponse {
 }
 
 export const config = {
-  matcher: ["/account/:path*"]
+  matcher: ["/account/:path*", "/cart"]
 };

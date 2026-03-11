@@ -318,3 +318,106 @@ export const productDetailSchema = z.object({
 });
 
 export type ProductDetail = z.infer<typeof productDetailSchema>;
+
+export const addCartItemRequestSchema = z.object({
+  listingId: z.string().cuid(),
+  quantity: z.number().int().positive().max(99)
+});
+
+export type AddCartItemRequest = z.infer<typeof addCartItemRequestSchema>;
+
+export const updateCartItemRequestSchema = z.object({
+  quantity: z.number().int().min(0).max(99)
+});
+
+export type UpdateCartItemRequest = z.infer<typeof updateCartItemRequestSchema>;
+
+export const checkoutStatusSchema = z.enum([
+  "STARTED",
+  "PAYMENT_PENDING",
+  "COMPLETED",
+  "FAILED",
+  "EXPIRED"
+]);
+
+export type CheckoutStatus = z.infer<typeof checkoutStatusSchema>;
+
+export const createCheckoutSessionRequestSchema = z.object({
+  idempotencyKey: z.string().min(8).max(120).optional()
+});
+
+export type CreateCheckoutSessionRequest = z.infer<
+  typeof createCheckoutSessionRequestSchema
+>;
+
+export const cartItemDetailSchema = z.object({
+  itemId: z.string(),
+  listingId: z.string(),
+  productId: z.string(),
+  slug: z.string(),
+  title: z.string(),
+  subtitle: z.string().nullable(),
+  seller: namedReferenceSchema,
+  quantity: z.number().int().positive(),
+  image: mediaAssetSchema.nullable(),
+  availability: availabilitySummarySchema,
+  pricing: z.object({
+    unit: moneySchema,
+    lineTotal: moneySchema
+  }),
+  canFulfill: z.boolean()
+});
+
+export type CartItemDetail = z.infer<typeof cartItemDetailSchema>;
+
+export const checkoutReservationSummarySchema = z.object({
+  checkoutSessionId: z.string(),
+  status: checkoutStatusSchema,
+  amount: moneySchema,
+  reservationExpiresAt: z.string().datetime(),
+  reservationCount: z.number().int().nonnegative(),
+  reservedUnits: z.number().int().nonnegative()
+});
+
+export type CheckoutReservationSummary = z.infer<
+  typeof checkoutReservationSummarySchema
+>;
+
+export const cartDetailSchema = z.object({
+  cartId: z.string(),
+  status: z.enum(["ACTIVE", "CONVERTED", "ABANDONED"]),
+  currency: z.string().length(3),
+  itemCount: z.number().int().nonnegative(),
+  totals: z.object({
+    subtotal: moneySchema,
+    discountTotal: moneySchema,
+    total: moneySchema
+  }),
+  items: z.array(cartItemDetailSchema),
+  activeCheckout: checkoutReservationSummarySchema.nullable(),
+  notes: z.array(z.string())
+});
+
+export type CartDetail = z.infer<typeof cartDetailSchema>;
+
+export const checkoutSessionResponseSchema = z.object({
+  checkoutSessionId: z.string(),
+  cartId: z.string(),
+  status: checkoutStatusSchema,
+  amount: moneySchema,
+  reservationExpiresAt: z.string().datetime(),
+  reservationCount: z.number().int().nonnegative()
+});
+
+export type CheckoutSessionResponse = z.infer<
+  typeof checkoutSessionResponseSchema
+>;
+
+export const releaseReservationsResponseSchema = z.object({
+  releasedReservations: z.number().int().nonnegative(),
+  inventoryItemsAdjusted: z.number().int().nonnegative()
+});
+
+export type ReleaseReservationsResponse = z.infer<
+  typeof releaseReservationsResponseSchema
+>;

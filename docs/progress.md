@@ -6,7 +6,7 @@
 - [x] Stage 1 - API foundation, auth, core data model
 - [x] Stage 2 - Storefront foundation
 - [x] Stage 3 - Catalog, category, product detail, search UX
-- [ ] Stage 4 - Cart, inventory, stock reservation
+- [x] Stage 4 - Cart, inventory, stock reservation
 - [ ] Stage 5 - Checkout, orders, payments
 - [ ] Stage 6 - Promotions and pricing engine
 - [ ] Stage 7 - Customer account and order history
@@ -58,6 +58,17 @@
 - Tightened storefront media handling by switching to `next/image` and explicitly allowing seeded placeholder hosts in the Next.js image configuration.
 - Added search projection unit tests plus storefront query helper tests, then verified `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build` from the workspace root.
 
+### Stage 4
+
+- Replaced the placeholder cart, inventory, and checkout overview modules with real service and controller layers for authenticated customer cart access and checkout-session reservation creation.
+- Added a shared Stage 4 contract surface for cart detail payloads, cart mutations, checkout-session reservation responses, and reservation-release summaries.
+- Implemented cart item add, update, and remove flows with automatic cart repricing, active-checkout invalidation on mutation, and live availability checks against catalog listings.
+- Implemented atomic inventory reservation updates using a guarded PostgreSQL update path so concurrent checkout starts cannot oversell the same inventory row.
+- Added reservation expiration and release handling, inventory movement records, and audit log entries for reservation creation, expiration, release, and checkout invalidation paths.
+- Added a protected storefront cart page, live add-to-cart controls on product detail offers, and a customer-facing stock reservation trigger that starts checkout without yet entering the Stage 5 payment flow.
+- Added API tests for cart mutation, checkout-session reservation creation, reservation expiration handling, and the last-unit concurrency scenario.
+- Verified `pnpm --filter @velora/api lint`, `pnpm --filter @velora/api typecheck`, `pnpm --filter @velora/api test`, plus root `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.
+
 ## Important implementation notes
 
 - Internal packages are designed to build independently so the apps can consume stable outputs.
@@ -66,10 +77,11 @@
 - The workspace already includes the mandatory top-level scripts so later stages can evolve without changing the developer workflow contract.
 - OpenSearch 2.19 requires an initial admin password in Docker Compose; the local stack now boots cleanly with `OPENSEARCH_INITIAL_ADMIN_PASSWORD` wired through the environment examples.
 - Search remains projection-based: PostgreSQL stays the source of truth while OpenSearch is treated as a recoverable index that can fall back to in-process filtering during local development failures.
+- App-level TypeScript path mappings are now scoped at the Nest API layer so local workspace typechecking can resolve shared-package source directly without breaking package-level builds.
 
 ## Known follow-up items
 
-- Implement cart persistence, inventory-aware cart operations, and explicit stock reservation lifecycle handling in Stage 4.
-- Add transactional concurrency coverage around last-unit purchase scenarios before checkout and payments work begins.
-- Extend the API and storefront from browsing into order-creation paths, payment initiation, and reservation expiration processing in later stages.
-- Deepen test coverage from search and auth basics into integration, concurrency, webhook idempotency, and end-to-end flows in later stages.
+- Implement payment-intent creation, Stripe webhook verification, and order settlement flows in Stage 5 on top of the new checkout-session reservation model.
+- Extend reservation handling from creation and release into reservation consumption once successful payment creates an order.
+- Add customer-facing checkout and confirmation pages that use the existing reservation window instead of only the cart page.
+- Deepen test coverage from cart and reservation flows into webhook idempotency, refund handling, and end-to-end checkout journeys in later stages.

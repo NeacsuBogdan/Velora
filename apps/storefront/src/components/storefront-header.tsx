@@ -25,6 +25,7 @@ export function StorefrontHeader(): React.JSX.Element {
             <Link href="/categories">Categories</Link>
             <Link href="/products">Products</Link>
             <Link href="/search">Search</Link>
+            <Link href="/cart">Cart</Link>
             <Link href="/account">Account</Link>
             <Link href="/login">Login</Link>
           </nav>

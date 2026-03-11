@@ -3,6 +3,7 @@ import "server-only";
 import type {
   CatalogNavigation,
   CatalogSearchResponse,
+  CartDetail,
   CategoryDetail,
   DomainOverview,
   ProductDetail,
@@ -63,6 +64,10 @@ export async function getSession(): Promise<SessionResponse | null> {
 export async function getAuthenticatedOverview(
   path: string
 ): Promise<DomainOverview | null> {
+  return getAuthenticatedJson<DomainOverview>(path);
+}
+
+async function getAuthenticatedJson<T>(path: string): Promise<T | null> {
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get("velora_session")?.value;
 
@@ -70,10 +75,14 @@ export async function getAuthenticatedOverview(
     return null;
   }
 
-  return requestJson<DomainOverview>(path, {
+  return requestJson<T>(path, {
     cache: "no-store",
     headers: buildSessionCookieHeader(sessionToken)
   });
+}
+
+export async function getCart(): Promise<CartDetail | null> {
+  return getAuthenticatedJson<CartDetail>("/cart");
 }
 
 export async function getCatalogNavigation(): Promise<CatalogNavigation | null> {

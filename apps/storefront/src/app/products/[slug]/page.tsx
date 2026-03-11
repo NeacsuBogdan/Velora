@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { Badge, Panel } from "@velora/ui";
 
+import { AddToCartButton } from "../../../components/add-to-cart-button";
 import { ProductCard } from "../../../components/product-card";
 import { StorefrontChrome } from "../../../components/storefront-chrome";
 import { formatMoney } from "../../../lib/formatting";
@@ -140,12 +141,18 @@ export default async function ProductDetailPage({
             </p>
           </div>
 
-          <button
-            className="w-full rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--accent-dark)]"
-            type="button"
-          >
-            Add to cart
-          </button>
+          {leadOffer ? (
+            <AddToCartButton
+              className="w-full"
+              disabled={!leadOffer.availability.inStock}
+              label={
+                leadOffer.availability.inStock
+                  ? "Add lead offer to cart"
+                  : "Lead offer unavailable"
+              }
+              listingId={leadOffer.listingId}
+            />
+          ) : null}
 
           <div className="space-y-3">
             <p className="text-sm font-semibold">Seller offers</p>
@@ -173,6 +180,18 @@ export default async function ProductDetailPage({
                       ? `${offer.availability.availableQuantity} in stock`
                       : "Out of stock"}
                   </p>
+                  <div className="mt-4">
+                    <AddToCartButton
+                      className="w-full"
+                      disabled={!offer.availability.inStock}
+                      label={
+                        offer.availability.inStock
+                          ? "Add this offer"
+                          : "Offer unavailable"
+                      }
+                      listingId={offer.listingId}
+                    />
+                  </div>
                 </div>
               ))}
             </div>

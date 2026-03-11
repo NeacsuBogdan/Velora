@@ -1,10 +1,16 @@
 import "server-only";
 
 import type {
+  CatalogNavigation,
+  CatalogSearchResponse,
+  CategoryDetail,
   DomainOverview,
+  ProductDetail,
   SessionResponse
 } from "@velora/contracts";
 import { cookies } from "next/headers";
+
+import { type CatalogQueryInput, toUrlSearchParams } from "./catalog-query";
 
 export const STOREFRONT_API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
@@ -68,4 +74,39 @@ export async function getAuthenticatedOverview(
     cache: "no-store",
     headers: buildSessionCookieHeader(sessionToken)
   });
+}
+
+export async function getCatalogNavigation(): Promise<CatalogNavigation | null> {
+  return requestJson<CatalogNavigation>("/catalog/navigation", {
+    next: { revalidate: 60 }
+  });
+}
+
+export async function getCategoryDetail(
+  slug: string
+): Promise<CategoryDetail | null> {
+  return requestJson<CategoryDetail>(`/catalog/categories/${slug}`, {
+    next: { revalidate: 60 }
+  });
+}
+
+export async function getProductDetail(
+  slug: string
+): Promise<ProductDetail | null> {
+  return requestJson<ProductDetail>(`/catalog/products/${slug}`, {
+    next: { revalidate: 60 }
+  });
+}
+
+export async function searchCatalog(
+  input: CatalogQueryInput
+): Promise<CatalogSearchResponse | null> {
+  const query = toUrlSearchParams(input).toString();
+
+  return requestJson<CatalogSearchResponse>(
+    `/search/products${query ? `?${query}` : ""}`,
+    {
+      next: { revalidate: 60 }
+    }
+  );
 }

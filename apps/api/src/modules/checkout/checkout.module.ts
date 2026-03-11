@@ -8,6 +8,7 @@ import { CheckoutService } from "./checkout.service";
 @Module({
   imports: [CartModule, InventoryModule],
   controllers: [CheckoutController],
-  providers: [CheckoutService]
+  providers: [CheckoutService],
+  exports: [CheckoutService]
 })
 export class CheckoutModule {}

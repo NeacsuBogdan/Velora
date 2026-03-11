@@ -9,11 +9,13 @@ const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
 interface StartCheckoutButtonProps {
   disabled?: boolean;
   label?: string;
+  activeCheckoutSessionId?: string | null;
 }
 
 export function StartCheckoutButton({
   disabled = false,
-  label = "Reserve stock for checkout"
+  label = "Reserve stock for checkout",
+  activeCheckoutSessionId = null
 }: StartCheckoutButtonProps): React.JSX.Element {
   const router = useRouter();
   const pathname = usePathname();
@@ -21,6 +23,13 @@ export function StartCheckoutButton({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   function handleCheckout() {
+    if (activeCheckoutSessionId) {
+      router.push(
+        `/checkout?session=${encodeURIComponent(activeCheckoutSessionId)}`
+      );
+      return;
+    }
+
     setIsPending(true);
     setErrorMessage(null);
 
@@ -49,6 +58,12 @@ export function StartCheckoutButton({
         return;
       }
 
+      const checkoutSession = (await response.json()) as {
+        checkoutSessionId: string;
+      };
+      router.push(
+        `/checkout?session=${encodeURIComponent(checkoutSession.checkoutSessionId)}`
+      );
       router.refresh();
     });
   }
@@ -61,7 +76,11 @@ export function StartCheckoutButton({
         onClick={handleCheckout}
         type="button"
       >
-        {isPending ? "Reserving..." : label}
+        {isPending
+          ? "Reserving..."
+          : activeCheckoutSessionId
+            ? "Resume checkout"
+            : label}
       </Button>
       {errorMessage ? (
         <p className="text-sm text-[var(--accent)]">{errorMessage}</p>

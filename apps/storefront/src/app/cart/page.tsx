@@ -210,7 +210,10 @@ export default async function CartPage(): Promise<React.JSX.Element> {
                 </div>
               </div>
 
-              <StartCheckoutButton disabled={cart.items.length === 0} />
+              <StartCheckoutButton
+                activeCheckoutSessionId={cart.activeCheckout?.checkoutSessionId}
+                disabled={cart.items.length === 0}
+              />
             </Panel>
 
             <Panel className="space-y-3">

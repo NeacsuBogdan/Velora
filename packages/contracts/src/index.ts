@@ -342,6 +342,30 @@ export const checkoutStatusSchema = z.enum([
 
 export type CheckoutStatus = z.infer<typeof checkoutStatusSchema>;
 
+export const paymentStatusSchema = z.enum([
+  "PENDING",
+  "REQUIRES_ACTION",
+  "SUCCEEDED",
+  "FAILED",
+  "REFUNDED",
+  "PARTIALLY_REFUNDED"
+]);
+
+export type PaymentStatus = z.infer<typeof paymentStatusSchema>;
+
+export const orderStatusSchema = z.enum([
+  "CREATED",
+  "PAYMENT_PENDING",
+  "PAID",
+  "PROCESSING",
+  "SHIPPED",
+  "COMPLETED",
+  "CANCELED",
+  "REFUNDED"
+]);
+
+export type OrderStatus = z.infer<typeof orderStatusSchema>;
+
 export const createCheckoutSessionRequestSchema = z.object({
   idempotencyKey: z.string().min(8).max(120).optional()
 });
@@ -383,6 +407,22 @@ export type CheckoutReservationSummary = z.infer<
   typeof checkoutReservationSummarySchema
 >;
 
+export const checkoutReservationLineSchema = z.object({
+  reservationId: z.string(),
+  listingId: z.string(),
+  productId: z.string(),
+  slug: z.string(),
+  title: z.string(),
+  subtitle: z.string().nullable(),
+  seller: namedReferenceSchema,
+  quantity: z.number().int().positive(),
+  expiresAt: z.string().datetime()
+});
+
+export type CheckoutReservationLine = z.infer<
+  typeof checkoutReservationLineSchema
+>;
+
 export const cartDetailSchema = z.object({
   cartId: z.string(),
   status: z.enum(["ACTIVE", "CONVERTED", "ABANDONED"]),
@@ -412,6 +452,145 @@ export const checkoutSessionResponseSchema = z.object({
 export type CheckoutSessionResponse = z.infer<
   typeof checkoutSessionResponseSchema
 >;
+
+export const paymentScenarioSchema = z.enum([
+  "success",
+  "declined",
+  "requires_action"
+]);
+
+export type PaymentScenario = z.infer<typeof paymentScenarioSchema>;
+
+export const createPaymentAttemptRequestSchema = z.object({
+  idempotencyKey: z.string().min(8).max(120).optional()
+});
+
+export type CreatePaymentAttemptRequest = z.infer<
+  typeof createPaymentAttemptRequestSchema
+>;
+
+export const confirmPaymentAttemptRequestSchema = z.object({
+  scenario: paymentScenarioSchema.default("success")
+});
+
+export type ConfirmPaymentAttemptRequest = z.infer<
+  typeof confirmPaymentAttemptRequestSchema
+>;
+
+export const paymentAttemptSummarySchema = z.object({
+  attemptId: z.string(),
+  checkoutSessionId: z.string(),
+  provider: z.string(),
+  providerPaymentIntentId: z.string().nullable(),
+  clientSecret: z.string().nullable(),
+  status: paymentStatusSchema,
+  amount: moneySchema,
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime()
+});
+
+export type PaymentAttemptSummary = z.infer<
+  typeof paymentAttemptSummarySchema
+>;
+
+export const orderSummarySchema = z.object({
+  orderId: z.string(),
+  number: z.string(),
+  status: orderStatusSchema,
+  paymentStatus: paymentStatusSchema,
+  total: moneySchema,
+  subtotal: moneySchema,
+  discountTotal: moneySchema,
+  itemCount: z.number().int().nonnegative(),
+  createdAt: z.string().datetime(),
+  placedAt: z.string().datetime().nullable()
+});
+
+export type OrderSummary = z.infer<typeof orderSummarySchema>;
+
+export const checkoutSessionDetailSchema = z.object({
+  checkoutSessionId: z.string(),
+  cartId: z.string(),
+  status: checkoutStatusSchema,
+  amount: moneySchema,
+  reservationExpiresAt: z.string().datetime().nullable(),
+  reservations: z.array(checkoutReservationLineSchema),
+  paymentAttempts: z.array(paymentAttemptSummarySchema),
+  order: orderSummarySchema.nullable()
+});
+
+export type CheckoutSessionDetail = z.infer<
+  typeof checkoutSessionDetailSchema
+>;
+
+export const refundRequestSchema = z.object({
+  amount: z.number().int().positive().optional(),
+  reason: z.string().max(240).optional()
+});
+
+export type RefundRequest = z.infer<typeof refundRequestSchema>;
+
+export const refundSummarySchema = z.object({
+  refundId: z.string(),
+  amount: moneySchema,
+  status: paymentStatusSchema,
+  reason: z.string().nullable(),
+  createdAt: z.string().datetime()
+});
+
+export type RefundSummary = z.infer<typeof refundSummarySchema>;
+
+export const orderItemDetailSchema = z.object({
+  orderItemId: z.string(),
+  listingId: z.string(),
+  productId: z.string(),
+  slug: z.string(),
+  title: z.string(),
+  seller: namedReferenceSchema,
+  quantity: z.number().int().positive(),
+  unitPrice: moneySchema,
+  totalPrice: moneySchema
+});
+
+export type OrderItemDetail = z.infer<typeof orderItemDetailSchema>;
+
+export const orderStatusHistoryEntrySchema = z.object({
+  status: orderStatusSchema,
+  note: z.string().nullable(),
+  createdAt: z.string().datetime()
+});
+
+export type OrderStatusHistoryEntry = z.infer<
+  typeof orderStatusHistoryEntrySchema
+>;
+
+export const orderDetailSchema = orderSummarySchema.extend({
+  items: z.array(orderItemDetailSchema),
+  statusHistory: z.array(orderStatusHistoryEntrySchema),
+  refunds: z.array(refundSummarySchema)
+});
+
+export type OrderDetail = z.infer<typeof orderDetailSchema>;
+
+export const paymentConfirmationResponseSchema = z.object({
+  attempt: paymentAttemptSummarySchema,
+  checkout: checkoutSessionDetailSchema,
+  order: orderSummarySchema.nullable(),
+  message: z.string()
+});
+
+export type PaymentConfirmationResponse = z.infer<
+  typeof paymentConfirmationResponseSchema
+>;
+
+export const webhookAckSchema = z.object({
+  provider: z.string(),
+  eventId: z.string(),
+  duplicate: z.boolean(),
+  processed: z.boolean()
+});
+
+export type WebhookAck = z.infer<typeof webhookAckSchema>;
 
 export const releaseReservationsResponseSchema = z.object({
   releasedReservations: z.number().int().nonnegative(),

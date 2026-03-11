@@ -7,7 +7,7 @@
 - [x] Stage 2 - Storefront foundation
 - [x] Stage 3 - Catalog, category, product detail, search UX
 - [x] Stage 4 - Cart, inventory, stock reservation
-- [ ] Stage 5 - Checkout, orders, payments
+- [x] Stage 5 - Checkout, orders, payments
 - [ ] Stage 6 - Promotions and pricing engine
 - [ ] Stage 7 - Customer account and order history
 - [ ] Stage 8 - Admin backoffice
@@ -69,6 +69,18 @@
 - Added API tests for cart mutation, checkout-session reservation creation, reservation expiration handling, and the last-unit concurrency scenario.
 - Verified `pnpm --filter @velora/api lint`, `pnpm --filter @velora/api typecheck`, `pnpm --filter @velora/api test`, plus root `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.
 
+### Stage 5
+
+- Replaced the placeholder payments and orders overview modules with real controller, service, and mapping layers for payment attempts, webhook handling, order listing, and order detail retrieval.
+- Expanded the shared contracts package with checkout-session detail, payment-attempt, order-summary, order-detail, refund, and webhook acknowledgement schemas so the API and storefront now share a concrete checkout-to-order payload model.
+- Added PaymentIntent-style attempt creation and confirmation flows that work in both deterministic local sandbox mode and real Stripe test mode when sandbox keys are provided.
+- Added replay-safe webhook processing with persisted delivery records, raw payload support in Nest, duplicate event suppression, payment event storage, and idempotent order settlement.
+- Added successful-payment settlement logic that consumes reservations, decrements inventory, creates inventory movements, converts the cart, and creates a paid order plus status history.
+- Added refund creation basics with persisted refund records, payment status updates, order status synchronization, and audit logging.
+- Added a real storefront checkout page, sandbox payment controls, checkout-session retrieval, and order confirmation route so the customer journey now extends from cart reservation into payment and a finalized order screen.
+- Added Stage 5 API tests for payment-attempt idempotency, successful settlement into an order, and duplicate webhook replay handling.
+- Verified `pnpm --filter @velora/api lint`, `pnpm --filter @velora/api typecheck`, `pnpm --filter @velora/api test`, `pnpm --filter @velora/storefront lint`, `pnpm --filter @velora/storefront typecheck`, plus root `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.
+
 ## Important implementation notes
 
 - Internal packages are designed to build independently so the apps can consume stable outputs.
@@ -78,10 +90,11 @@
 - OpenSearch 2.19 requires an initial admin password in Docker Compose; the local stack now boots cleanly with `OPENSEARCH_INITIAL_ADMIN_PASSWORD` wired through the environment examples.
 - Search remains projection-based: PostgreSQL stays the source of truth while OpenSearch is treated as a recoverable index that can fall back to in-process filtering during local development failures.
 - App-level TypeScript path mappings are now scoped at the Nest API layer so local workspace typechecking can resolve shared-package source directly without breaking package-level builds.
+- Stage 5 keeps checkout deterministic in local development: placeholder Stripe credentials activate a controlled sandbox path, while real `sk_test_` and `whsec_` values switch the same service over to live Stripe test-mode PaymentIntent and webhook verification behavior.
 
 ## Known follow-up items
 
-- Implement payment-intent creation, Stripe webhook verification, and order settlement flows in Stage 5 on top of the new checkout-session reservation model.
-- Extend reservation handling from creation and release into reservation consumption once successful payment creates an order.
-- Add customer-facing checkout and confirmation pages that use the existing reservation window instead of only the cart page.
-- Deepen test coverage from cart and reservation flows into webhook idempotency, refund handling, and end-to-end checkout journeys in later stages.
+- Implement the Stage 6 promotion engine so cart and order pricing no longer remain purely list-price based across checkout settlement.
+- Extend Stage 5 refund handling into richer administrative flows and customer-facing refund visibility in later account and backoffice stages.
+- Add end-to-end browser coverage for the checkout success, failure, and retry paths once the admin and seller flows are also in place.
+- Surface payment and order timelines more deeply inside the customer account area during Stage 7.

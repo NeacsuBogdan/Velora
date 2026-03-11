@@ -3,4 +3,5 @@ import type { Request } from "express";
 
 export interface AuthenticatedRequest extends Request {
   auth?: SessionResponse;
+  rawBody?: Buffer;
 }

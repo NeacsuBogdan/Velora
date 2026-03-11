@@ -1,4 +1,11 @@
-import { Body, Controller, Get, Post, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  UseGuards
+} from "@nestjs/common";
 import type { AuthenticatedUser } from "@velora/contracts";
 
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
@@ -25,5 +32,17 @@ export class CheckoutController {
     @Body() body: unknown
   ) {
     return this.checkoutService.createCheckoutSession(viewer, body);
+  }
+
+  @Get("sessions/:checkoutSessionId")
+  @Roles("CUSTOMER")
+  getCheckoutSession(
+    @CurrentUser() viewer: AuthenticatedUser,
+    @Param("checkoutSessionId") checkoutSessionId: string
+  ) {
+    return this.checkoutService.getCheckoutSessionDetail(
+      viewer,
+      checkoutSessionId
+    );
   }
 }

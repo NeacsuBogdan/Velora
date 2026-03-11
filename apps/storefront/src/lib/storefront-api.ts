@@ -5,7 +5,9 @@ import type {
   CatalogSearchResponse,
   CartDetail,
   CategoryDetail,
+  CheckoutSessionDetail,
   DomainOverview,
+  OrderDetail,
   ProductDetail,
   SessionResponse
 } from "@velora/contracts";
@@ -83,6 +85,20 @@ async function getAuthenticatedJson<T>(path: string): Promise<T | null> {
 
 export async function getCart(): Promise<CartDetail | null> {
   return getAuthenticatedJson<CartDetail>("/cart");
+}
+
+export async function getCheckoutSession(
+  checkoutSessionId: string
+): Promise<CheckoutSessionDetail | null> {
+  return getAuthenticatedJson<CheckoutSessionDetail>(
+    `/checkout/sessions/${checkoutSessionId}`
+  );
+}
+
+export async function getOrderDetail(
+  number: string
+): Promise<OrderDetail | null> {
+  return getAuthenticatedJson<OrderDetail>(`/orders/${encodeURIComponent(number)}`);
 }
 
 export async function getCatalogNavigation(): Promise<CatalogNavigation | null> {

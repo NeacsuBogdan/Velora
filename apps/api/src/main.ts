@@ -8,7 +8,8 @@ import { AppModule } from "./modules/app.module";
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, {
-    bufferLogs: true
+    bufferLogs: true,
+    rawBody: true
   });
 
   const logger = new Logger("Bootstrap");

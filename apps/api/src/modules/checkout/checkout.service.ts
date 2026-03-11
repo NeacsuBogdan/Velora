@@ -1,20 +1,67 @@
 import {
   BadRequestException,
-  Injectable
+  Injectable,
+  NotFoundException
 } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
+import { Prisma } from "@prisma/client";
 import {
+  checkoutSessionDetailSchema,
   checkoutSessionResponseSchema,
   createCheckoutSessionRequestSchema,
   domainOverviewSchema,
+  paymentAttemptSummarySchema,
   type AuthenticatedUser
 } from "@velora/contracts";
 
 import { CartService } from "../cart/cart.service";
 import { PrismaService } from "../database/prisma.service";
 import { InventoryService } from "../inventory/inventory.service";
+import {
+  mapOrderSummary,
+  orderSummaryInclude
+} from "../orders/order.helpers";
+import {
+  buildSearchDocument,
+  searchProjectionListingInclude
+} from "../search/search.helpers";
 
 const RESERVATION_TTL_MINUTES = 15;
+
+const checkoutDetailInclude =
+  Prisma.validator<Prisma.CheckoutSessionDefaultArgs>()({
+    include: {
+      reservations: {
+        where: {
+          status: "ACTIVE"
+        },
+        include: {
+          inventoryItem: {
+            include: {
+              listing: {
+                include: searchProjectionListingInclude.include
+              }
+            }
+          }
+        },
+        orderBy: {
+          createdAt: "asc"
+        }
+      },
+      paymentAttempts: {
+        orderBy: {
+          createdAt: "desc"
+        }
+      },
+      order: {
+        include: orderSummaryInclude.include
+      }
+    }
+  });
+
+type CheckoutDetailRecord = Prisma.CheckoutSessionGetPayload<
+  typeof checkoutDetailInclude
+>;
 
 @Injectable()
 export class CheckoutService {
@@ -56,6 +103,27 @@ export class CheckoutService {
           : "Customer-scoped checkout state."
       ]
     });
+  }
+
+  async getCheckoutSessionDetail(
+    viewer: AuthenticatedUser,
+    checkoutSessionId: string
+  ) {
+    const checkoutSession = await this.prisma.checkoutSession.findFirst({
+      where: {
+        id: checkoutSessionId,
+        userId: viewer.id
+      },
+      include: checkoutDetailInclude.include
+    });
+
+    if (!checkoutSession) {
+      throw new NotFoundException(
+        `Checkout session ${checkoutSessionId} was not found.`
+      );
+    }
+
+    return this.mapCheckoutSessionDetail(checkoutSession);
   }
 
   async createCheckoutSession(viewer: AuthenticatedUser, rawInput: unknown) {
@@ -199,6 +267,69 @@ export class CheckoutService {
         reservationExpiresAt: reservationExpiresAt.toISOString(),
         reservationCount: cart.items.length
       });
+    });
+  }
+
+  async getCheckoutSessionDetailById(checkoutSessionId: string) {
+    const checkoutSession = await this.prisma.checkoutSession.findUnique({
+      where: {
+        id: checkoutSessionId
+      },
+      include: checkoutDetailInclude.include
+    });
+
+    if (!checkoutSession) {
+      throw new NotFoundException(
+        `Checkout session ${checkoutSessionId} was not found.`
+      );
+    }
+
+    return this.mapCheckoutSessionDetail(checkoutSession);
+  }
+
+  private mapCheckoutSessionDetail(checkoutSession: CheckoutDetailRecord) {
+    return checkoutSessionDetailSchema.parse({
+      checkoutSessionId: checkoutSession.id,
+      cartId: checkoutSession.cartId,
+      status: checkoutSession.status,
+      amount: {
+        amount: checkoutSession.amount,
+        currency: checkoutSession.currency
+      },
+      reservationExpiresAt:
+        checkoutSession.reservationExpiresAt?.toISOString() ?? null,
+      reservations: checkoutSession.reservations.map((reservation) => {
+        const projection = buildSearchDocument(reservation.inventoryItem.listing);
+
+        return {
+          reservationId: reservation.id,
+          listingId: projection.listingId,
+          productId: projection.productId,
+          slug: projection.slug,
+          title: projection.title,
+          subtitle: projection.subtitle,
+          seller: projection.seller,
+          quantity: reservation.quantity,
+          expiresAt: reservation.expiresAt.toISOString()
+        };
+      }),
+      paymentAttempts: checkoutSession.paymentAttempts.map((attempt) =>
+        paymentAttemptSummarySchema.parse({
+          attemptId: attempt.id,
+          checkoutSessionId: attempt.checkoutSessionId,
+          provider: attempt.provider,
+          providerPaymentIntentId: attempt.providerPaymentIntentId ?? null,
+          clientSecret: null,
+          status: attempt.status,
+          amount: {
+            amount: attempt.amount,
+            currency: attempt.currency
+          },
+          createdAt: attempt.createdAt.toISOString(),
+          updatedAt: attempt.updatedAt.toISOString()
+        })
+      ),
+      order: checkoutSession.order ? mapOrderSummary(checkoutSession.order) : null
     });
   }
 }

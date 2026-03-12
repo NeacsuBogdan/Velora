@@ -1,18 +1,10 @@
-import { Controller, Get, Module, Req, UseGuards } from "@nestjs/common";
+import { Module } from "@nestjs/common";
 
-import type { AuthenticatedRequest } from "../../common/authenticated-request";
-import { SessionAuthGuard } from "../../common/guards/session-auth.guard";
-
-@Controller("users")
-@UseGuards(SessionAuthGuard)
-class UsersController {
-  @Get("me")
-  getCurrentUser(@Req() request: AuthenticatedRequest) {
-    return request.auth?.user;
-  }
-}
+import { UsersController } from "./users.controller";
+import { UsersService } from "./users.service";
 
 @Module({
-  controllers: [UsersController]
+  controllers: [UsersController],
+  providers: [UsersService]
 })
 export class UsersModule {}

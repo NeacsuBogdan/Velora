@@ -1,21 +1,30 @@
-import { Panel } from "@velora/ui";
+import { Badge, Panel } from "@velora/ui";
+
+import { AddressBook } from "../../../components/address-book";
+import { getUserAddresses } from "../../../lib/storefront-api";
 
 export const dynamic = "force-dynamic";
 
-export default function AccountAddressesPage(): React.JSX.Element {
+export default async function AccountAddressesPage(): Promise<React.JSX.Element> {
+  const addresses = await getUserAddresses();
+
   return (
-    <Panel>
-      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
-        Address shell
-      </p>
-      <h1 className="mt-4 font-[var(--font-heading)] text-3xl font-bold tracking-tight">
-        Address management lands in the next account stage.
-      </h1>
-      <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--muted)]">
-        The protected account shell is active, but seeded addresses are not yet
-        part of the customer UX. This page is reserved so the navigation and
-        route protection shape stay stable as the account area grows.
-      </p>
-    </Panel>
+    <div className="grid gap-6">
+      <Panel className="space-y-5">
+        <Badge>Address book</Badge>
+        <div>
+          <h1 className="font-[var(--font-heading)] text-4xl font-bold tracking-tight">
+            Manage delivery and billing destinations.
+          </h1>
+          <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--muted)]">
+            Address records are stored against the authenticated account and can
+            be marked as default shipping or billing destinations for future
+            checkout sessions.
+          </p>
+        </div>
+      </Panel>
+
+      <AddressBook addresses={addresses} />
+    </div>
   );
 }

@@ -9,7 +9,7 @@
 - [x] Stage 4 - Cart, inventory, stock reservation
 - [x] Stage 5 - Checkout, orders, payments
 - [x] Stage 6 - Promotions and pricing engine
-- [ ] Stage 7 - Customer account and order history
+- [x] Stage 7 - Customer account and order history
 - [ ] Stage 8 - Admin backoffice
 - [ ] Stage 9 - Seller portal
 - [ ] Stage 10 - Performance, cache, query, rate limiting pass
@@ -95,6 +95,15 @@
 - Verified `pnpm --filter @velora/api lint`, `pnpm --filter @velora/api typecheck`, `pnpm --filter @velora/api test`, `pnpm --filter @velora/storefront lint`, `pnpm --filter @velora/storefront typecheck`, `pnpm --filter @velora/admin lint`, `pnpm --filter @velora/admin typecheck`, plus root `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.
 - Attempted `pnpm db:migrate` and `pnpm db:seed`, but local infrastructure verification was blocked because Docker Desktop and the Docker engine were not running during this session.
 
+### Stage 7
+
+- Replaced the account overview placeholder with a live customer workspace backed by dedicated `/users/me` and `/users/addresses` API contracts plus authenticated user endpoints.
+- Added audited customer profile updates, address CRUD, default-address management, and default fallback logic in the Nest users module so shipping and billing destinations are now first-class account data.
+- Added a real account order history route and per-order detail page that surface order status, payment state, discount snapshots, timeline entries, and refund records from the existing commerce engine.
+- Added reusable storefront account form helpers, client-side profile and address forms built with React Hook Form and Zod, plus a shared status badge used across account and confirmation surfaces.
+- Enriched the deterministic seed set with default customer shipping and billing addresses plus a richer bootstrap order timeline, and fixed the search projection seed path so reseeding stays idempotent.
+- Verified the recovered local infrastructure path by running `pnpm db:migrate` and `pnpm db:seed`, then reran `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build` successfully from the workspace root.
+
 ## Important implementation notes
 
 - Internal packages are designed to build independently so the apps can consume stable outputs.
@@ -106,10 +115,13 @@
 - App-level TypeScript path mappings are now scoped at the Nest API layer so local workspace typechecking can resolve shared-package source directly without breaking package-level builds.
 - Stage 5 keeps checkout deterministic in local development: placeholder Stripe credentials activate a controlled sandbox path, while real `sk_test_` and `whsec_` values switch the same service over to live Stripe test-mode PaymentIntent and webhook verification behavior.
 - Stage 6 now freezes pricing at checkout boundaries by storing a pricing snapshot on the checkout session, which prevents later admin promotion changes from mutating already-started payment flows.
+- Stage 7 extends the customer account surface with dedicated user profile and address endpoints, so storefront account pages no longer depend on placeholder shell copy for personal data management.
+- Storefront and admin typecheck scripts now run with `--incremental false`, which avoids stale Windows-specific TypeScript cache diagnostics during repeated verification passes.
+- Search-document seeding now upserts by `listingId`, which keeps repeated `pnpm db:seed` executions safe after the richer Stage 3 search projection has already been populated locally.
 
 ## Known follow-up items
 
 - Extend Stage 5 refund handling into richer administrative flows and customer-facing refund visibility in later account and backoffice stages.
 - Add end-to-end browser coverage for the checkout success, failure, and retry paths once the admin and seller flows are also in place.
-- Surface payment and order timelines more deeply inside the customer account area during Stage 7.
-- Bring the local Docker stack back up and rerun `pnpm db:migrate` plus `pnpm db:seed` so the richer Stage 6 promotion set is exercised against the live local database again.
+- Expand Stage 8 order-management tooling so backoffice users can act on the same status and refund information now exposed in the customer account area.
+- Add richer customer-visible shipment and return-request details once the fulfillment and seller workflow stages are in place.

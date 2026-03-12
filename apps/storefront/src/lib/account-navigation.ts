@@ -2,11 +2,16 @@ export const accountNavigation = [
   {
     href: "/account",
     label: "Overview",
-    description: "Live account, cart, checkout, and order signals."
+    description: "Profile, address book, and recent order signals."
   },
   {
     href: "/account/addresses",
     label: "Addresses",
-    description: "Shipping and billing address management shell."
+    description: "Shipping and billing address management."
+  },
+  {
+    href: "/account/orders",
+    label: "Orders",
+    description: "Order history, payment states, and refunds."
   }
 ];

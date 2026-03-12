@@ -57,6 +57,70 @@ export const sessionResponseSchema = z.object({
 
 export type SessionResponse = z.infer<typeof sessionResponseSchema>;
 
+export const addressTypeSchema = z.enum(["SHIPPING", "BILLING"]);
+export type AddressType = z.infer<typeof addressTypeSchema>;
+
+export const addressSummarySchema = z.object({
+  addressId: z.string(),
+  type: addressTypeSchema,
+  label: z.string(),
+  fullName: z.string(),
+  line1: z.string(),
+  line2: z.string().nullable(),
+  city: z.string(),
+  state: z.string().nullable(),
+  postalCode: z.string(),
+  countryCode: z.string().length(2),
+  phone: z.string().nullable(),
+  isDefault: z.boolean(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime()
+});
+
+export type AddressSummary = z.infer<typeof addressSummarySchema>;
+
+export const customerProfileSchema = authenticatedUserSchema.extend({
+  defaultShippingAddress: addressSummarySchema.nullable(),
+  defaultBillingAddress: addressSummarySchema.nullable(),
+  metrics: z.object({
+    addressCount: z.number().int().nonnegative(),
+    orderCount: z.number().int().nonnegative()
+  })
+});
+
+export type CustomerProfile = z.infer<typeof customerProfileSchema>;
+
+export const updateProfileRequestSchema = z.object({
+  firstName: z.string().trim().min(1).max(80),
+  lastName: z.string().trim().min(1).max(80)
+});
+
+export type UpdateProfileRequest = z.infer<typeof updateProfileRequestSchema>;
+
+export const upsertAddressRequestSchema = z.object({
+  type: addressTypeSchema,
+  label: z.string().trim().min(1).max(80),
+  fullName: z.string().trim().min(1).max(120),
+  line1: z.string().trim().min(1).max(120),
+  line2: z.string().trim().max(120).optional(),
+  city: z.string().trim().min(1).max(80),
+  state: z.string().trim().max(80).optional(),
+  postalCode: z.string().trim().min(1).max(24),
+  countryCode: z.string().trim().length(2).transform((value) => value.toUpperCase()),
+  phone: z.string().trim().max(32).optional(),
+  isDefault: z.boolean().default(false)
+});
+
+export type UpsertAddressRequest = z.infer<typeof upsertAddressRequestSchema>;
+
+export const deleteAddressResponseSchema = z.object({
+  deletedAddressId: z.string()
+});
+
+export type DeleteAddressResponse = z.infer<
+  typeof deleteAddressResponseSchema
+>;
+
 export const domainOverviewSchema = z.object({
   scope: z.string(),
   metrics: z.record(z.string(), z.number()),

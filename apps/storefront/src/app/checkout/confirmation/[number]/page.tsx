@@ -3,16 +3,14 @@ import { redirect } from "next/navigation";
 
 import { Badge, Panel } from "@velora/ui";
 
+import { StatusBadge } from "../../../../components/status-badge";
 import { StorefrontChrome } from "../../../../components/storefront-chrome";
 import { formatDateTime, formatMoney } from "../../../../lib/formatting";
+import { formatStatusLabel } from "../../../../lib/status-label";
 import {
   getOrderDetail,
   getSession
 } from "../../../../lib/storefront-api";
-
-function statusLabel(value: string) {
-  return value.replace(/_/g, " ");
-}
 
 export const dynamic = "force-dynamic";
 
@@ -69,15 +67,11 @@ export default async function OrderConfirmationPage({
               <div className="grid gap-2 rounded-[24px] bg-black/3 px-5 py-4 text-sm">
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-[var(--muted)]">Order status</span>
-                  <span className="font-semibold text-[var(--foreground)]">
-                    {statusLabel(order.status)}
-                  </span>
+                  <StatusBadge value={order.status} />
                 </div>
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-[var(--muted)]">Payment status</span>
-                  <span className="font-semibold text-[var(--foreground)]">
-                    {statusLabel(order.paymentStatus)}
-                  </span>
+                  <StatusBadge value={order.paymentStatus} />
                 </div>
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-[var(--muted)]">Placed at</span>
@@ -195,7 +189,7 @@ export default async function OrderConfirmationPage({
                       className="rounded-[24px] border border-[var(--stroke)] bg-white/70 p-4"
                     >
                       <p className="text-sm font-semibold text-[var(--foreground)]">
-                        {statusLabel(entry.status)}
+                        {formatStatusLabel(entry.status)}
                       </p>
                       {entry.note ? (
                         <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
@@ -223,7 +217,7 @@ export default async function OrderConfirmationPage({
                       >
                         <div className="flex items-center justify-between gap-4">
                           <span className="text-[var(--muted)]">
-                            {statusLabel(refund.status)}
+                            {formatStatusLabel(refund.status)}
                           </span>
                           <span className="font-semibold text-[var(--foreground)]">
                             {formatMoney(refund.amount)}

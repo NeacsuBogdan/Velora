@@ -3,10 +3,11 @@ import { describe, expect, it } from "vitest";
 import { accountNavigation } from "./account-navigation";
 
 describe("accountNavigation", () => {
-  it("exposes overview and addresses sections", () => {
+  it("exposes overview, addresses, and orders sections", () => {
     expect(accountNavigation.map((item) => item.href)).toEqual([
       "/account",
-      "/account/addresses"
+      "/account/addresses",
+      "/account/orders"
     ]);
   });
 });

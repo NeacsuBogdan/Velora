@@ -1,12 +1,15 @@
 import "server-only";
 
 import type {
+  AddressSummary,
   CatalogNavigation,
   CatalogSearchResponse,
   CartDetail,
   CategoryDetail,
   CheckoutSessionDetail,
+  CustomerProfile,
   DomainOverview,
+  OrderSummary,
   OrderDetail,
   ProductDetail,
   SessionResponse
@@ -69,6 +72,14 @@ export async function getAuthenticatedOverview(
   return getAuthenticatedJson<DomainOverview>(path);
 }
 
+export async function getCurrentUserProfile(): Promise<CustomerProfile | null> {
+  return getAuthenticatedJson<CustomerProfile>("/users/me");
+}
+
+export async function getUserAddresses(): Promise<AddressSummary[]> {
+  return (await getAuthenticatedJson<AddressSummary[]>("/users/addresses")) ?? [];
+}
+
 async function getAuthenticatedJson<T>(path: string): Promise<T | null> {
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get("velora_session")?.value;
@@ -99,6 +110,10 @@ export async function getOrderDetail(
   number: string
 ): Promise<OrderDetail | null> {
   return getAuthenticatedJson<OrderDetail>(`/orders/${encodeURIComponent(number)}`);
+}
+
+export async function getOrders(): Promise<OrderSummary[]> {
+  return (await getAuthenticatedJson<OrderSummary[]>("/orders")) ?? [];
 }
 
 export async function getCatalogNavigation(): Promise<CatalogNavigation | null> {

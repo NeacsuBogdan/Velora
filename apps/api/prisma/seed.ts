@@ -155,6 +155,75 @@ async function seedCatalogAndCommerce(): Promise<void> {
   const admin = await prisma.user.findUniqueOrThrow({
     where: { email: "admin@velora.local" }
   });
+  const bootstrapOrderPlacedAt = new Date(
+    Date.now() - 2 * 24 * 60 * 60 * 1000
+  );
+
+  const addressSeeds = [
+    {
+      id: "seed-stage7-address-shipping-home",
+      type: "SHIPPING" as const,
+      label: "Home delivery",
+      fullName: "Demo Customer",
+      line1: "Strada Fabrica de Glucoza 12",
+      line2: "Building B, Apartment 54",
+      city: "Bucharest",
+      state: "Bucuresti",
+      postalCode: "020331",
+      countryCode: "RO",
+      phone: "+40 721 000 111",
+      isDefault: true
+    },
+    {
+      id: "seed-stage7-address-billing-office",
+      type: "BILLING" as const,
+      label: "Billing office",
+      fullName: "Demo Customer",
+      line1: "Bulevardul Dimitrie Pompeiu 9-9A",
+      line2: "North Gate, Floor 6",
+      city: "Bucharest",
+      state: "Bucuresti",
+      postalCode: "020335",
+      countryCode: "RO",
+      phone: "+40 721 000 111",
+      isDefault: true
+    }
+  ];
+
+  for (const addressSeed of addressSeeds) {
+    await prisma.address.upsert({
+      where: { id: addressSeed.id },
+      update: {
+        userId: customer.id,
+        type: addressSeed.type,
+        label: addressSeed.label,
+        fullName: addressSeed.fullName,
+        line1: addressSeed.line1,
+        line2: addressSeed.line2,
+        city: addressSeed.city,
+        state: addressSeed.state,
+        postalCode: addressSeed.postalCode,
+        countryCode: addressSeed.countryCode,
+        phone: addressSeed.phone,
+        isDefault: addressSeed.isDefault
+      },
+      create: {
+        id: addressSeed.id,
+        userId: customer.id,
+        type: addressSeed.type,
+        label: addressSeed.label,
+        fullName: addressSeed.fullName,
+        line1: addressSeed.line1,
+        line2: addressSeed.line2,
+        city: addressSeed.city,
+        state: addressSeed.state,
+        postalCode: addressSeed.postalCode,
+        countryCode: addressSeed.countryCode,
+        phone: addressSeed.phone,
+        isDefault: addressSeed.isDefault
+      }
+    });
+  }
 
   const seller = await prisma.seller.upsert({
     where: { slug: "north-star-electronics" },
@@ -512,7 +581,7 @@ async function seedCatalogAndCommerce(): Promise<void> {
       paymentStatus: PaymentStatus.SUCCEEDED,
       subtotal: 449900,
       total: 449900,
-      placedAt: new Date()
+      placedAt: bootstrapOrderPlacedAt
     },
     create: {
       number: "VEL-2026-0001",
@@ -524,7 +593,7 @@ async function seedCatalogAndCommerce(): Promise<void> {
       paymentStatus: PaymentStatus.SUCCEEDED,
       subtotal: 449900,
       total: 449900,
-      placedAt: new Date()
+      placedAt: bootstrapOrderPlacedAt
     }
   });
 
@@ -555,22 +624,53 @@ async function seedCatalogAndCommerce(): Promise<void> {
     }
   });
 
-  await prisma.orderStatusHistory.upsert({
-    where: { id: "seed-stage1-order-history" },
-    update: {
-      orderId: order.id,
-      actorUserId: admin.id,
-      status: OrderStatus.PAID,
-      note: "Bootstrap order settled for Stage 1."
+  const orderHistorySeeds = [
+    {
+      id: "seed-stage1-order-history-created",
+      status: OrderStatus.CREATED,
+      note: "Checkout session converted into a confirmed order shell.",
+      createdAt: new Date(bootstrapOrderPlacedAt.getTime() - 25 * 60 * 1000)
     },
-    create: {
-      id: "seed-stage1-order-history",
-      orderId: order.id,
-      actorUserId: admin.id,
+    {
+      id: "seed-stage1-order-history-payment-pending",
+      status: OrderStatus.PAYMENT_PENDING,
+      note: "PaymentIntent entered the pending confirmation state.",
+      createdAt: new Date(bootstrapOrderPlacedAt.getTime() - 12 * 60 * 1000)
+    },
+    {
+      id: "seed-stage1-order-history-paid",
       status: OrderStatus.PAID,
-      note: "Bootstrap order settled for Stage 1."
+      note: "Bootstrap order settled for Stage 1.",
+      createdAt: bootstrapOrderPlacedAt
+    }
+  ];
+
+  await prisma.orderStatusHistory.deleteMany({
+    where: {
+      id: "seed-stage1-order-history"
     }
   });
+
+  for (const historySeed of orderHistorySeeds) {
+    await prisma.orderStatusHistory.upsert({
+      where: { id: historySeed.id },
+      update: {
+        orderId: order.id,
+        actorUserId: admin.id,
+        status: historySeed.status,
+        note: historySeed.note,
+        createdAt: historySeed.createdAt
+      },
+      create: {
+        id: historySeed.id,
+        orderId: order.id,
+        actorUserId: admin.id,
+        status: historySeed.status,
+        note: historySeed.note,
+        createdAt: historySeed.createdAt
+      }
+    });
+  }
 
   await prisma.shipment.upsert({
     where: { id: "seed-stage1-shipment" },
@@ -778,8 +878,9 @@ async function seedCatalogAndCommerce(): Promise<void> {
   });
 
   await prisma.searchDocument.upsert({
-    where: { documentId: "listing-stage1-astra-x1-pro" },
+    where: { listingId: listing.id },
     update: {
+      documentId: `listing-${listing.id}`,
       listingId: listing.id,
       payload: {
         title: product.title,
@@ -791,7 +892,7 @@ async function seedCatalogAndCommerce(): Promise<void> {
     },
     create: {
       listingId: listing.id,
-      documentId: "listing-stage1-astra-x1-pro",
+      documentId: `listing-${listing.id}`,
       payload: {
         title: product.title,
         seller: seller.displayName,
@@ -825,14 +926,14 @@ async function seedCatalogAndCommerce(): Promise<void> {
     where: { id: "seed-stage1-search-sync-log" },
     update: {
       listingId: listing.id,
-      documentId: "listing-stage1-astra-x1-pro",
+      documentId: `listing-${listing.id}`,
       status: SearchSyncStatus.INDEXED,
       message: "Initial Stage 1 search projection complete."
     },
     create: {
       id: "seed-stage1-search-sync-log",
       listingId: listing.id,
-      documentId: "listing-stage1-astra-x1-pro",
+      documentId: `listing-${listing.id}`,
       status: SearchSyncStatus.INDEXED,
       message: "Initial Stage 1 search projection complete."
     }

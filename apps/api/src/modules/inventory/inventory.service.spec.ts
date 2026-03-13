@@ -22,8 +22,8 @@ describe("InventoryService", () => {
           inventoryItemId: "inventory-1",
           checkoutSessionId: "checkout-1",
           quantity: 2,
-          status: "ACTIVE"
-        }
+          status: "ACTIVE",
+        },
       ],
       [
         "reservation-2",
@@ -32,9 +32,9 @@ describe("InventoryService", () => {
           inventoryItemId: "inventory-2",
           checkoutSessionId: "checkout-2",
           quantity: 1,
-          status: "ACTIVE"
-        }
-      ]
+          status: "ACTIVE",
+        },
+      ],
     ]);
 
     const tx = {
@@ -44,39 +44,39 @@ describe("InventoryService", () => {
             id: "reservation-1",
             inventoryItemId: "inventory-1",
             checkoutSessionId: "checkout-1",
-            quantity: 2
+            quantity: 2,
           },
           {
             id: "reservation-2",
             inventoryItemId: "inventory-2",
             checkoutSessionId: "checkout-2",
-            quantity: 1
-          }
+            quantity: 1,
+          },
         ]),
         findUnique: vi.fn(({ where }: { where: { id: string } }) =>
-          Promise.resolve(reservations.get(where.id) ?? null)
+          Promise.resolve(reservations.get(where.id) ?? null),
         ),
-        update: vi.fn()
+        update: vi.fn(),
       },
       $executeRaw: vi.fn().mockResolvedValue(1),
       inventoryMovement: {
-        create: vi.fn()
+        create: vi.fn(),
       },
       auditLog: {
-        create: vi.fn()
-      }
+        create: vi.fn(),
+      },
     };
 
     const result =
       await inventoryService.releaseExpiredReservationsWithinTransaction(
         tx as never,
         new Date("2026-03-12T10:00:00.000Z"),
-        "user-1"
+        "user-1",
       );
 
     expect(result).toEqual({
       releasedReservations: 2,
-      inventoryItemsAdjusted: 2
+      inventoryItemsAdjusted: 2,
     });
     expect(tx.stockReservation.update).toHaveBeenCalledTimes(2);
     expect(tx.inventoryMovement.create).toHaveBeenCalledTimes(2);
@@ -93,61 +93,151 @@ describe("InventoryService", () => {
             listingId: "listing-1",
             onHand: 1,
             reserved,
-            safetyStock: 0
-          })
-        )
+            safetyStock: 0,
+          }),
+        ),
       },
-      $queryRaw: vi.fn().mockImplementation(
-        (_strings: TemplateStringsArray, quantity: number) => {
-          if (1 - reserved >= quantity) {
-            reserved += quantity;
-            return Promise.resolve([{ id: "inventory-1" }]);
-          }
+      $queryRaw: vi
+        .fn()
+        .mockImplementation(
+          (_strings: TemplateStringsArray, quantity: number) => {
+            if (1 - reserved >= quantity) {
+              reserved += quantity;
+              return Promise.resolve([{ id: "inventory-1" }]);
+            }
 
-          return Promise.resolve([]);
-        }
-      ),
+            return Promise.resolve([]);
+          },
+        ),
       stockReservation: {
-        create: vi.fn().mockImplementation(({ data }: { data: { quantity: number } }) =>
-          Promise.resolve({
-            id: `reservation-${reserved}`,
-            ...data
-          })
-        )
+        create: vi
+          .fn()
+          .mockImplementation(({ data }: { data: { quantity: number } }) =>
+            Promise.resolve({
+              id: `reservation-${reserved}`,
+              ...data,
+            }),
+          ),
       },
       inventoryMovement: {
-        create: vi.fn().mockResolvedValue(undefined)
+        create: vi.fn().mockResolvedValue(undefined),
       },
       auditLog: {
-        create: vi.fn().mockResolvedValue(undefined)
-      }
+        create: vi.fn().mockResolvedValue(undefined),
+      },
     };
 
     const attempts = await Promise.allSettled([
-      inventoryService.reserveInventoryForCheckoutWithinTransaction(tx as never, {
-        actorUserId: "user-1",
-        cartId: "cart-1",
-        checkoutSessionId: "checkout-1",
-        inventoryItemId: "inventory-1",
-        quantity: 1,
-        expiresAt: new Date("2026-03-12T10:15:00.000Z")
-      }),
-      inventoryService.reserveInventoryForCheckoutWithinTransaction(tx as never, {
-        actorUserId: "user-2",
-        cartId: "cart-2",
-        checkoutSessionId: "checkout-2",
-        inventoryItemId: "inventory-1",
-        quantity: 1,
-        expiresAt: new Date("2026-03-12T10:15:00.000Z")
-      })
+      inventoryService.reserveInventoryForCheckoutWithinTransaction(
+        tx as never,
+        {
+          actorUserId: "user-1",
+          cartId: "cart-1",
+          checkoutSessionId: "checkout-1",
+          inventoryItemId: "inventory-1",
+          quantity: 1,
+          expiresAt: new Date("2026-03-12T10:15:00.000Z"),
+        },
+      ),
+      inventoryService.reserveInventoryForCheckoutWithinTransaction(
+        tx as never,
+        {
+          actorUserId: "user-2",
+          cartId: "cart-2",
+          checkoutSessionId: "checkout-2",
+          inventoryItemId: "inventory-1",
+          quantity: 1,
+          expiresAt: new Date("2026-03-12T10:15:00.000Z"),
+        },
+      ),
     ]);
 
-    expect(attempts.filter((attempt) => attempt.status === "fulfilled")).toHaveLength(1);
-    expect(attempts.filter((attempt) => attempt.status === "rejected")).toHaveLength(1);
     expect(
-      attempts.find((attempt) => attempt.status === "rejected")
+      attempts.filter((attempt) => attempt.status === "fulfilled"),
+    ).toHaveLength(1);
+    expect(
+      attempts.filter((attempt) => attempt.status === "rejected"),
+    ).toHaveLength(1);
+    expect(
+      attempts.find((attempt) => attempt.status === "rejected"),
     ).toMatchObject({
-      reason: expect.any(ConflictException)
+      reason: expect.any(ConflictException),
     });
+  });
+
+  it("keeps reservation release idempotent when cleanup runs more than once", async () => {
+    const reservations = new Map([
+      [
+        "reservation-1",
+        {
+          id: "reservation-1",
+          inventoryItemId: "inventory-1",
+          checkoutSessionId: "checkout-1",
+          quantity: 1,
+          status: "ACTIVE",
+        },
+      ],
+    ]);
+
+    const tx = {
+      stockReservation: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: "reservation-1",
+            inventoryItemId: "inventory-1",
+          },
+        ]),
+        findUnique: vi.fn(({ where }: { where: { id: string } }) =>
+          Promise.resolve(reservations.get(where.id) ?? null),
+        ),
+        update: vi
+          .fn()
+          .mockImplementation(({ where }: { where: { id: string } }) => {
+            const current = reservations.get(where.id);
+
+            if (current) {
+              reservations.set(where.id, {
+                ...current,
+                status: "RELEASED",
+              });
+            }
+
+            return Promise.resolve(undefined);
+          }),
+      },
+      $executeRaw: vi.fn().mockResolvedValue(1),
+      inventoryMovement: {
+        create: vi.fn().mockResolvedValue(undefined),
+      },
+      auditLog: {
+        create: vi.fn().mockResolvedValue(undefined),
+      },
+    };
+
+    const firstRelease =
+      await inventoryService.releaseReservationsForCheckoutSessionWithinTransaction(
+        tx as never,
+        "checkout-1",
+        "user-1",
+        "Manual cleanup pass.",
+      );
+    const secondRelease =
+      await inventoryService.releaseReservationsForCheckoutSessionWithinTransaction(
+        tx as never,
+        "checkout-1",
+        "user-1",
+        "Repeated cleanup pass.",
+      );
+
+    expect(firstRelease).toEqual({
+      releasedReservations: 1,
+      inventoryItemsAdjusted: 1,
+    });
+    expect(secondRelease).toEqual({
+      releasedReservations: 0,
+      inventoryItemsAdjusted: 0,
+    });
+    expect(tx.stockReservation.update).toHaveBeenCalledTimes(1);
+    expect(tx.inventoryMovement.create).toHaveBeenCalledTimes(1);
   });
 });

@@ -4,18 +4,15 @@ import { Badge, Panel } from "@velora/ui";
 
 import { ProductCard } from "../../components/product-card";
 import { StorefrontChrome } from "../../components/storefront-chrome";
-import {
-  getCatalogNavigation,
-  searchCatalog
-} from "../../lib/storefront-api";
+import { getCatalogNavigation, searchCatalog } from "../../lib/storefront-api";
 
 export default async function CategoriesPage(): Promise<React.JSX.Element> {
   const [navigation, featuredProducts] = await Promise.all([
     getCatalogNavigation(),
     searchCatalog({
       sort: "newest",
-      pageSize: "6"
-    })
+      pageSize: "6",
+    }),
   ]);
 
   return (
@@ -28,9 +25,9 @@ export default async function CategoriesPage(): Promise<React.JSX.Element> {
               Browse the catalog from a category tree, not a placeholder shell.
             </h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--muted)]">
-              Stage 3 moves the storefront into real browsing territory with
-              seeded category depth, search-driven discovery, and product detail
-              pages that reflect live API data.
+              Explore a category tree, browse filtered results, and move from
+              discovery into product detail without leaving the live marketplace
+              data path.
             </p>
           </div>
         </Panel>
@@ -69,7 +66,9 @@ export default async function CategoriesPage(): Promise<React.JSX.Element> {
                 Root category
               </p>
               <h2 className="mt-3 font-[var(--font-heading)] text-3xl font-bold tracking-tight">
-                <Link href={`/categories/${category.slug}`}>{category.name}</Link>
+                <Link href={`/categories/${category.slug}`}>
+                  {category.name}
+                </Link>
               </h2>
               <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
                 {category.description}

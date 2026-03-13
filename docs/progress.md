@@ -13,7 +13,7 @@
 - [x] Stage 8 - Admin backoffice
 - [x] Stage 9 - Seller portal
 - [x] Stage 10 - Performance, cache, query, rate limiting pass
-- [ ] Stage 11 - Test hardening, CI, docs, final polish
+- [x] Stage 11 - Test hardening, CI, docs, final polish
 
 ## Completed milestones
 
@@ -134,6 +134,18 @@
 - Verified `pnpm --filter @velora/api lint`, `pnpm --filter @velora/api typecheck`, plus root `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.
 - Attempted `pnpm db:migrate` and `pnpm perf:smoke`, but local infrastructure verification was blocked because PostgreSQL on `localhost:5433` and Docker Desktop were unavailable during this session.
 
+### Stage 11
+
+- Added replay- and recovery-focused API coverage for idempotent payment confirmation and reservation release cleanup so the critical commerce flows now have explicit regression protection.
+- Added a Playwright browser suite covering customer browse-to-checkout success, failed payment retry, admin inventory mutation visibility, admin promotion creation and coupon application, and seller inventory visibility.
+- Added a deterministic mock commerce API harness for browser coverage so end-to-end flows can run in CI without depending on local infrastructure services.
+- Fixed a storefront product-detail freshness bug by forcing no-store reads for product detail data, which keeps inventory updates from admin and seller actions visible immediately.
+- Hardened `pnpm test:e2e` so it builds shared workspace packages before launching the browser suite in a clean checkout.
+- Added GitHub Actions CI with quality and browser jobs covering install, lint, typecheck, test, build, and Playwright execution.
+- Rewrote the repository README and finalized the missing architecture, domain model, API, product-decision, testing-strategy, and screenshot placeholder documentation.
+- Verified `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`, and `pnpm build` on the final Stage 11 state.
+- Attempted `pnpm db:migrate` and `pnpm db:seed`, but local PostgreSQL on `localhost:5433` was unavailable because the Docker engine was not running during this session.
+
 ## Important implementation notes
 
 - Internal packages are designed to build independently so the apps can consume stable outputs.
@@ -152,11 +164,11 @@
 - The API Vitest configuration now aliases workspace packages to source entries, which prevents stale built contract outputs from masking runtime test failures after shared-package changes.
 - Stage 9 introduces a dedicated seller surface in both the API and storefront, which keeps merchant operations separate from customer account routes while still reusing the same session-cookie authentication model.
 - Stage 10 shifts public catalog and search hot paths onto Redis-backed caching and persisted search projections, which reduces repeated relational work while keeping an in-memory fallback for local development when Redis is unavailable.
+- Stage 11 uses a dedicated mock commerce API for Playwright coverage so browser tests stay deterministic and CI-friendly, while the real API remains covered by unit and integration tests.
 
 ## Known follow-up items
 
 - Extend Stage 5 refund handling into richer administrative flows and customer-facing refund visibility in later account and backoffice stages.
-- Add end-to-end browser coverage for the checkout success, failure, and retry paths once the admin and seller flows are also in place.
 - Expand Stage 8 order-management tooling with shipment creation, carrier metadata, and manual exception workflows once fulfillment basics are added.
 - Add richer customer-visible shipment and return-request details once the fulfillment and seller workflow stages are in place.
 - Extend the seller portal with listing content edits, seller-facing promotion visibility, and shipment handling once fulfillment and performance stages are completed.

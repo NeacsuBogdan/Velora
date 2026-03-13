@@ -12,7 +12,7 @@ export function OverviewPanel({
   title,
   eyebrow,
   overview,
-  emptyCopy
+  emptyCopy,
 }: OverviewPanelProps): React.JSX.Element {
   return (
     <Panel>
@@ -31,7 +31,7 @@ export function OverviewPanel({
                 key={label}
                 label={label}
                 value={value.toString()}
-                detail="Live from the Stage 1 API foundation."
+                detail="Live from the current commerce API."
               />
             ))}
           </div>
@@ -42,7 +42,9 @@ export function OverviewPanel({
           </ul>
         </>
       ) : (
-        <p className="mt-5 text-sm leading-7 text-[var(--muted)]">{emptyCopy}</p>
+        <p className="mt-5 text-sm leading-7 text-[var(--muted)]">
+          {emptyCopy}
+        </p>
       )}
     </Panel>
   );

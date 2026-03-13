@@ -16,7 +16,7 @@ import type {
   SellerListingSummary,
   SellerOrderDetail,
   SellerOrderSummary,
-  SessionResponse
+  SessionResponse,
 } from "@velora/contracts";
 import { cookies } from "next/headers";
 
@@ -26,14 +26,16 @@ export const STOREFRONT_API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
 
 export function buildSessionCookieHeader(
-  sessionToken?: string
+  sessionToken?: string,
 ): Record<string, string> | undefined {
-  return sessionToken ? { cookie: `velora_session=${sessionToken}` } : undefined;
+  return sessionToken
+    ? { cookie: `velora_session=${sessionToken}` }
+    : undefined;
 }
 
 async function requestJson<T>(
   path: string,
-  init?: RequestInit
+  init?: RequestInit,
 ): Promise<T | null> {
   try {
     const response = await fetch(`${STOREFRONT_API_URL}${path}`, init);
@@ -49,10 +51,10 @@ async function requestJson<T>(
 }
 
 export async function getDomainOverview(
-  path: string
+  path: string,
 ): Promise<DomainOverview | null> {
   return requestJson<DomainOverview>(path, {
-    next: { revalidate: 60 }
+    next: { revalidate: 60 },
   });
 }
 
@@ -66,12 +68,12 @@ export async function getSession(): Promise<SessionResponse | null> {
 
   return requestJson<SessionResponse>("/auth/session", {
     cache: "no-store",
-    headers: buildSessionCookieHeader(sessionToken)
+    headers: buildSessionCookieHeader(sessionToken),
   });
 }
 
 export async function getAuthenticatedOverview(
-  path: string
+  path: string,
 ): Promise<DomainOverview | null> {
   return getAuthenticatedJson<DomainOverview>(path);
 }
@@ -81,7 +83,9 @@ export async function getCurrentUserProfile(): Promise<CustomerProfile | null> {
 }
 
 export async function getUserAddresses(): Promise<AddressSummary[]> {
-  return (await getAuthenticatedJson<AddressSummary[]>("/users/addresses")) ?? [];
+  return (
+    (await getAuthenticatedJson<AddressSummary[]>("/users/addresses")) ?? []
+  );
 }
 
 async function getAuthenticatedJson<T>(path: string): Promise<T | null> {
@@ -94,7 +98,7 @@ async function getAuthenticatedJson<T>(path: string): Promise<T | null> {
 
   return requestJson<T>(path, {
     cache: "no-store",
-    headers: buildSessionCookieHeader(sessionToken)
+    headers: buildSessionCookieHeader(sessionToken),
   });
 }
 
@@ -103,17 +107,19 @@ export async function getCart(): Promise<CartDetail | null> {
 }
 
 export async function getCheckoutSession(
-  checkoutSessionId: string
+  checkoutSessionId: string,
 ): Promise<CheckoutSessionDetail | null> {
   return getAuthenticatedJson<CheckoutSessionDetail>(
-    `/checkout/sessions/${checkoutSessionId}`
+    `/checkout/sessions/${checkoutSessionId}`,
   );
 }
 
 export async function getOrderDetail(
-  number: string
+  number: string,
 ): Promise<OrderDetail | null> {
-  return getAuthenticatedJson<OrderDetail>(`/orders/${encodeURIComponent(number)}`);
+  return getAuthenticatedJson<OrderDetail>(
+    `/orders/${encodeURIComponent(number)}`,
+  );
 }
 
 export async function getOrders(): Promise<OrderSummary[]> {
@@ -125,52 +131,57 @@ export async function getSellerDashboard(): Promise<SellerDashboard | null> {
 }
 
 export async function getSellerListings(): Promise<SellerListingSummary[]> {
-  return (await getAuthenticatedJson<SellerListingSummary[]>("/seller/listings")) ?? [];
+  return (
+    (await getAuthenticatedJson<SellerListingSummary[]>("/seller/listings")) ??
+    []
+  );
 }
 
 export async function getSellerOrders(): Promise<SellerOrderSummary[]> {
-  return (await getAuthenticatedJson<SellerOrderSummary[]>("/seller/orders")) ?? [];
+  return (
+    (await getAuthenticatedJson<SellerOrderSummary[]>("/seller/orders")) ?? []
+  );
 }
 
 export async function getSellerOrderDetail(
-  number: string
+  number: string,
 ): Promise<SellerOrderDetail | null> {
   return getAuthenticatedJson<SellerOrderDetail>(
-    `/seller/orders/${encodeURIComponent(number)}`
+    `/seller/orders/${encodeURIComponent(number)}`,
   );
 }
 
 export async function getCatalogNavigation(): Promise<CatalogNavigation | null> {
   return requestJson<CatalogNavigation>("/catalog/navigation", {
-    next: { revalidate: 60 }
+    next: { revalidate: 60 },
   });
 }
 
 export async function getCategoryDetail(
-  slug: string
+  slug: string,
 ): Promise<CategoryDetail | null> {
   return requestJson<CategoryDetail>(`/catalog/categories/${slug}`, {
-    next: { revalidate: 60 }
+    next: { revalidate: 60 },
   });
 }
 
 export async function getProductDetail(
-  slug: string
+  slug: string,
 ): Promise<ProductDetail | null> {
   return requestJson<ProductDetail>(`/catalog/products/${slug}`, {
-    next: { revalidate: 60 }
+    cache: "no-store",
   });
 }
 
 export async function searchCatalog(
-  input: CatalogQueryInput
+  input: CatalogQueryInput,
 ): Promise<CatalogSearchResponse | null> {
   const query = toUrlSearchParams(input).toString();
 
   return requestJson<CatalogSearchResponse>(
     `/search/products${query ? `?${query}` : ""}`,
     {
-      next: { revalidate: 60 }
-    }
+      next: { revalidate: 60 },
+    },
   );
 }

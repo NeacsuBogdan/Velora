@@ -12,9 +12,9 @@ const viewer: AuthenticatedUser = {
   roles: [
     {
       code: "CUSTOMER",
-      name: "Customer"
-    }
-  ]
+      name: "Customer",
+    },
+  ],
 };
 const reservationExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
@@ -25,7 +25,7 @@ function createCheckoutDetail(overrides: Record<string, unknown> = {}) {
     status: "COMPLETED",
     amount: {
       amount: 329900,
-      currency: "RON"
+      currency: "RON",
     },
     reservationExpiresAt: reservationExpiresAt.toISOString(),
     reservations: [],
@@ -38,21 +38,21 @@ function createCheckoutDetail(overrides: Record<string, unknown> = {}) {
       paymentStatus: "SUCCEEDED",
       total: {
         amount: 329900,
-        currency: "RON"
+        currency: "RON",
       },
       subtotal: {
         amount: 329900,
-        currency: "RON"
+        currency: "RON",
       },
       discountTotal: {
         amount: 0,
-        currency: "RON"
+        currency: "RON",
       },
       itemCount: 1,
       createdAt: "2026-03-12T10:01:00.000Z",
-      placedAt: "2026-03-12T10:01:00.000Z"
+      placedAt: "2026-03-12T10:01:00.000Z",
     },
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -60,78 +60,78 @@ describe("PaymentsService", () => {
   const tx = {
     checkoutSession: {
       findFirst: vi.fn(),
-      update: vi.fn()
+      update: vi.fn(),
     },
     paymentAttempt: {
       findFirst: vi.fn(),
       create: vi.fn(),
       findUnique: vi.fn(),
-      update: vi.fn()
+      update: vi.fn(),
     },
     webhookDeliveryRecord: {
       findUnique: vi.fn(),
       create: vi.fn(),
-      update: vi.fn()
+      update: vi.fn(),
     },
     paymentEvent: {
       create: vi.fn(),
-      update: vi.fn()
+      update: vi.fn(),
     },
     refundRecord: {
-      create: vi.fn()
+      create: vi.fn(),
     },
     order: {
       create: vi.fn(),
       update: vi.fn(),
-      updateMany: vi.fn()
+      updateMany: vi.fn(),
     },
     orderStatusHistory: {
-      create: vi.fn()
+      create: vi.fn(),
     },
     stockReservation: {
-      updateMany: vi.fn()
+      updateMany: vi.fn(),
     },
     inventoryMovement: {
-      create: vi.fn()
+      create: vi.fn(),
     },
     auditLog: {
-      create: vi.fn()
+      create: vi.fn(),
     },
     cart: {
-      update: vi.fn()
+      update: vi.fn(),
     },
-    $executeRaw: vi.fn()
+    $executeRaw: vi.fn(),
   };
 
   const prisma = {
     $transaction: vi.fn((callback: (client: typeof tx) => Promise<unknown>) =>
-      callback(tx)
+      callback(tx),
     ),
     paymentAttempt: {
       count: vi.fn(),
-      findUnique: vi.fn()
+      findUnique: vi.fn(),
     },
     paymentEvent: {
-      count: vi.fn()
+      count: vi.fn(),
     },
     refundRecord: {
-      count: vi.fn()
+      count: vi.fn(),
     },
     webhookDeliveryRecord: {
-      count: vi.fn()
-    }
+      count: vi.fn(),
+    },
   };
 
   const checkoutService = {
-    getCheckoutSessionDetailById: vi.fn()
+    getCheckoutSessionDetailById: vi.fn(),
   };
 
   const inventoryService = {
-    releaseReservationsForCheckoutSessionWithinTransaction: vi.fn()
+    releaseReservationsForCheckoutSessionWithinTransaction: vi.fn(),
   };
 
   const auditService = {
-    record: vi.fn()
+    record: vi.fn(),
   };
 
   let paymentsService: PaymentsService;
@@ -145,7 +145,7 @@ describe("PaymentsService", () => {
       prisma as never,
       checkoutService as never,
       inventoryService as never,
-      auditService as never
+      auditService as never,
     );
 
     tx.checkoutSession.update.mockResolvedValue(undefined);
@@ -158,7 +158,7 @@ describe("PaymentsService", () => {
     tx.order.create.mockResolvedValue({
       id: "order-1",
       number: "VLR-20260312-ABCD1234",
-      items: [{ id: "order-item-1", quantity: 1 }]
+      items: [{ id: "order-item-1", quantity: 1 }],
     });
     tx.order.update.mockResolvedValue(undefined);
     tx.order.updateMany.mockResolvedValue(undefined);
@@ -180,13 +180,13 @@ describe("PaymentsService", () => {
             status: "SUCCEEDED",
             amount: {
               amount: 329900,
-              currency: "RON"
+              currency: "RON",
             },
             createdAt: "2026-03-12T10:00:00.000Z",
-            updatedAt: "2026-03-12T10:01:00.000Z"
-          }
-        ]
-      })
+            updatedAt: "2026-03-12T10:01:00.000Z",
+          },
+        ],
+      }),
     );
   });
 
@@ -198,7 +198,7 @@ describe("PaymentsService", () => {
       currency: "RON",
       reservationExpiresAt,
       order: null,
-      reservations: [{ id: "reservation-1", quantity: 1 }]
+      reservations: [{ id: "reservation-1", quantity: 1 }],
     });
     tx.paymentAttempt.findFirst.mockResolvedValue({
       id: "attempt-1",
@@ -209,15 +209,15 @@ describe("PaymentsService", () => {
       amount: 329900,
       currency: "RON",
       createdAt: new Date("2026-03-12T10:00:00.000Z"),
-      updatedAt: new Date("2026-03-12T10:00:00.000Z")
+      updatedAt: new Date("2026-03-12T10:00:00.000Z"),
     });
 
     const result = await paymentsService.createPaymentAttempt(
       viewer,
       "checkout-1",
       {
-        idempotencyKey: "payment-key-1"
-      }
+        idempotencyKey: "payment-key-1",
+      },
     );
 
     expect(tx.paymentAttempt.create).not.toHaveBeenCalled();
@@ -236,8 +236,8 @@ describe("PaymentsService", () => {
         status: "PENDING",
         checkoutSession: {
           id: "checkout-1",
-          userId: "user-1"
-        }
+          userId: "user-1",
+        },
       })
       .mockResolvedValueOnce({
         id: "attempt-1",
@@ -248,16 +248,22 @@ describe("PaymentsService", () => {
         currency: "RON",
         status: "SUCCEEDED",
         createdAt: new Date("2026-03-12T10:00:00.000Z"),
-        updatedAt: new Date("2026-03-12T10:01:00.000Z")
+        updatedAt: new Date("2026-03-12T10:01:00.000Z"),
       });
 
     tx.webhookDeliveryRecord.findUnique.mockResolvedValue(null);
     tx.paymentAttempt.findUnique.mockImplementation(
-      ({ where, include }: { where: { id?: string; providerPaymentIntentId?: string }; include?: unknown }) => {
+      ({
+        where,
+        include,
+      }: {
+        where: { id?: string; providerPaymentIntentId?: string };
+        include?: unknown;
+      }) => {
         if (where.providerPaymentIntentId) {
           return Promise.resolve({
             id: "attempt-1",
-            checkoutSessionId: "checkout-1"
+            checkoutSessionId: "checkout-1",
           });
         }
 
@@ -288,61 +294,104 @@ describe("PaymentsService", () => {
                       productId: "product-1",
                       variantId: "variant-1",
                       seller: {
-                        id: "seller-1"
+                        id: "seller-1",
                       },
                       product: {
-                        id: "product-1"
+                        id: "product-1",
                       },
                       variant: {
-                        id: "variant-1"
-                      }
-                    }
-                  }
-                ]
+                        id: "variant-1",
+                      },
+                    },
+                  },
+                ],
               },
               reservations: [
                 {
                   id: "reservation-1",
                   inventoryItemId: "inventory-1",
                   quantity: 1,
-                  status: "ACTIVE"
-                }
+                  status: "ACTIVE",
+                },
               ],
-              order: null
-            }
+              order: null,
+            },
           });
         }
 
         return Promise.resolve(null);
-      }
+      },
     );
 
     const result = await paymentsService.confirmPaymentAttempt(
       viewer,
       "attempt-1",
       {
-        scenario: "success"
-      }
+        scenario: "success",
+      },
     );
 
     expect(tx.order.create).toHaveBeenCalledTimes(1);
     expect(tx.stockReservation.updateMany).toHaveBeenCalledWith({
       where: {
         id: "reservation-1",
-        status: "ACTIVE"
+        status: "ACTIVE",
       },
       data: {
         status: "CONSUMED",
-        orderId: "order-1"
-      }
+        orderId: "order-1",
+      },
     });
+    expect(result.order?.number).toBe("VLR-20260312-ABCD1234");
+    expect(result.attempt.status).toBe("SUCCEEDED");
+  });
+
+  it("treats a repeated confirmation of a succeeded attempt as idempotent", async () => {
+    prisma.paymentAttempt.findUnique
+      .mockResolvedValueOnce({
+        id: "attempt-1",
+        checkoutSessionId: "checkout-1",
+        providerPaymentIntentId: "pi_local_checkout1",
+        amount: 329900,
+        currency: "RON",
+        status: "SUCCEEDED",
+        checkoutSession: {
+          id: "checkout-1",
+          userId: "user-1",
+        },
+      })
+      .mockResolvedValueOnce({
+        id: "attempt-1",
+        checkoutSessionId: "checkout-1",
+        provider: "stripe",
+        providerPaymentIntentId: "pi_local_checkout1",
+        amount: 329900,
+        currency: "RON",
+        status: "SUCCEEDED",
+        createdAt: new Date("2026-03-12T10:00:00.000Z"),
+        updatedAt: new Date("2026-03-12T10:01:00.000Z"),
+      });
+
+    const result = await paymentsService.confirmPaymentAttempt(
+      viewer,
+      "attempt-1",
+      {
+        scenario: "success",
+      },
+    );
+
+    expect(tx.order.create).not.toHaveBeenCalled();
+    expect(tx.paymentEvent.create).not.toHaveBeenCalled();
+    expect(result.message).toBe(
+      "The payment was already settled successfully.",
+    );
     expect(result.order?.number).toBe("VLR-20260312-ABCD1234");
     expect(result.attempt.status).toBe("SUCCEEDED");
   });
 
   it("treats duplicate webhook deliveries as replay-safe", async () => {
     tx.webhookDeliveryRecord.findUnique.mockResolvedValue({
-      id: "delivery-1"
+      id: "delivery-1",
     });
 
     const payload = JSON.stringify({
@@ -351,28 +400,28 @@ describe("PaymentsService", () => {
       data: {
         object: {
           id: "pi_local_checkout1",
-          status: "succeeded"
-        }
-      }
+          status: "succeeded",
+        },
+      },
     });
     const timestamp = "1710237600";
     const signature = createHmac(
       "sha256",
-      process.env.STRIPE_WEBHOOK_SECRET ?? "whsec_local_stage5"
+      process.env.STRIPE_WEBHOOK_SECRET ?? "whsec_local_stage5",
     )
       .update(`${timestamp}.${payload}`)
       .digest("hex");
 
     const result = await paymentsService.handleStripeWebhook(
       payload,
-      `t=${timestamp},v1=${signature}`
+      `t=${timestamp},v1=${signature}`,
     );
 
     expect(result).toEqual({
       provider: "stripe",
       eventId: "evt_duplicate_1",
       duplicate: true,
-      processed: true
+      processed: true,
     });
     expect(tx.paymentEvent.create).not.toHaveBeenCalled();
   });

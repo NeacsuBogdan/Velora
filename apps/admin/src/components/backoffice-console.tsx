@@ -11,7 +11,7 @@ import type {
   AdminOrderSummary,
   AdminProductSummary,
   AdminSellerSummary,
-  PromotionSummary
+  PromotionSummary,
 } from "@velora/contracts";
 import { Badge, Panel, StatTile } from "@velora/ui";
 
@@ -36,7 +36,7 @@ export function BackofficeConsole({
   customers,
   sellers,
   operations,
-  promotions
+  promotions,
 }: {
   dashboard: AdminDashboard;
   catalogOptions: AdminCatalogOptions;
@@ -58,7 +58,7 @@ export function BackofficeConsole({
     ["customers", "Customers"],
     ["sellers", "Sellers"],
     ["operations", "Operations"],
-    ["promotions", "Promotions"]
+    ["promotions", "Promotions"],
   ];
 
   return (
@@ -106,9 +106,9 @@ export function BackofficeConsole({
                 operations, customer support, and marketplace supply.
               </h2>
               <p className="mt-3 max-w-4xl text-sm leading-7 text-[var(--muted)]">
-                Every Stage 8 action writes through the transactional API,
-                records audit context, and refreshes the search projection or
-                inventory visibility path it affects.
+                Every action writes through the transactional API, records audit
+                context, and refreshes the search projection or inventory
+                visibility path it affects.
               </p>
             </div>
           </div>

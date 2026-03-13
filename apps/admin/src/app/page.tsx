@@ -14,7 +14,7 @@ import {
   getAdminProducts,
   getAdminSellers,
   getPromotions,
-  getSession
+  getSession,
 } from "../lib/admin-api";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +33,7 @@ export default async function AdminHomePage(): Promise<React.JSX.Element> {
     customers,
     sellers,
     operations,
-    promotions
+    promotions,
   ] = isAdmin
     ? await Promise.all([
         getAdminDashboard(),
@@ -45,13 +45,11 @@ export default async function AdminHomePage(): Promise<React.JSX.Element> {
         getAdminCustomers(),
         getAdminSellers(),
         getAdminOperations(),
-        getPromotions()
+        getPromotions(),
       ])
     : [null, null, null, null, null, null, null, null, null, null];
   const orderDetail =
-    isAdmin && orders?.[0]
-      ? await getAdminOrderDetail(orders[0].number)
-      : null;
+    isAdmin && orders?.[0] ? await getAdminOrderDetail(orders[0].number) : null;
 
   return (
     <main className="min-h-screen px-6 py-8 lg:px-10">
@@ -62,7 +60,8 @@ export default async function AdminHomePage(): Promise<React.JSX.Element> {
               <Badge>Admin workspace</Badge>
               <div>
                 <h1 className="font-[var(--font-heading)] text-4xl font-semibold tracking-tight">
-                  Velora backoffice is wired to the live marketplace operating model.
+                  Velora backoffice is wired to the live marketplace operating
+                  model.
                 </h1>
                 <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--muted)]">
                   Use the seeded admin account to manage catalog structure,
@@ -143,8 +142,8 @@ export default async function AdminHomePage(): Promise<React.JSX.Element> {
                 Sign in with the seeded admin account to manage promotions.
               </h2>
               <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--muted)]">
-                The workspace writes directly to the live Stage 8 backoffice,
-                so authentication is required before catalog, order, seller, and
+                The workspace writes directly to the live backoffice API, so
+                authentication is required before catalog, order, seller, and
                 promotion actions can be submitted.
               </p>
             </Panel>

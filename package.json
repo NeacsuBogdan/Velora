@@ -18,7 +18,7 @@
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "test": "turbo test",
-    "test:e2e": "playwright test --pass-with-no-tests",
+    "test:e2e": "pnpm run build:packages && playwright test --pass-with-no-tests",
     "perf:smoke": "pnpm --filter @velora/api perf:smoke",
     "db:migrate": "pnpm --filter @velora/api db:migrate",
     "db:seed": "pnpm --filter @velora/api db:seed",

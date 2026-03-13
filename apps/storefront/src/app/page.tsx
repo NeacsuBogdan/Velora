@@ -8,7 +8,7 @@ import { StorefrontChrome } from "../components/storefront-chrome";
 import {
   getCatalogNavigation,
   getDomainOverview,
-  searchCatalog
+  searchCatalog,
 } from "../lib/storefront-api";
 
 const primaryLinkClass =
@@ -25,8 +25,8 @@ export default async function HomePage(): Promise<React.JSX.Element> {
       getCatalogNavigation(),
       searchCatalog({
         sort: "newest",
-        pageSize: "3"
-      })
+        pageSize: "3",
+      }),
     ]);
 
   return (
@@ -40,9 +40,9 @@ export default async function HomePage(): Promise<React.JSX.Element> {
               search projections, and operational clarity.
             </h1>
             <p className="max-w-2xl text-lg leading-8 text-[var(--muted)]">
-              Stage 3 turns Velora into a real browsing product with category
-              hierarchy, product listings, detail pages, and a dedicated search
-              surface backed by a projection-ready API.
+              Velora pairs category navigation, rich product detail, and a
+              dedicated search surface with the same commerce engine that powers
+              checkout, backoffice, and seller operations.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -70,7 +70,9 @@ export default async function HomePage(): Promise<React.JSX.Element> {
               <StatTile
                 className="border-white/10 bg-white/8 text-white"
                 label="Promotions"
-                value={(promotionOverview?.metrics.activePromotions ?? 0).toString()}
+                value={(
+                  promotionOverview?.metrics.activePromotions ?? 0
+                ).toString()}
                 detail="Active price incentives wired into the API layer."
               />
             </div>
@@ -81,7 +83,7 @@ export default async function HomePage(): Promise<React.JSX.Element> {
               <ul className="mt-3 grid gap-2 text-sm text-white/70">
                 {(navigation?.featuredCategories ?? []).map((item) => (
                   <li key={item.slug}>
-                    {item.name} · {item.productCount} products
+                    {item.name} / {item.productCount} products
                   </li>
                 ))}
               </ul>

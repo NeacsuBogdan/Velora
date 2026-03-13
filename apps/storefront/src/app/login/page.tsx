@@ -12,9 +12,9 @@ export default function LoginPage(): React.JSX.Element {
             Sign in to the Velora customer workspace.
           </h1>
           <p className="max-w-2xl text-lg leading-8 text-[var(--muted)]">
-            The login flow is wired directly into the cookie-based API session
-            layer created in Stage 1, so the storefront can move into account,
-            cart, and checkout work without changing authentication shape.
+            The login flow is wired directly into the shared cookie-based
+            session layer, so the storefront can move into account, cart, and
+            checkout work without switching authentication models.
           </p>
         </div>
         <div className="rounded-[32px] border border-[var(--stroke)] bg-white/80 p-6 shadow-[0_20px_60px_rgba(16,32,47,0.08)] backdrop-blur">

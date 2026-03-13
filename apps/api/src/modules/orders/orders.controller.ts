@@ -9,7 +9,7 @@ import { OrdersService } from "./orders.service";
 
 @Controller("orders")
 @UseGuards(SessionAuthGuard, RolesGuard)
-@Roles("ADMIN", "CUSTOMER", "SELLER")
+@Roles("ADMIN", "CUSTOMER")
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 

@@ -9,9 +9,13 @@ import type {
   CheckoutSessionDetail,
   CustomerProfile,
   DomainOverview,
-  OrderSummary,
   OrderDetail,
+  OrderSummary,
   ProductDetail,
+  SellerDashboard,
+  SellerListingSummary,
+  SellerOrderDetail,
+  SellerOrderSummary,
   SessionResponse
 } from "@velora/contracts";
 import { cookies } from "next/headers";
@@ -114,6 +118,26 @@ export async function getOrderDetail(
 
 export async function getOrders(): Promise<OrderSummary[]> {
   return (await getAuthenticatedJson<OrderSummary[]>("/orders")) ?? [];
+}
+
+export async function getSellerDashboard(): Promise<SellerDashboard | null> {
+  return getAuthenticatedJson<SellerDashboard>("/seller/dashboard");
+}
+
+export async function getSellerListings(): Promise<SellerListingSummary[]> {
+  return (await getAuthenticatedJson<SellerListingSummary[]>("/seller/listings")) ?? [];
+}
+
+export async function getSellerOrders(): Promise<SellerOrderSummary[]> {
+  return (await getAuthenticatedJson<SellerOrderSummary[]>("/seller/orders")) ?? [];
+}
+
+export async function getSellerOrderDetail(
+  number: string
+): Promise<SellerOrderDetail | null> {
+  return getAuthenticatedJson<SellerOrderDetail>(
+    `/seller/orders/${encodeURIComponent(number)}`
+  );
 }
 
 export async function getCatalogNavigation(): Promise<CatalogNavigation | null> {

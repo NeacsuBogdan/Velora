@@ -4,19 +4,28 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, Panel } from "@velora/ui";
 import { startTransition, useState } from "react";
 import { useForm } from "react-hook-form";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { loginFormSchema, type LoginFormValues } from "../lib/login-schema";
 
-export function LoginForm(): React.JSX.Element {
+interface LoginFormProps {
+  defaultEmail?: string;
+  defaultRedirectPath?: string;
+}
+
+export function LoginForm({
+  defaultEmail = "customer@velora.local",
+  defaultRedirectPath = "/account"
+}: LoginFormProps = {}): React.JSX.Element {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginFormSchema),
     defaultValues: {
-      email: "customer@velora.local",
+      email: defaultEmail,
       password: "Demo123!"
     }
   });
@@ -46,7 +55,7 @@ export function LoginForm(): React.JSX.Element {
         return;
       }
 
-      router.push("/account");
+      router.push(searchParams.get("from") ?? defaultRedirectPath);
       router.refresh();
     });
   });

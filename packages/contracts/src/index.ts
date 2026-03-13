@@ -1202,3 +1202,97 @@ export const triggerReindexResponseSchema = z.object({
 export type TriggerReindexResponse = z.infer<
   typeof triggerReindexResponseSchema
 >;
+
+export const sellerDashboardSchema = z.object({
+  generatedAt: z.string().datetime(),
+  seller: z.object({
+    sellerId: z.string(),
+    slug: z.string(),
+    displayName: z.string(),
+    status: sellerStatusSchema
+  }),
+  metrics: z.object({
+    activeListings: z.number().int().nonnegative(),
+    lowStockListings: z.number().int().nonnegative(),
+    availableUnits: z.number().int().nonnegative(),
+    reservedUnits: z.number().int().nonnegative(),
+    openOrders: z.number().int().nonnegative(),
+    totalOrders: z.number().int().nonnegative()
+  }),
+  notes: z.array(z.string())
+});
+
+export type SellerDashboard = z.infer<typeof sellerDashboardSchema>;
+
+export const sellerListingSummarySchema = z.object({
+  listingId: z.string(),
+  inventoryItemId: z.string(),
+  productId: z.string(),
+  slug: z.string(),
+  title: z.string(),
+  variantTitle: z.string().nullable(),
+  sellerSku: z.string(),
+  status: productStatusSchema,
+  isActive: z.boolean(),
+  leadTimeDays: z.number().int().positive(),
+  price: moneySchema.nullable(),
+  compareAtPrice: moneySchema.nullable(),
+  inventory: z.object({
+    onHand: z.number().int().nonnegative(),
+    reserved: z.number().int().nonnegative(),
+    safetyStock: z.number().int().nonnegative(),
+    availableQuantity: z.number().int().nonnegative()
+  }),
+  image: mediaAssetSchema.nullable(),
+  updatedAt: z.string().datetime()
+});
+
+export type SellerListingSummary = z.infer<
+  typeof sellerListingSummarySchema
+>;
+
+export const updateSellerInventoryRequestSchema = z.object({
+  onHand: z.number().int().nonnegative(),
+  safetyStock: z.number().int().nonnegative(),
+  leadTimeDays: z.number().int().min(1).max(30),
+  note: z.string().trim().max(240).nullable().optional()
+});
+
+export type UpdateSellerInventoryRequest = z.infer<
+  typeof updateSellerInventoryRequestSchema
+>;
+
+export const sellerOrderCustomerSchema = z.object({
+  label: z.string(),
+  email: z.string().email().nullable()
+});
+
+export type SellerOrderCustomer = z.infer<
+  typeof sellerOrderCustomerSchema
+>;
+
+export const sellerOrderSummarySchema = z.object({
+  orderId: z.string(),
+  number: z.string(),
+  status: orderStatusSchema,
+  paymentStatus: paymentStatusSchema,
+  customer: sellerOrderCustomerSchema,
+  itemCount: z.number().int().nonnegative(),
+  subtotal: moneySchema,
+  discountTotal: moneySchema,
+  total: moneySchema,
+  createdAt: z.string().datetime(),
+  placedAt: z.string().datetime().nullable()
+});
+
+export type SellerOrderSummary = z.infer<
+  typeof sellerOrderSummarySchema
+>;
+
+export const sellerOrderDetailSchema = sellerOrderSummarySchema.extend({
+  items: z.array(orderItemDetailSchema),
+  statusHistory: z.array(orderStatusHistoryEntrySchema),
+  refunds: z.array(refundSummarySchema)
+});
+
+export type SellerOrderDetail = z.infer<typeof sellerOrderDetailSchema>;

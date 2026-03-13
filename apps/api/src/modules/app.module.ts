@@ -17,6 +17,7 @@ import { PaymentsModule } from "./payments/payments.module";
 import { PromotionsModule } from "./promotions/promotions.module";
 import { SearchModule } from "./search/search.module";
 import { SearchSyncModule } from "./search-sync/search-sync.module";
+import { SellerModule } from "./seller/seller.module";
 import { UsersModule } from "./users/users.module";
 
 @Module({
@@ -39,7 +40,8 @@ import { UsersModule } from "./users/users.module";
     SearchModule,
     SearchSyncModule,
     AuditModule,
-    AdminModule
+    AdminModule,
+    SellerModule
   ]
 })
 export class AppModule {}

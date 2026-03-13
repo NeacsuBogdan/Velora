@@ -13,7 +13,7 @@ export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) {}
 
   @Get("overview")
-  @Roles("ADMIN", "SELLER")
+  @Roles("ADMIN")
   getOverview(@CurrentUser() viewer: AuthenticatedUser) {
     return this.inventoryService.getOverview(viewer);
   }

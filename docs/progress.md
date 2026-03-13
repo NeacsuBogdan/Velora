@@ -11,7 +11,7 @@
 - [x] Stage 6 - Promotions and pricing engine
 - [x] Stage 7 - Customer account and order history
 - [x] Stage 8 - Admin backoffice
-- [ ] Stage 9 - Seller portal
+- [x] Stage 9 - Seller portal
 - [ ] Stage 10 - Performance, cache, query, rate limiting pass
 - [ ] Stage 11 - Test hardening, CI, docs, final polish
 
@@ -113,6 +113,16 @@
 - Added Stage 8 service coverage for category creation, inventory safety checks, guarded order-status transitions, and reindex execution, and refreshed the payment-attempt test fixture so the existing payment suite remains deterministic over time.
 - Verified `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build` successfully from the workspace root after the Stage 8 changes.
 
+### Stage 9
+
+- Added a dedicated seller module to the Nest API with seller-only endpoints for dashboard metrics, seller-scoped listings, inventory updates, order summaries, and order detail retrieval.
+- Expanded the shared contracts package with Stage 9 seller dashboard, listing, inventory-update, and seller-order payloads so the API and storefront exchange a stable merchant-facing model.
+- Implemented seller-scoped inventory mutation with reserved-stock safety checks, audit logging, inventory movements, and immediate search projection refresh after stock or lead-time changes.
+- Tightened role separation by moving merchant workflows behind `/seller/*` endpoints and removing seller access from the generic customer orders surface.
+- Built a protected seller portal inside the storefront app, including dedicated seller login, guarded seller routes, merchant overview, listing management with live inventory updates, and seller order history/detail views.
+- Added Stage 9 service coverage for seller order scoping, inventory safety checks, and hidden out-of-scope order detail access.
+- Verified `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build` successfully from the workspace root after the Stage 9 changes.
+
 ## Important implementation notes
 
 - Internal packages are designed to build independently so the apps can consume stable outputs.
@@ -129,6 +139,7 @@
 - Search-document seeding now upserts by `listingId`, which keeps repeated `pnpm db:seed` executions safe after the richer Stage 3 search projection has already been populated locally.
 - Stage 8 centralizes backoffice responsibilities behind a dedicated admin API surface, which keeps operator-only workflows out of the public and customer-facing modules while still reusing shared domain services.
 - The API Vitest configuration now aliases workspace packages to source entries, which prevents stale built contract outputs from masking runtime test failures after shared-package changes.
+- Stage 9 introduces a dedicated seller surface in both the API and storefront, which keeps merchant operations separate from customer account routes while still reusing the same session-cookie authentication model.
 
 ## Known follow-up items
 
@@ -136,3 +147,4 @@
 - Add end-to-end browser coverage for the checkout success, failure, and retry paths once the admin and seller flows are also in place.
 - Expand Stage 8 order-management tooling with shipment creation, carrier metadata, and manual exception workflows once fulfillment basics are added.
 - Add richer customer-visible shipment and return-request details once the fulfillment and seller workflow stages are in place.
+- Extend the seller portal with listing content edits, seller-facing promotion visibility, and shipment handling once fulfillment and performance stages are completed.

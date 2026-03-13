@@ -4,7 +4,7 @@ import { Button, Panel } from "@velora/ui";
 import { startTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+import { apiUrl } from "../lib/api-url";
 
 export function AdminLoginForm(): React.JSX.Element {
   const router = useRouter();

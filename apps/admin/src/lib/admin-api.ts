@@ -1,13 +1,23 @@
 import "server-only";
 
 import type {
+  AdminCatalogOptions,
+  AdminCategorySummary,
+  AdminCustomerSummary,
+  AdminDashboard,
+  AdminInventoryItem,
+  AdminOperationsOverview,
+  AdminOrderDetail,
+  AdminOrderSummary,
+  AdminProductSummary,
+  AdminSellerSummary,
   DomainOverview,
   PromotionSummary,
   SessionResponse
 } from "@velora/contracts";
 import { cookies } from "next/headers";
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+import { apiUrl } from "./api-url";
 
 function buildSessionCookieHeader(
   sessionToken?: string
@@ -56,4 +66,46 @@ export async function getPromotions(): Promise<PromotionSummary[] | null> {
 
 export async function getPromotionsOverview(): Promise<DomainOverview | null> {
   return getAuthenticatedJson<DomainOverview>("/promotions/overview");
+}
+
+export async function getAdminDashboard(): Promise<AdminDashboard | null> {
+  return getAuthenticatedJson<AdminDashboard>("/admin/dashboard");
+}
+
+export async function getAdminCatalogOptions(): Promise<AdminCatalogOptions | null> {
+  return getAuthenticatedJson<AdminCatalogOptions>("/admin/catalog-options");
+}
+
+export async function getAdminCategories(): Promise<AdminCategorySummary[] | null> {
+  return getAuthenticatedJson<AdminCategorySummary[]>("/admin/categories");
+}
+
+export async function getAdminProducts(): Promise<AdminProductSummary[] | null> {
+  return getAuthenticatedJson<AdminProductSummary[]>("/admin/products");
+}
+
+export async function getAdminInventory(): Promise<AdminInventoryItem[] | null> {
+  return getAuthenticatedJson<AdminInventoryItem[]>("/admin/inventory?lowStock=true");
+}
+
+export async function getAdminOrders(): Promise<AdminOrderSummary[] | null> {
+  return getAuthenticatedJson<AdminOrderSummary[]>("/admin/orders");
+}
+
+export async function getAdminOrderDetail(
+  number: string
+): Promise<AdminOrderDetail | null> {
+  return getAuthenticatedJson<AdminOrderDetail>(`/admin/orders/${number}`);
+}
+
+export async function getAdminCustomers(): Promise<AdminCustomerSummary[] | null> {
+  return getAuthenticatedJson<AdminCustomerSummary[]>("/admin/customers");
+}
+
+export async function getAdminSellers(): Promise<AdminSellerSummary[] | null> {
+  return getAuthenticatedJson<AdminSellerSummary[]>("/admin/sellers");
+}
+
+export async function getAdminOperations(): Promise<AdminOperationsOverview | null> {
+  return getAuthenticatedJson<AdminOperationsOverview>("/admin/operations");
 }

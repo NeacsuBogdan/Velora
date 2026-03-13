@@ -16,16 +16,35 @@ import {
 export class SearchProjectionService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async collectDocuments() {
-    const listings = await this.prisma.sellerProductListing.findMany({
+  private async findProjectionListings(where?: Prisma.SellerProductListingWhereInput) {
+    return this.prisma.sellerProductListing.findMany({
       where: {
         isActive: true,
         status: "ACTIVE",
         product: {
           status: "ACTIVE"
-        }
+        },
+        ...where
       },
       include: searchProjectionListingInclude.include
+    });
+  }
+
+  async collectDocuments() {
+    const listings = await this.findProjectionListings();
+
+    return listings.map((listing) => buildSearchDocument(listing));
+  }
+
+  async collectDocumentsByListingIds(listingIds: string[]) {
+    if (listingIds.length === 0) {
+      return [];
+    }
+
+    const listings = await this.findProjectionListings({
+      id: {
+        in: listingIds
+      }
     });
 
     return listings.map((listing) => buildSearchDocument(listing));
@@ -50,6 +69,22 @@ export class SearchProjectionService {
         }
       });
     }
+  }
+
+  async removeProjectionRecords(listingIds: string[]) {
+    if (listingIds.length === 0) {
+      return 0;
+    }
+
+    const result = await this.prisma.searchDocument.deleteMany({
+      where: {
+        listingId: {
+          in: listingIds
+        }
+      }
+    });
+
+    return result.count;
   }
 }
 

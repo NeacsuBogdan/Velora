@@ -16,6 +16,7 @@ const viewer: AuthenticatedUser = {
     }
   ]
 };
+const reservationExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
 function createCheckoutDetail(overrides: Record<string, unknown> = {}) {
   return {
@@ -26,7 +27,7 @@ function createCheckoutDetail(overrides: Record<string, unknown> = {}) {
       amount: 329900,
       currency: "RON"
     },
-    reservationExpiresAt: "2026-03-12T10:15:00.000Z",
+    reservationExpiresAt: reservationExpiresAt.toISOString(),
     reservations: [],
     discounts: [],
     paymentAttempts: [],
@@ -195,7 +196,7 @@ describe("PaymentsService", () => {
       userId: "user-1",
       amount: 329900,
       currency: "RON",
-      reservationExpiresAt: new Date("2026-03-12T10:15:00.000Z"),
+      reservationExpiresAt,
       order: null,
       reservations: [{ id: "reservation-1", quantity: 1 }]
     });

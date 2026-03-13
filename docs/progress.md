@@ -10,7 +10,7 @@
 - [x] Stage 5 - Checkout, orders, payments
 - [x] Stage 6 - Promotions and pricing engine
 - [x] Stage 7 - Customer account and order history
-- [ ] Stage 8 - Admin backoffice
+- [x] Stage 8 - Admin backoffice
 - [ ] Stage 9 - Seller portal
 - [ ] Stage 10 - Performance, cache, query, rate limiting pass
 - [ ] Stage 11 - Test hardening, CI, docs, final polish
@@ -104,6 +104,15 @@
 - Enriched the deterministic seed set with default customer shipping and billing addresses plus a richer bootstrap order timeline, and fixed the search projection seed path so reseeding stays idempotent.
 - Verified the recovered local infrastructure path by running `pnpm db:migrate` and `pnpm db:seed`, then reran `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build` successfully from the workspace root.
 
+### Stage 8
+
+- Added a dedicated admin module to the Nest API with admin-only endpoints for dashboard metrics, category CRUD, product CRUD, inventory adjustments, order management, customer lookup, seller management, and operational tooling.
+- Expanded the shared contracts package with Stage 8 admin payloads so the backoffice, API, and future test coverage now share a stable management model rather than ad hoc response shapes.
+- Extended the search projection services with targeted sync, removal, and full-index replacement flows so admin catalog, seller, and inventory changes keep the search projection recoverable and coherent.
+- Rebuilt the admin app into a full backoffice workspace that now includes category management, product management, inventory management, order operations with refund actions, customer lookup, seller controls, operations tooling, and the existing promotion console.
+- Added Stage 8 service coverage for category creation, inventory safety checks, guarded order-status transitions, and reindex execution, and refreshed the payment-attempt test fixture so the existing payment suite remains deterministic over time.
+- Verified `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build` successfully from the workspace root after the Stage 8 changes.
+
 ## Important implementation notes
 
 - Internal packages are designed to build independently so the apps can consume stable outputs.
@@ -118,10 +127,12 @@
 - Stage 7 extends the customer account surface with dedicated user profile and address endpoints, so storefront account pages no longer depend on placeholder shell copy for personal data management.
 - Storefront and admin typecheck scripts now run with `--incremental false`, which avoids stale Windows-specific TypeScript cache diagnostics during repeated verification passes.
 - Search-document seeding now upserts by `listingId`, which keeps repeated `pnpm db:seed` executions safe after the richer Stage 3 search projection has already been populated locally.
+- Stage 8 centralizes backoffice responsibilities behind a dedicated admin API surface, which keeps operator-only workflows out of the public and customer-facing modules while still reusing shared domain services.
+- The API Vitest configuration now aliases workspace packages to source entries, which prevents stale built contract outputs from masking runtime test failures after shared-package changes.
 
 ## Known follow-up items
 
 - Extend Stage 5 refund handling into richer administrative flows and customer-facing refund visibility in later account and backoffice stages.
 - Add end-to-end browser coverage for the checkout success, failure, and retry paths once the admin and seller flows are also in place.
-- Expand Stage 8 order-management tooling so backoffice users can act on the same status and refund information now exposed in the customer account area.
+- Expand Stage 8 order-management tooling with shipment creation, carrier metadata, and manual exception workflows once fulfillment basics are added.
 - Add richer customer-visible shipment and return-request details once the fulfillment and seller workflow stages are in place.

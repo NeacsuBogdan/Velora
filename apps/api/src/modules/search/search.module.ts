@@ -9,6 +9,6 @@ import { SearchProjectionService, SearchService } from "./search.service";
   imports: [DatabaseModule],
   controllers: [SearchController],
   providers: [OpenSearchService, SearchProjectionService, SearchService],
-  exports: [SearchProjectionService]
+  exports: [OpenSearchService, SearchProjectionService]
 })
 export class SearchModule {}

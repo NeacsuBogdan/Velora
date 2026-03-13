@@ -1,4 +1,4 @@
-import { userRoles } from "@velora/domain";
+import { productStatuses, sellerStatuses, userRoles } from "@velora/domain";
 import { z } from "zod";
 
 export const healthResponseSchema = z.object({
@@ -189,6 +189,12 @@ export const availabilitySummarySchema = z.object({
 export type AvailabilitySummary = z.infer<
   typeof availabilitySummarySchema
 >;
+
+export const productStatusSchema = z.enum(productStatuses);
+export type ProductStatus = z.infer<typeof productStatusSchema>;
+
+export const sellerStatusSchema = z.enum(sellerStatuses);
+export type SellerStatus = z.infer<typeof sellerStatusSchema>;
 
 export const namedReferenceSchema = z.object({
   slug: z.string(),
@@ -814,4 +820,385 @@ export const releaseReservationsResponseSchema = z.object({
 
 export type ReleaseReservationsResponse = z.infer<
   typeof releaseReservationsResponseSchema
+>;
+
+export const adminDashboardSchema = z.object({
+  generatedAt: z.string().datetime(),
+  metrics: z.object({
+    categories: z.number().int().nonnegative(),
+    products: z.number().int().nonnegative(),
+    activeListings: z.number().int().nonnegative(),
+    lowStockListings: z.number().int().nonnegative(),
+    pendingOrders: z.number().int().nonnegative(),
+    customers: z.number().int().nonnegative(),
+    sellers: z.number().int().nonnegative(),
+    activePromotions: z.number().int().nonnegative(),
+    openCheckouts: z.number().int().nonnegative()
+  }),
+  notes: z.array(z.string())
+});
+
+export type AdminDashboard = z.infer<typeof adminDashboardSchema>;
+
+export const adminCategorySummarySchema = z.object({
+  categoryId: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  description: z.string(),
+  parentId: z.string().nullable(),
+  parentName: z.string().nullable(),
+  sortOrder: z.number().int().nonnegative(),
+  isActive: z.boolean(),
+  productCount: z.number().int().nonnegative(),
+  childCount: z.number().int().nonnegative(),
+  updatedAt: z.string().datetime()
+});
+
+export type AdminCategorySummary = z.infer<
+  typeof adminCategorySummarySchema
+>;
+
+export const upsertAdminCategoryRequestSchema = z.object({
+  name: z.string().trim().min(2).max(80),
+  slug: z
+    .string()
+    .trim()
+    .min(2)
+    .max(80)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  description: z.string().trim().min(8).max(240),
+  parentId: z.string().cuid().nullable().optional(),
+  sortOrder: z.number().int().min(0).max(10_000),
+  isActive: z.boolean().default(true)
+});
+
+export type UpsertAdminCategoryRequest = z.infer<
+  typeof upsertAdminCategoryRequestSchema
+>;
+
+export const adminCatalogOptionsSchema = z.object({
+  categories: z.array(
+    z.object({
+      categoryId: z.string(),
+      name: z.string(),
+      slug: z.string(),
+      parentId: z.string().nullable(),
+      isActive: z.boolean()
+    })
+  ),
+  brands: z.array(
+    z.object({
+      brandId: z.string(),
+      name: z.string(),
+      slug: z.string()
+    })
+  ),
+  sellers: z.array(
+    z.object({
+      sellerId: z.string(),
+      displayName: z.string(),
+      status: sellerStatusSchema
+    })
+  )
+});
+
+export type AdminCatalogOptions = z.infer<
+  typeof adminCatalogOptionsSchema
+>;
+
+export const adminProductSummarySchema = z.object({
+  productId: z.string(),
+  listingId: z.string().nullable(),
+  title: z.string(),
+  slug: z.string(),
+  description: z.string(),
+  status: productStatusSchema,
+  categoryId: z.string().nullable(),
+  categoryName: z.string().nullable(),
+  brandName: z.string().nullable(),
+  sellerId: z.string().nullable(),
+  sellerName: z.string().nullable(),
+  sellerSku: z.string().nullable(),
+  variantTitle: z.string().nullable(),
+  leadTimeDays: z.number().int().positive().nullable(),
+  price: moneySchema.nullable(),
+  compareAtPrice: moneySchema.nullable(),
+  inventory: z
+    .object({
+      onHand: z.number().int().nonnegative(),
+      reserved: z.number().int().nonnegative(),
+      safetyStock: z.number().int().nonnegative(),
+      availableQuantity: z.number().int().nonnegative()
+    })
+    .nullable(),
+  listingCount: z.number().int().nonnegative(),
+  image: mediaAssetSchema.nullable(),
+  updatedAt: z.string().datetime()
+});
+
+export type AdminProductSummary = z.infer<
+  typeof adminProductSummarySchema
+>;
+
+export const upsertAdminProductRequestSchema = z
+  .object({
+    listingId: z.string().cuid().nullable().optional(),
+    title: z.string().trim().min(3).max(160),
+    slug: z
+      .string()
+      .trim()
+      .min(3)
+      .max(160)
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+    description: z.string().trim().min(16).max(4_000),
+    status: productStatusSchema,
+    categoryId: z.string().cuid().nullable().optional(),
+    brandName: z.string().trim().max(80).nullable().optional(),
+    sellerId: z.string().cuid(),
+    sellerSku: z.string().trim().min(3).max(120),
+    variantTitle: z.string().trim().max(120).nullable().optional(),
+    leadTimeDays: z.number().int().min(1).max(30),
+    priceAmount: z.number().int().nonnegative(),
+    compareAtAmount: z.number().int().nonnegative().nullable().optional(),
+    onHand: z.number().int().nonnegative(),
+    safetyStock: z.number().int().nonnegative(),
+    imageUrl: z.string().url().nullable().optional(),
+    imageAlt: z.string().trim().max(160).nullable().optional()
+  })
+  .superRefine((value, context) => {
+    if (
+      value.compareAtAmount !== null &&
+      value.compareAtAmount !== undefined &&
+      value.compareAtAmount < value.priceAmount
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["compareAtAmount"],
+        message: "Compare-at amount must be greater than or equal to the current price."
+      });
+    }
+  });
+
+export type UpsertAdminProductRequest = z.infer<
+  typeof upsertAdminProductRequestSchema
+>;
+
+export const adminInventoryItemSchema = z.object({
+  inventoryItemId: z.string(),
+  listingId: z.string(),
+  productId: z.string(),
+  productTitle: z.string(),
+  productSlug: z.string(),
+  sellerId: z.string(),
+  sellerName: z.string(),
+  sellerSku: z.string(),
+  status: productStatusSchema,
+  onHand: z.number().int().nonnegative(),
+  reserved: z.number().int().nonnegative(),
+  safetyStock: z.number().int().nonnegative(),
+  availableQuantity: z.number().int().nonnegative(),
+  leadTimeDays: z.number().int().positive(),
+  updatedAt: z.string().datetime()
+});
+
+export type AdminInventoryItem = z.infer<
+  typeof adminInventoryItemSchema
+>;
+
+export const updateAdminInventoryRequestSchema = z.object({
+  onHand: z.number().int().nonnegative(),
+  safetyStock: z.number().int().nonnegative(),
+  leadTimeDays: z.number().int().min(1).max(30),
+  note: z.string().trim().max(240).nullable().optional()
+});
+
+export type UpdateAdminInventoryRequest = z.infer<
+  typeof updateAdminInventoryRequestSchema
+>;
+
+export const adminOrderPartySchema = z.object({
+  id: z.string(),
+  label: z.string()
+});
+
+export type AdminOrderParty = z.infer<typeof adminOrderPartySchema>;
+
+export const adminOrderSummarySchema = z.object({
+  orderId: z.string(),
+  number: z.string(),
+  status: orderStatusSchema,
+  paymentStatus: paymentStatusSchema,
+  total: moneySchema,
+  itemCount: z.number().int().nonnegative(),
+  customer: adminOrderPartySchema.nullable(),
+  seller: adminOrderPartySchema.nullable(),
+  createdAt: z.string().datetime(),
+  placedAt: z.string().datetime().nullable(),
+  updatedAt: z.string().datetime()
+});
+
+export type AdminOrderSummary = z.infer<
+  typeof adminOrderSummarySchema
+>;
+
+export const adminOrderDetailSchema = adminOrderSummarySchema.extend({
+  subtotal: moneySchema,
+  discountTotal: moneySchema,
+  items: z.array(orderItemDetailSchema),
+  discounts: z.array(appliedDiscountSummarySchema),
+  statusHistory: z.array(orderStatusHistoryEntrySchema),
+  refunds: z.array(refundSummarySchema)
+});
+
+export type AdminOrderDetail = z.infer<typeof adminOrderDetailSchema>;
+
+export const updateAdminOrderStatusRequestSchema = z.object({
+  status: orderStatusSchema,
+  note: z.string().trim().max(240).nullable().optional()
+});
+
+export type UpdateAdminOrderStatusRequest = z.infer<
+  typeof updateAdminOrderStatusRequestSchema
+>;
+
+export const adminCustomerSummarySchema = z.object({
+  userId: z.string(),
+  email: z.string().email(),
+  fullName: z.string(),
+  isActive: z.boolean(),
+  roles: z.array(z.enum(userRoles)),
+  orderCount: z.number().int().nonnegative(),
+  totalSpent: moneySchema,
+  lastOrderAt: z.string().datetime().nullable(),
+  createdAt: z.string().datetime()
+});
+
+export type AdminCustomerSummary = z.infer<
+  typeof adminCustomerSummarySchema
+>;
+
+export const adminSellerSummarySchema = z.object({
+  sellerId: z.string(),
+  slug: z.string(),
+  displayName: z.string(),
+  legalName: z.string(),
+  contactEmail: z.string().email(),
+  status: sellerStatusSchema,
+  ownerUserEmail: z.string().email().nullable(),
+  listingCount: z.number().int().nonnegative(),
+  activeListings: z.number().int().nonnegative(),
+  lowStockListings: z.number().int().nonnegative(),
+  updatedAt: z.string().datetime()
+});
+
+export type AdminSellerSummary = z.infer<
+  typeof adminSellerSummarySchema
+>;
+
+export const updateAdminSellerRequestSchema = z.object({
+  displayName: z.string().trim().min(3).max(120),
+  legalName: z.string().trim().min(3).max(160),
+  contactEmail: z.string().trim().email(),
+  status: sellerStatusSchema
+});
+
+export type UpdateAdminSellerRequest = z.infer<
+  typeof updateAdminSellerRequestSchema
+>;
+
+export const adminReindexJobSummarySchema = z.object({
+  jobId: z.string(),
+  scope: z.string(),
+  status: z.enum(["PENDING", "RUNNING", "SUCCEEDED", "FAILED"]),
+  requestedByEmail: z.string().email().nullable(),
+  createdAt: z.string().datetime(),
+  startedAt: z.string().datetime().nullable(),
+  finishedAt: z.string().datetime().nullable(),
+  errorMessage: z.string().nullable()
+});
+
+export type AdminReindexJobSummary = z.infer<
+  typeof adminReindexJobSummarySchema
+>;
+
+export const adminSearchSyncLogSchema = z.object({
+  logId: z.string(),
+  listingId: z.string().nullable(),
+  documentId: z.string().nullable(),
+  status: z.enum(["PENDING", "INDEXED", "FAILED"]),
+  message: z.string().nullable(),
+  createdAt: z.string().datetime()
+});
+
+export type AdminSearchSyncLog = z.infer<
+  typeof adminSearchSyncLogSchema
+>;
+
+export const adminAuditLogSummarySchema = z.object({
+  auditLogId: z.string(),
+  actorEmail: z.string().email().nullable(),
+  entityType: z.string(),
+  entityId: z.string(),
+  action: z.string(),
+  createdAt: z.string().datetime()
+});
+
+export type AdminAuditLogSummary = z.infer<
+  typeof adminAuditLogSummarySchema
+>;
+
+export const adminWebhookDeliverySummarySchema = z.object({
+  webhookDeliveryId: z.string(),
+  provider: z.string(),
+  externalEventId: z.string(),
+  status: z.enum(["RECEIVED", "PROCESSED", "DUPLICATE", "FAILED"]),
+  receivedAt: z.string().datetime(),
+  processedAt: z.string().datetime().nullable()
+});
+
+export type AdminWebhookDeliverySummary = z.infer<
+  typeof adminWebhookDeliverySummarySchema
+>;
+
+export const adminOperationsOverviewSchema = z.object({
+  metrics: z.object({
+    searchDocuments: z.number().int().nonnegative(),
+    reindexJobs: z.number().int().nonnegative(),
+    pendingSyncLogs: z.number().int().nonnegative(),
+    failedSyncLogs: z.number().int().nonnegative(),
+    auditLogs: z.number().int().nonnegative(),
+    webhookDeliveries: z.number().int().nonnegative(),
+    activeReservations: z.number().int().nonnegative()
+  }),
+  recentReindexJobs: z.array(adminReindexJobSummarySchema),
+  recentSyncLogs: z.array(adminSearchSyncLogSchema),
+  recentAuditLogs: z.array(adminAuditLogSummarySchema),
+  recentWebhookDeliveries: z.array(adminWebhookDeliverySummarySchema)
+});
+
+export type AdminOperationsOverview = z.infer<
+  typeof adminOperationsOverviewSchema
+>;
+
+export const triggerReindexRequestSchema = z.object({
+  scope: z.string().trim().min(3).max(80).default("catalog-full")
+});
+
+export type TriggerReindexRequest = z.infer<
+  typeof triggerReindexRequestSchema
+>;
+
+export const triggerReindexResponseSchema = z.object({
+  jobId: z.string(),
+  scope: z.string(),
+  processedDocuments: z.number().int().nonnegative(),
+  indexedDocuments: z.number().int().nonnegative(),
+  status: z.enum(["SUCCEEDED", "FAILED"]),
+  startedAt: z.string().datetime(),
+  finishedAt: z.string().datetime(),
+  errorMessage: z.string().nullable()
+});
+
+export type TriggerReindexResponse = z.infer<
+  typeof triggerReindexResponseSchema
 >;

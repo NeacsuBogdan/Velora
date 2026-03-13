@@ -3,6 +3,7 @@ import { ConfigModule } from "@nestjs/config";
 
 import { createEnv, apiEnvSchema } from "@velora/config";
 
+import { AdminModule } from "./admin/admin.module";
 import { AuditModule } from "./audit/audit.module";
 import { AuthModule } from "./auth/auth.module";
 import { CartModule } from "./cart/cart.module";
@@ -37,7 +38,8 @@ import { UsersModule } from "./users/users.module";
     PromotionsModule,
     SearchModule,
     SearchSyncModule,
-    AuditModule
+    AuditModule,
+    AdminModule
   ]
 })
 export class AppModule {}

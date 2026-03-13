@@ -266,6 +266,27 @@ export class OpenSearchService {
     return true;
   }
 
+  private async recreateIndex() {
+    if (!this.client) {
+      return false;
+    }
+
+    const exists = this.unwrap(
+      await this.client.indices.exists({
+        index: this.indexName
+      })
+    );
+
+    if (exists) {
+      await this.client.indices.delete({
+        index: this.indexName
+      });
+    }
+
+    this.projectionReady = false;
+    return this.ensureIndex();
+  }
+
   async syncDocuments(
     documents: SearchProjectionDocument[],
     options?: { force?: boolean }
@@ -301,6 +322,67 @@ export class OpenSearchService {
     });
 
     this.projectionReady = true;
+    return true;
+  }
+
+  async replaceDocuments(documents: SearchProjectionDocument[]) {
+    if (!this.client) {
+      return false;
+    }
+
+    await this.recreateIndex();
+
+    if (documents.length === 0) {
+      this.projectionReady = true;
+      return true;
+    }
+
+    const body = documents.flatMap((document) => [
+      {
+        index: {
+          _index: this.indexName,
+          _id: document.listingId
+        }
+      },
+      document
+    ]);
+
+    await this.client.bulk({
+      refresh: true,
+      body
+    });
+
+    this.projectionReady = true;
+    return true;
+  }
+
+  async removeDocuments(listingIds: string[]) {
+    if (!this.client || listingIds.length === 0) {
+      return false;
+    }
+
+    const exists = this.unwrap(
+      await this.client.indices.exists({
+        index: this.indexName
+      })
+    );
+
+    if (!exists) {
+      return true;
+    }
+
+    await this.client.bulk({
+      refresh: true,
+      body: listingIds.flatMap((listingId) => [
+        {
+          delete: {
+            _index: this.indexName,
+            _id: listingId
+          }
+        }
+      ])
+    });
+
     return true;
   }
 

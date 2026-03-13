@@ -60,6 +60,9 @@ export const promotionStackingModes = ["STACKABLE", "EXCLUSIVE"] as const;
 export type PromotionStackingMode =
   (typeof promotionStackingModes)[number];
 
+export const sellerStatuses = ["PENDING", "ACTIVE", "SUSPENDED"] as const;
+export type SellerStatus = (typeof sellerStatuses)[number];
+
 export interface Money {
   amount: number;
   currency: "RON" | "EUR";

@@ -347,6 +347,7 @@ model SellerProductListing {
   variant        ProductVariant?       @relation(fields: [variantId], references: [id], onDelete: SetNull)
 
   @@index([sellerId, status])
+  @@index([productId, isActive, status])
   @@index([productId])
 }
 
@@ -456,6 +457,7 @@ model StockReservation {
   movements         InventoryMovement[]
 
   @@index([inventoryItemId, status])
+  @@index([checkoutSessionId, status])
   @@index([expiresAt])
 }
 
@@ -605,6 +607,7 @@ model Order {
   user              User?                   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId, status])
+  @@index([userId, createdAt])
 }
 
 model OrderItem {
@@ -626,6 +629,7 @@ model OrderItem {
   variant              ProductVariant?      @relation(fields: [variantId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
+  @@index([listingId, orderId])
 }
 
 model OrderStatusHistory {

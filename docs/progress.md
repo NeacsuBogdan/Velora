@@ -12,7 +12,7 @@
 - [x] Stage 7 - Customer account and order history
 - [x] Stage 8 - Admin backoffice
 - [x] Stage 9 - Seller portal
-- [ ] Stage 10 - Performance, cache, query, rate limiting pass
+- [x] Stage 10 - Performance, cache, query, rate limiting pass
 - [ ] Stage 11 - Test hardening, CI, docs, final polish
 
 ## Completed milestones
@@ -123,6 +123,17 @@
 - Added Stage 9 service coverage for seller order scoping, inventory safety checks, and hidden out-of-scope order detail access.
 - Verified `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build` successfully from the workspace root after the Stage 9 changes.
 
+### Stage 10
+
+- Added a Redis-backed platform cache service with in-memory fallback plus a dedicated rate-limit module for sensitive commerce and authentication endpoints.
+- Added route-level rate limiting for login, coupon application, checkout-session creation, payment-attempt creation, and payment confirmation flows.
+- Cached public catalog overview, navigation, category detail, product detail, and search-query responses, and added cache invalidation hooks for admin and seller mutations that affect public read models.
+- Reworked the search service to read from persisted `SearchDocument` projections instead of rebuilding relational listing projections on every query, while keeping OpenSearch fallback behavior intact.
+- Added Stage 10 hot-path indexes for product-offer lookups, checkout reservation reads, customer order history, and seller-order joins, and added a `pnpm perf:smoke` script for EXPLAIN-based query review.
+- Added Stage 10 rate-limit unit coverage and documented the cache/query strategy in `docs/scaling-notes.md`.
+- Verified `pnpm --filter @velora/api lint`, `pnpm --filter @velora/api typecheck`, plus root `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.
+- Attempted `pnpm db:migrate` and `pnpm perf:smoke`, but local infrastructure verification was blocked because PostgreSQL on `localhost:5433` and Docker Desktop were unavailable during this session.
+
 ## Important implementation notes
 
 - Internal packages are designed to build independently so the apps can consume stable outputs.
@@ -140,6 +151,7 @@
 - Stage 8 centralizes backoffice responsibilities behind a dedicated admin API surface, which keeps operator-only workflows out of the public and customer-facing modules while still reusing shared domain services.
 - The API Vitest configuration now aliases workspace packages to source entries, which prevents stale built contract outputs from masking runtime test failures after shared-package changes.
 - Stage 9 introduces a dedicated seller surface in both the API and storefront, which keeps merchant operations separate from customer account routes while still reusing the same session-cookie authentication model.
+- Stage 10 shifts public catalog and search hot paths onto Redis-backed caching and persisted search projections, which reduces repeated relational work while keeping an in-memory fallback for local development when Redis is unavailable.
 
 ## Known follow-up items
 
@@ -148,3 +160,4 @@
 - Expand Stage 8 order-management tooling with shipment creation, carrier metadata, and manual exception workflows once fulfillment basics are added.
 - Add richer customer-visible shipment and return-request details once the fulfillment and seller workflow stages are in place.
 - Extend the seller portal with listing content edits, seller-facing promotion visibility, and shipment handling once fulfillment and performance stages are completed.
+- Run the new Stage 10 migration and `pnpm perf:smoke` once local infrastructure is available again so the EXPLAIN output can be captured alongside the committed query-review notes.

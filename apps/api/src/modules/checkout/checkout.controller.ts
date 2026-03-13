@@ -9,7 +9,9 @@ import {
 import type { AuthenticatedUser } from "@velora/contracts";
 
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
+import { RateLimit } from "../../common/decorators/rate-limit.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
+import { RateLimitGuard } from "../../common/guards/rate-limit.guard";
 import { RolesGuard } from "../../common/guards/roles.guard";
 import { SessionAuthGuard } from "../../common/guards/session-auth.guard";
 import { CheckoutService } from "./checkout.service";
@@ -26,6 +28,8 @@ export class CheckoutController {
   }
 
   @Post("sessions")
+  @UseGuards(RateLimitGuard)
+  @RateLimit("CHECKOUT_CREATE")
   @Roles("CUSTOMER")
   createCheckoutSession(
     @CurrentUser() viewer: AuthenticatedUser,

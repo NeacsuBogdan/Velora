@@ -19,6 +19,7 @@
     "typecheck": "turbo typecheck",
     "test": "turbo test",
     "test:e2e": "playwright test --pass-with-no-tests",
+    "perf:smoke": "pnpm --filter @velora/api perf:smoke",
     "db:migrate": "pnpm --filter @velora/api db:migrate",
     "db:seed": "pnpm --filter @velora/api db:seed",
     "infra:up": "docker compose up -d",

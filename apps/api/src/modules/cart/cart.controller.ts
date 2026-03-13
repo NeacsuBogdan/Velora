@@ -11,7 +11,9 @@ import {
 import type { AuthenticatedUser } from "@velora/contracts";
 
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
+import { RateLimit } from "../../common/decorators/rate-limit.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
+import { RateLimitGuard } from "../../common/guards/rate-limit.guard";
 import { RolesGuard } from "../../common/guards/roles.guard";
 import { SessionAuthGuard } from "../../common/guards/session-auth.guard";
 import { CartService } from "./cart.service";
@@ -40,6 +42,8 @@ export class CartController {
   }
 
   @Post("coupon")
+  @UseGuards(RateLimitGuard)
+  @RateLimit("CART_COUPON")
   @Roles("CUSTOMER")
   applyCoupon(
     @CurrentUser() viewer: AuthenticatedUser,

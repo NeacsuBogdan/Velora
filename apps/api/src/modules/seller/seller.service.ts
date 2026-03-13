@@ -11,6 +11,7 @@ import {
 
 import { AuditService } from "../audit/audit.service";
 import { PrismaService } from "../database/prisma.service";
+import { PlatformCacheService } from "../platform-cache/platform-cache.service";
 import { calculateAvailableQuantity } from "../search/search.helpers";
 import { OpenSearchService } from "../search/opensearch.service";
 import { SearchProjectionService } from "../search/search.service";
@@ -28,7 +29,8 @@ export class SellerService {
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
     private readonly projectionService: SearchProjectionService,
-    private readonly openSearchService: OpenSearchService
+    private readonly openSearchService: OpenSearchService,
+    private readonly cacheService: PlatformCacheService
   ) {}
 
   async getDashboard(viewer: AuthenticatedUser) {
@@ -233,6 +235,7 @@ export class SellerService {
     });
 
     await this.syncListings([inventoryItem.listingId], viewer.id, "Seller inventory updated.");
+    await this.invalidateStorefrontReadCaches();
 
     const listing = await this.prisma.sellerProductListing.findUniqueOrThrow({
       where: {
@@ -340,5 +343,9 @@ export class SellerService {
         message
       }
     );
+  }
+
+  private async invalidateStorefrontReadCaches() {
+    await this.cacheService.deleteByPrefix(["catalog:", "search:query:"]);
   }
 }

@@ -14,7 +14,9 @@ import { HealthModule } from "./health/health.module";
 import { InventoryModule } from "./inventory/inventory.module";
 import { OrdersModule } from "./orders/orders.module";
 import { PaymentsModule } from "./payments/payments.module";
+import { PlatformCacheModule } from "./platform-cache/platform-cache.module";
 import { PromotionsModule } from "./promotions/promotions.module";
+import { RateLimitModule } from "./rate-limit/rate-limit.module";
 import { SearchModule } from "./search/search.module";
 import { SearchSyncModule } from "./search-sync/search-sync.module";
 import { SellerModule } from "./seller/seller.module";
@@ -27,6 +29,8 @@ import { UsersModule } from "./users/users.module";
       validate: (config) => createEnv(apiEnvSchema, config)
     }),
     DatabaseModule,
+    PlatformCacheModule,
+    RateLimitModule,
     HealthModule,
     AuthModule,
     UsersModule,

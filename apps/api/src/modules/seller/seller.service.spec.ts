@@ -71,17 +71,22 @@ function createService() {
   const openSearchService = {
     syncDocuments: vi.fn()
   };
+  const cacheService = {
+    deleteByPrefix: vi.fn()
+  };
 
   return {
     prisma,
     auditService,
     projectionService,
     openSearchService,
+    cacheService,
     service: new SellerService(
       prisma as never,
       auditService as never,
       projectionService as never,
-      openSearchService as never
+      openSearchService as never,
+      cacheService as never
     )
   };
 }

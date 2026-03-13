@@ -12,7 +12,9 @@ import type { AuthenticatedUser } from "@velora/contracts";
 
 import type { AuthenticatedRequest } from "../../common/authenticated-request";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
+import { RateLimit } from "../../common/decorators/rate-limit.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
+import { RateLimitGuard } from "../../common/guards/rate-limit.guard";
 import { RolesGuard } from "../../common/guards/roles.guard";
 import { SessionAuthGuard } from "../../common/guards/session-auth.guard";
 import { PaymentsService } from "./payments.service";
@@ -29,7 +31,8 @@ export class PaymentsController {
   }
 
   @Post("checkout-sessions/:checkoutSessionId/attempts")
-  @UseGuards(SessionAuthGuard, RolesGuard)
+  @UseGuards(SessionAuthGuard, RolesGuard, RateLimitGuard)
+  @RateLimit("PAYMENT_ATTEMPT_CREATE")
   @Roles("CUSTOMER")
   createPaymentAttempt(
     @CurrentUser() viewer: AuthenticatedUser,
@@ -44,7 +47,8 @@ export class PaymentsController {
   }
 
   @Post("attempts/:attemptId/confirm")
-  @UseGuards(SessionAuthGuard, RolesGuard)
+  @UseGuards(SessionAuthGuard, RolesGuard, RateLimitGuard)
+  @RateLimit("PAYMENT_ATTEMPT_CONFIRM")
   @Roles("CUSTOMER")
   confirmPaymentAttempt(
     @CurrentUser() viewer: AuthenticatedUser,

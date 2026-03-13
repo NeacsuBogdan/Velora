@@ -135,6 +135,15 @@ export interface SearchProjectionDocument extends ProductListItem {
   searchText: string;
 }
 
+export const searchProjectionDocumentSchema = productListItemSchema.extend({
+  brandFacet: z.string().nullable(),
+  categoryFacet: z.string().nullable(),
+  categoryPathSlugs: z.array(z.string()),
+  availabilityKey: z.enum(["in_stock", "out_of_stock"]),
+  createdAt: z.string().datetime(),
+  searchText: z.string()
+});
+
 const sortOptions = [
   {
     value: "relevance",

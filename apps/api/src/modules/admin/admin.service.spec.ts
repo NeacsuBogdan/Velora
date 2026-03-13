@@ -56,6 +56,9 @@ function createService() {
   const openSearchService = {
     replaceDocuments: vi.fn()
   };
+  const cacheService = {
+    deleteByPrefix: vi.fn()
+  };
 
   return {
     prisma,
@@ -63,12 +66,14 @@ function createService() {
     inventoryService,
     projectionService,
     openSearchService,
+    cacheService,
     service: new AdminService(
       prisma as never,
       auditService as never,
       inventoryService as never,
       projectionService as never,
-      openSearchService as never
+      openSearchService as never,
+      cacheService as never
     )
   };
 }

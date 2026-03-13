@@ -23,6 +23,7 @@ import { z } from "zod";
 import { AuditService } from "../audit/audit.service";
 import { PrismaService } from "../database/prisma.service";
 import { InventoryService } from "../inventory/inventory.service";
+import { PlatformCacheService } from "../platform-cache/platform-cache.service";
 import { OpenSearchService } from "../search/opensearch.service";
 import { SearchProjectionService } from "../search/search.service";
 import {
@@ -129,7 +130,8 @@ export class AdminService {
     private readonly auditService: AuditService,
     private readonly inventoryService: InventoryService,
     private readonly projectionService: SearchProjectionService,
-    private readonly openSearchService: OpenSearchService
+    private readonly openSearchService: OpenSearchService,
+    private readonly cacheService: PlatformCacheService
   ) {}
 
   async getDashboard() {
@@ -310,6 +312,8 @@ export class AdminService {
       slug: category.slug
     });
 
+    await this.invalidateStorefrontReadCaches();
+
     return mapAdminCategorySummary(category);
   }
 
@@ -366,6 +370,7 @@ export class AdminService {
 
     const branchListingIds = await this.findListingIdsByCategoryBranch(categoryId);
     await this.syncListings(branchListingIds, viewer.id, "Category metadata refreshed.");
+    await this.invalidateStorefrontReadCaches();
 
     return mapAdminCategorySummary(category);
   }
@@ -404,6 +409,7 @@ export class AdminService {
     await this.auditService.record(viewer.id, "CATEGORY", categoryId, "CATEGORY_DELETED", {
       slug: category.slug
     });
+    await this.invalidateStorefrontReadCaches();
 
     return {
       deletedCategoryId: categoryId
@@ -565,6 +571,8 @@ export class AdminService {
     if (primaryListing && product.status === "ACTIVE") {
       await this.syncListings([primaryListing.id], viewer.id, "Product created.");
     }
+
+    await this.invalidateStorefrontReadCaches();
 
     return mapAdminProductSummary(product);
   }
@@ -822,6 +830,8 @@ export class AdminService {
       await this.syncListings(listingIds, viewer.id, "Product updated.");
     }
 
+    await this.invalidateStorefrontReadCaches();
+
     return mapAdminProductSummary(product);
   }
 
@@ -877,6 +887,7 @@ export class AdminService {
     });
 
     await this.removeListingsFromSearch(listingIds, viewer.id, "Product archived.");
+    await this.invalidateStorefrontReadCaches();
 
     return mapAdminProductSummary(product);
   }
@@ -1019,6 +1030,7 @@ export class AdminService {
     });
 
     await this.syncListings([updatedInventoryItem.listingId], viewer.id, "Inventory updated.");
+    await this.invalidateStorefrontReadCaches();
 
     return mapAdminInventoryItem({
       ...updatedInventoryItem,
@@ -1363,6 +1375,8 @@ export class AdminService {
         `Seller moved to ${input.status}.`
       );
     }
+
+    await this.invalidateStorefrontReadCaches();
 
     return mapAdminSellerSummary({
       ...updatedSeller,
@@ -1860,5 +1874,9 @@ export class AdminService {
         message
       }
     );
+  }
+
+  private async invalidateStorefrontReadCaches() {
+    await this.cacheService.deleteByPrefix(["catalog:", "search:query:"]);
   }
 }

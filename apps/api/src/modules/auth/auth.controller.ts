@@ -11,6 +11,8 @@ import type { Response } from "express";
 import { loginRequestSchema, type LoginRequest } from "@velora/contracts";
 
 import type { AuthenticatedRequest } from "../../common/authenticated-request";
+import { RateLimit } from "../../common/decorators/rate-limit.decorator";
+import { RateLimitGuard } from "../../common/guards/rate-limit.guard";
 import { SessionAuthGuard } from "../../common/guards/session-auth.guard";
 import { parseWithSchema } from "../../common/zod";
 import { AUTH_COOKIE_NAME } from "./auth.constants";
@@ -21,6 +23,8 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post("login")
+  @UseGuards(RateLimitGuard)
+  @RateLimit("AUTH_LOGIN")
   async login(
     @Body() body: unknown,
     @Req() request: AuthenticatedRequest,

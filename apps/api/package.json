@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "tsx watch src/main.ts",
+    "dev": "prisma generate && tsc-watch --project tsconfig.build.json --onSuccess \"node dist/main.js\"",
     "build": "prisma generate && tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "lint": "eslint src prisma --ext .ts",
@@ -44,6 +44,7 @@
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.6",
     "@types/supertest": "^7.2.0",
-    "prisma": "^7.4.2"
+    "prisma": "^7.4.2",
+    "tsc-watch": "^6.3.1"
   }
 }

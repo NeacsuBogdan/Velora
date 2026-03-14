@@ -167,6 +167,7 @@
 - Stage 11 uses a dedicated mock commerce API for Playwright coverage so browser tests stay deterministic and CI-friendly, while the real API remains covered by unit and integration tests.
 - The storefront now renders explicit API-unavailable states for login, catalog, category, and product pages, which avoids raw fetch exceptions or misleading empty-result messaging when the backend is down locally.
 - Storefront and admin typecheck now normalize `next-env.d.ts` before `tsc`, which prevents malformed `.next/dev` route references from breaking verification after local Next dev sessions.
+- The API development runner now compiles with `tsc-watch` and restarts `dist/main.js`, which avoids the missing decorator-metadata crash that `tsx watch` caused in Nest during local development.
 
 ## Known follow-up items
 

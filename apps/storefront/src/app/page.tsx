@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { Badge, Panel, StatTile } from "@velora/ui";
 
+import { ApiUnavailablePanel } from "../components/api-unavailable-panel";
 import { OverviewPanel } from "../components/overview-panel";
 import { ProductCard } from "../components/product-card";
 import { StorefrontChrome } from "../components/storefront-chrome";
@@ -107,26 +108,35 @@ export default async function HomePage(): Promise<React.JSX.Element> {
         />
       </section>
 
-      <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-        {navigation?.categories.map((category) => (
-          <Link key={category.slug} href={`/categories/${category.slug}`}>
-            <Panel className="h-full transition-transform duration-200 hover:-translate-y-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
-                Root category
-              </p>
-              <h2 className="mt-3 font-[var(--font-heading)] text-3xl font-bold tracking-tight">
-                {category.name}
-              </h2>
-              <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
-                {category.description}
-              </p>
-              <p className="mt-4 text-sm font-semibold text-[var(--foreground)]">
-                {category.productCount} products
-              </p>
-            </Panel>
-          </Link>
-        ))}
-      </section>
+      {navigation?.categories.length ? (
+        <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {navigation.categories.map((category) => (
+            <Link key={category.slug} href={`/categories/${category.slug}`}>
+              <Panel className="h-full transition-transform duration-200 hover:-translate-y-1">
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
+                  Root category
+                </p>
+                <h2 className="mt-3 font-[var(--font-heading)] text-3xl font-bold tracking-tight">
+                  {category.name}
+                </h2>
+                <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
+                  {category.description}
+                </p>
+                <p className="mt-4 text-sm font-semibold text-[var(--foreground)]">
+                  {category.productCount} products
+                </p>
+              </Panel>
+            </Link>
+          ))}
+        </section>
+      ) : (
+        <ApiUnavailablePanel
+          message="The home page could not load the category tree from the API. Start `pnpm dev:api` and refresh once the backend is listening on port 4000."
+          retryHref="/"
+          retryLabel="Retry home"
+          title="Category navigation is unavailable"
+        />
+      )}
 
       <section className="space-y-5 pb-8">
         <div className="flex items-end justify-between gap-4">
@@ -142,11 +152,20 @@ export default async function HomePage(): Promise<React.JSX.Element> {
             View all
           </Link>
         </div>
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {featuredProducts?.items.map((item) => (
-            <ProductCard key={item.listingId} item={item} />
-          ))}
-        </div>
+        {featuredProducts ? (
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {featuredProducts.items.map((item) => (
+              <ProductCard key={item.listingId} item={item} />
+            ))}
+          </div>
+        ) : (
+          <ApiUnavailablePanel
+            message="The home spotlight should show 3 recently indexed products when the API is up. Right now the storefront cannot reach the backend."
+            retryHref="/"
+            retryLabel="Retry spotlight"
+            title="Featured products are unavailable"
+          />
+        )}
       </section>
     </StorefrontChrome>
   );

@@ -1,20 +1,17 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
 
 import { Panel } from "@velora/ui";
 
+import { ApiUnavailablePanel } from "../../../components/api-unavailable-panel";
 import { CatalogBrowser } from "../../../components/catalog-browser";
 import { StorefrontChrome } from "../../../components/storefront-chrome";
-import {
-  getCategoryDetail,
-  searchCatalog
-} from "../../../lib/storefront-api";
+import { getCategoryDetail, searchCatalog } from "../../../lib/storefront-api";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
 export default async function CategoryDetailPage({
   params,
-  searchParams
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
   searchParams: Promise<SearchParams>;
@@ -25,12 +22,34 @@ export default async function CategoryDetailPage({
     getCategoryDetail(slug),
     searchCatalog({
       ...resolvedSearchParams,
-      category: slug
-    })
+      category: slug,
+    }),
   ]);
 
+  if (!category && !results) {
+    return (
+      <StorefrontChrome>
+        <ApiUnavailablePanel
+          message="The storefront could not load this category because the API is unavailable. Start `pnpm dev:api` and refresh."
+          retryHref={`/categories/${slug}`}
+          retryLabel="Retry category"
+          title="Category data is unavailable"
+        />
+      </StorefrontChrome>
+    );
+  }
+
   if (!category) {
-    notFound();
+    return (
+      <StorefrontChrome>
+        <ApiUnavailablePanel
+          message="This category could not be resolved from the current catalog projection."
+          retryHref="/categories"
+          retryLabel="Back to categories"
+          title="Category not found"
+        />
+      </StorefrontChrome>
+    );
   }
 
   return (

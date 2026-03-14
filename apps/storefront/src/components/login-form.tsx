@@ -15,7 +15,7 @@ interface LoginFormProps {
 
 export function LoginForm({
   defaultEmail = "customer@velora.local",
-  defaultRedirectPath = "/account"
+  defaultRedirectPath = "/account",
 }: LoginFormProps = {}): React.JSX.Element {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -26,8 +26,8 @@ export function LoginForm({
     resolver: zodResolver(loginFormSchema),
     defaultValues: {
       email: defaultEmail,
-      password: "Demo123!"
-    }
+      password: "Demo123!",
+    },
   });
 
   const onSubmit = form.handleSubmit((values) => {
@@ -35,28 +35,35 @@ export function LoginForm({
     setErrorMessage(null);
 
     startTransition(async () => {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api"}/auth/login`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api"}/auth/login`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+            body: JSON.stringify(values),
           },
-          credentials: "include",
-          body: JSON.stringify(values)
-        }
-      );
+        );
 
-      if (!response.ok) {
+        if (!response.ok) {
+          setErrorMessage(
+            "The login request was rejected. Verify the API is running and the demo credentials are intact.",
+          );
+          setIsPending(false);
+          return;
+        }
+
+        router.push(searchParams.get("from") ?? defaultRedirectPath);
+        router.refresh();
+      } catch {
         setErrorMessage(
-          "The login request was rejected. Verify the API is running and the demo credentials are intact."
+          "The storefront cannot reach the API right now. Start `pnpm dev:api` and refresh this page before trying again.",
         );
         setIsPending(false);
-        return;
       }
-
-      router.push(searchParams.get("from") ?? defaultRedirectPath);
-      router.refresh();
     });
   });
 
@@ -64,7 +71,10 @@ export function LoginForm({
     <Panel className="w-full max-w-xl">
       <form className="space-y-5" onSubmit={onSubmit}>
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-[var(--foreground)]" htmlFor="email">
+          <label
+            className="text-sm font-semibold text-[var(--foreground)]"
+            htmlFor="email"
+          >
             Email
           </label>
           <input
@@ -82,7 +92,10 @@ export function LoginForm({
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-[var(--foreground)]" htmlFor="password">
+          <label
+            className="text-sm font-semibold text-[var(--foreground)]"
+            htmlFor="password"
+          >
             Password
           </label>
           <input

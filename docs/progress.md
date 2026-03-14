@@ -165,6 +165,8 @@
 - Stage 9 introduces a dedicated seller surface in both the API and storefront, which keeps merchant operations separate from customer account routes while still reusing the same session-cookie authentication model.
 - Stage 10 shifts public catalog and search hot paths onto Redis-backed caching and persisted search projections, which reduces repeated relational work while keeping an in-memory fallback for local development when Redis is unavailable.
 - Stage 11 uses a dedicated mock commerce API for Playwright coverage so browser tests stay deterministic and CI-friendly, while the real API remains covered by unit and integration tests.
+- The storefront now renders explicit API-unavailable states for login, catalog, category, and product pages, which avoids raw fetch exceptions or misleading empty-result messaging when the backend is down locally.
+- Storefront and admin typecheck now normalize `next-env.d.ts` before `tsc`, which prevents malformed `.next/dev` route references from breaking verification after local Next dev sessions.
 
 ## Known follow-up items
 

@@ -1,17 +1,17 @@
 import Image from "next/image";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 
 import { Badge, Panel } from "@velora/ui";
 
 import { AddToCartButton } from "../../../components/add-to-cart-button";
+import { ApiUnavailablePanel } from "../../../components/api-unavailable-panel";
 import { ProductCard } from "../../../components/product-card";
 import { StorefrontChrome } from "../../../components/storefront-chrome";
 import { formatMoney } from "../../../lib/formatting";
 import { getProductDetail } from "../../../lib/storefront-api";
 
 export default async function ProductDetailPage({
-  params
+  params,
 }: {
   params: Promise<{ slug: string }>;
 }): Promise<React.JSX.Element> {
@@ -19,7 +19,16 @@ export default async function ProductDetailPage({
   const product = await getProductDetail(slug);
 
   if (!product) {
-    notFound();
+    return (
+      <StorefrontChrome>
+        <ApiUnavailablePanel
+          message="The storefront could not load this product because the API is unavailable or the product slug could not be resolved. Start `pnpm dev:api` and refresh first."
+          retryHref="/products"
+          retryLabel="Back to catalog"
+          title="Product data is unavailable"
+        />
+      </StorefrontChrome>
+    );
   }
 
   const leadOffer = product.offers[0];
@@ -104,7 +113,9 @@ export default async function ProductDetailPage({
                     {variant.title}
                   </p>
                   <p className="mt-2 text-sm text-[var(--muted)]">
-                    {variant.attributes.map((attribute) => attribute.value).join(" / ")}
+                    {variant.attributes
+                      .map((attribute) => attribute.value)
+                      .join(" / ")}
                   </p>
                 </div>
               ))}
@@ -118,7 +129,9 @@ export default async function ProductDetailPage({
               Best current offer
             </p>
             <p className="mt-3 font-[var(--font-heading)] text-5xl font-bold tracking-tight">
-              {leadOffer ? formatMoney(leadOffer.pricing.current) : "Unavailable"}
+              {leadOffer
+                ? formatMoney(leadOffer.pricing.current)
+                : "Unavailable"}
             </p>
             {leadOffer?.pricing.compareAt ? (
               <p className="mt-2 text-sm text-[var(--muted)] line-through">

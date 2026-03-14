@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { Badge, Panel } from "@velora/ui";
 
+import { ApiUnavailablePanel } from "../../components/api-unavailable-panel";
 import { ProductCard } from "../../components/product-card";
 import { StorefrontChrome } from "../../components/storefront-chrome";
 import { getCatalogNavigation, searchCatalog } from "../../lib/storefront-api";
@@ -58,44 +59,53 @@ export default async function CategoriesPage(): Promise<React.JSX.Element> {
         </Panel>
       </section>
 
-      <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-        {navigation?.categories.map((category) => (
-          <Panel key={category.slug} className="space-y-5">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
-                Root category
-              </p>
-              <h2 className="mt-3 font-[var(--font-heading)] text-3xl font-bold tracking-tight">
-                <Link href={`/categories/${category.slug}`}>
-                  {category.name}
-                </Link>
-              </h2>
-              <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
-                {category.description}
-              </p>
-            </div>
-            <div className="grid gap-3">
-              {category.children.map((child) => (
-                <Link
-                  key={child.slug}
-                  className="rounded-[22px] bg-black/3 px-4 py-3 transition-colors hover:bg-black/6"
-                  href={`/categories/${child.slug}`}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="font-semibold">{child.name}</span>
-                    <span className="text-sm text-[var(--muted)]">
-                      {child.productCount}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                    {child.description}
-                  </p>
-                </Link>
-              ))}
-            </div>
-          </Panel>
-        ))}
-      </section>
+      {navigation?.categories.length ? (
+        <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {navigation.categories.map((category) => (
+            <Panel key={category.slug} className="space-y-5">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
+                  Root category
+                </p>
+                <h2 className="mt-3 font-[var(--font-heading)] text-3xl font-bold tracking-tight">
+                  <Link href={`/categories/${category.slug}`}>
+                    {category.name}
+                  </Link>
+                </h2>
+                <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
+                  {category.description}
+                </p>
+              </div>
+              <div className="grid gap-3">
+                {category.children.map((child) => (
+                  <Link
+                    key={child.slug}
+                    className="rounded-[22px] bg-black/3 px-4 py-3 transition-colors hover:bg-black/6"
+                    href={`/categories/${child.slug}`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="font-semibold">{child.name}</span>
+                      <span className="text-sm text-[var(--muted)]">
+                        {child.productCount}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                      {child.description}
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            </Panel>
+          ))}
+        </section>
+      ) : (
+        <ApiUnavailablePanel
+          message="The category tree comes from the API. Start `pnpm dev:api` and refresh to load the seeded marketplace navigation."
+          retryHref="/categories"
+          retryLabel="Retry categories"
+          title="Category navigation is unavailable"
+        />
+      )}
 
       <section className="space-y-5 pb-8">
         <div className="flex items-end justify-between gap-4">
@@ -114,11 +124,20 @@ export default async function CategoriesPage(): Promise<React.JSX.Element> {
             View all products
           </Link>
         </div>
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {featuredProducts?.items.map((item) => (
-            <ProductCard key={item.listingId} item={item} />
-          ))}
-        </div>
+        {featuredProducts ? (
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {featuredProducts.items.map((item) => (
+              <ProductCard key={item.listingId} item={item} />
+            ))}
+          </div>
+        ) : (
+          <ApiUnavailablePanel
+            message="This section should show recent products from the seeded catalog. The storefront cannot reach the API right now."
+            retryHref="/categories"
+            retryLabel="Retry recent products"
+            title="Recently indexed products are unavailable"
+          />
+        )}
       </section>
     </StorefrontChrome>
   );

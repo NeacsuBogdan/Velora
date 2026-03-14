@@ -6,8 +6,9 @@ import { Badge, Panel } from "@velora/ui";
 import {
   getQueryValue,
   getQueryValues,
-  type CatalogQueryInput
+  type CatalogQueryInput,
 } from "../lib/catalog-query";
+import { ApiUnavailablePanel } from "./api-unavailable-panel";
 import { ProductCard } from "./product-card";
 
 interface CatalogBrowserProps {
@@ -27,7 +28,7 @@ export function CatalogBrowser({
   description,
   results,
   searchParams,
-  lockCategory = false
+  lockCategory = false,
 }: CatalogBrowserProps): React.JSX.Element {
   const selectedBrands = getQueryValues(searchParams, "brand");
   const query = getQueryValue(searchParams, "q");
@@ -85,7 +86,10 @@ export function CatalogBrowser({
 
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
               <div className="space-y-2">
-                <label className="text-sm font-semibold" htmlFor="catalog-min-price">
+                <label
+                  className="text-sm font-semibold"
+                  htmlFor="catalog-min-price"
+                >
                   Min price
                 </label>
                 <input
@@ -98,7 +102,10 @@ export function CatalogBrowser({
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold" htmlFor="catalog-max-price">
+                <label
+                  className="text-sm font-semibold"
+                  htmlFor="catalog-max-price"
+                >
                   Max price
                 </label>
                 <input
@@ -171,7 +178,8 @@ export function CatalogBrowser({
                       <span className="flex items-center gap-3">
                         <input
                           defaultChecked={
-                            getQueryValue(searchParams, "category") === category.value
+                            getQueryValue(searchParams, "category") ===
+                            category.value
                           }
                           name="category"
                           type="radio"
@@ -233,7 +241,14 @@ export function CatalogBrowser({
           </div>
         </Panel>
 
-        {results?.items.length ? (
+        {results === null ? (
+          <ApiUnavailablePanel
+            message="The storefront could not reach the Velora API for this catalog view. Start `pnpm dev:api`, confirm `NEXT_PUBLIC_API_URL` points to the running backend, and refresh."
+            retryHref={action}
+            retryLabel="Retry this view"
+            title="Catalog data is unavailable"
+          />
+        ) : results.items.length ? (
           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             {results.items.map((item) => (
               <ProductCard key={item.listingId} item={item} />

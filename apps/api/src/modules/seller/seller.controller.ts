@@ -32,6 +32,15 @@ export class SellerController {
     return this.sellerService.updateInventory(viewer, inventoryItemId, body);
   }
 
+  @Patch("listings/:listingId")
+  updateListing(
+    @CurrentUser() viewer: AuthenticatedUser,
+    @Param("listingId") listingId: string,
+    @Body() body: unknown
+  ) {
+    return this.sellerService.updateListing(viewer, listingId, body);
+  }
+
   @Get("orders")
   listOrders(@CurrentUser() viewer: AuthenticatedUser) {
     return this.sellerService.listOrders(viewer);

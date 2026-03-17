@@ -10,6 +10,8 @@ export const dynamic = "force-dynamic";
 
 const secondaryLinkClass =
   "inline-flex items-center justify-center rounded-full border border-[var(--stroke)] bg-white px-5 py-3 text-sm font-semibold text-[var(--foreground)] transition-colors hover:border-[var(--foreground)]";
+const adminWorkspaceUrl =
+  process.env.NEXT_PUBLIC_ADMIN_URL ?? "http://localhost:3001";
 
 export default async function AccountLayout({
   children
@@ -17,6 +19,8 @@ export default async function AccountLayout({
   children: React.ReactNode;
 }>): Promise<React.JSX.Element> {
   const session = await getSession();
+  const isSeller = session?.user.roles.some((role) => role.code === "SELLER");
+  const isAdmin = session?.user.roles.some((role) => role.code === "ADMIN");
 
   if (!session) {
     redirect("/login");
@@ -43,6 +47,16 @@ export default async function AccountLayout({
             <Link className={secondaryLinkClass} href="/categories">
               Browse categories
             </Link>
+            {isSeller ? (
+              <Link className={secondaryLinkClass} href="/seller">
+                Open seller workspace
+              </Link>
+            ) : null}
+            {isAdmin ? (
+              <a className={secondaryLinkClass} href={adminWorkspaceUrl}>
+                Open admin workspace
+              </a>
+            ) : null}
             <form action={logoutAction}>
               <Button type="submit">Sign out</Button>
             </form>

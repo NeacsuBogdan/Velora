@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { SessionResponse } from "@velora/contracts";
 import { Button, Panel } from "@velora/ui";
 import { startTransition, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -12,6 +13,9 @@ interface LoginFormProps {
   defaultEmail?: string;
   defaultRedirectPath?: string;
 }
+
+const adminWorkspaceUrl =
+  process.env.NEXT_PUBLIC_ADMIN_URL ?? "http://localhost:3001";
 
 export function LoginForm({
   defaultEmail = "customer@velora.local",
@@ -57,7 +61,13 @@ export function LoginForm({
           return;
         }
 
-        window.location.assign(searchParams.get("from") ?? defaultRedirectPath);
+        const session = (await response.json()) as SessionResponse;
+        const requestedRedirect = searchParams.get("from");
+
+        window.location.assign(
+          requestedRedirect ??
+            resolveDefaultRedirectPath(session, defaultRedirectPath),
+        );
       } catch {
         setErrorMessage(
           "The storefront cannot reach the API right now. Start `pnpm dev:api` and refresh this page before trying again.",
@@ -129,4 +139,23 @@ export function LoginForm({
       </form>
     </Panel>
   );
+}
+
+function resolveDefaultRedirectPath(
+  session: SessionResponse,
+  defaultRedirectPath: string,
+): string {
+  if (defaultRedirectPath !== "/account") {
+    return defaultRedirectPath;
+  }
+
+  if (session.user.roles.some((role) => role.code === "ADMIN")) {
+    return adminWorkspaceUrl;
+  }
+
+  if (session.user.roles.some((role) => role.code === "SELLER")) {
+    return "/seller";
+  }
+
+  return defaultRedirectPath;
 }

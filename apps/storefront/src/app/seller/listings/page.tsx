@@ -15,18 +15,31 @@ export default async function SellerListingsPage(): Promise<React.JSX.Element> {
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
             <h1 className="font-[var(--font-heading)] text-4xl font-bold tracking-tight">
-              Manage stock and lead times without leaving the seller workspace.
+              Manage pricing, visibility, stock, and lead times for your offers.
             </h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--muted)]">
-              Each update writes into transactional inventory, records an audit
-              event, and refreshes the search projection so storefront
-              availability stays aligned with merchant operations.
+              Seller-owned offer updates write into transactional pricing or
+              inventory, record audit context, and refresh the search
+              projection so storefront availability and pricing stay aligned
+              with merchant operations.
             </p>
           </div>
           <div className="rounded-[24px] bg-black/3 px-5 py-4 text-sm text-[var(--muted)]">
             {listings.length} listing record(s)
           </div>
         </div>
+      </Panel>
+
+      <Panel className="space-y-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
+          Commercial scope
+        </p>
+        <p className="max-w-4xl text-sm leading-7 text-[var(--muted)]">
+          Sellers manage their own offer pricing, compare-at positioning,
+          visibility, stock, and lead time here. Platform-wide category and
+          marketplace promotions remain in the admin pricing console so global
+          discount logic stays deterministic.
+        </p>
       </Panel>
 
       {listings.length ? (

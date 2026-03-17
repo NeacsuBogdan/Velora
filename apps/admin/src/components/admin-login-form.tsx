@@ -2,12 +2,8 @@
 
 import { Button, Panel } from "@velora/ui";
 import { startTransition, useState } from "react";
-import { useRouter } from "next/navigation";
-
-import { apiUrl } from "../lib/api-url";
 
 export function AdminLoginForm(): React.JSX.Element {
-  const router = useRouter();
   const [email, setEmail] = useState("admin@velora.local");
   const [password, setPassword] = useState("Demo123!");
   const [isPending, setIsPending] = useState(false);
@@ -19,27 +15,39 @@ export function AdminLoginForm(): React.JSX.Element {
     setErrorMessage(null);
 
     startTransition(async () => {
-      const response = await fetch(`${apiUrl}/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          email,
-          password
-        })
-      });
+      try {
+        const response = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            email,
+            password
+          })
+        });
 
-      if (!response.ok) {
+        if (!response.ok) {
+          const errorBody = (await response.json().catch(() => null)) as
+            | { message?: string }
+            | null;
+
+          setErrorMessage(
+            errorBody?.message ??
+              "Admin login failed. Verify the seeded credentials and API availability."
+          );
+          setIsPending(false);
+          return;
+        }
+
+        window.location.assign("/");
+      } catch {
         setErrorMessage(
-          "Admin login failed. Verify the seeded credentials and API availability."
+          "The admin workspace cannot reach the API right now. Start the backend and try again."
         );
         setIsPending(false);
-        return;
       }
-
-      router.refresh();
     });
   }
 

@@ -29,6 +29,9 @@ function createService() {
     sellerProductListing: {
       update: vi.fn()
     },
+    price: {
+      create: vi.fn()
+    },
     inventoryMovement: {
       create: vi.fn()
     },
@@ -48,6 +51,7 @@ function createService() {
     },
     sellerProductListing: {
       findMany: vi.fn(),
+      findFirst: vi.fn(),
       findUniqueOrThrow: vi.fn()
     },
     order: {
@@ -65,14 +69,14 @@ function createService() {
     record: vi.fn()
   };
   const projectionService = {
-    collectDocumentsByListingIds: vi.fn(),
-    syncProjectionRecords: vi.fn()
+    collectDocumentsByListingIds: vi.fn().mockResolvedValue([]),
+    syncProjectionRecords: vi.fn().mockResolvedValue(undefined)
   };
   const openSearchService = {
-    syncDocuments: vi.fn()
+    syncDocuments: vi.fn().mockResolvedValue(true)
   };
   const cacheService = {
-    deleteByPrefix: vi.fn()
+    deleteByPrefix: vi.fn().mockResolvedValue(undefined)
   };
 
   return {
@@ -217,5 +221,95 @@ describe("SellerService", () => {
     await expect(
       service.getOrderDetail(viewer, "VEL-2026-9999")
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it("updates seller-owned listing pricing and visibility", async () => {
+    const { prisma, service } = createService();
+    prisma.seller.findUnique.mockResolvedValue({
+      id: "seller-1",
+      slug: "north-star-electronics",
+      displayName: "North Star Electronics",
+      status: "ACTIVE"
+    });
+    prisma.sellerProductListing.findFirst.mockResolvedValue({
+      id: "listing-1",
+      sellerId: "seller-1",
+      productId: "product-1",
+      status: "ACTIVE",
+      isActive: true,
+      leadTimeDays: 2,
+      sellerSku: "NST-AX1P-256",
+      updatedAt: new Date("2026-03-17T08:00:00.000Z"),
+      prices: [
+        {
+          amount: 449900,
+          compareAtAmount: 479900,
+          currency: "RON",
+          startsAt: null,
+          endsAt: null,
+          createdAt: new Date("2026-03-01T08:00:00.000Z")
+        }
+      ],
+      product: {
+        id: "product-1",
+        status: "ACTIVE",
+        slug: "astra-x1-pro",
+        title: "Astra X1 Pro",
+        media: []
+      },
+      variant: null,
+      inventoryItem: {
+        id: "inventory-1",
+        onHand: 12,
+        reserved: 2,
+        safetyStock: 1
+      }
+    });
+    prisma.sellerProductListing.findUniqueOrThrow.mockResolvedValue({
+      id: "listing-1",
+      sellerId: "seller-1",
+      productId: "product-1",
+      status: "ACTIVE",
+      isActive: false,
+      leadTimeDays: 2,
+      sellerSku: "NST-AX1P-256",
+      updatedAt: new Date("2026-03-17T08:05:00.000Z"),
+      prices: [
+        {
+          amount: 429900,
+          compareAtAmount: 459900,
+          currency: "RON",
+          startsAt: null,
+          endsAt: null,
+          createdAt: new Date("2026-03-17T08:05:00.000Z")
+        }
+      ],
+      product: {
+        id: "product-1",
+        status: "ACTIVE",
+        slug: "astra-x1-pro",
+        title: "Astra X1 Pro",
+        media: []
+      },
+      variant: null,
+      inventoryItem: {
+        id: "inventory-1",
+        onHand: 12,
+        reserved: 2,
+        safetyStock: 1
+      }
+    });
+    prisma.searchSyncLog.createMany.mockResolvedValue(undefined);
+
+    const result = await service.updateListing(viewer, "listing-1", {
+      priceAmount: 429900,
+      compareAtAmount: 459900,
+      isActive: false,
+      note: "Seasonal merchant pricing adjustment."
+    });
+
+    expect(result.price?.amount).toBe(429900);
+    expect(result.isActive).toBe(false);
+    expect(prisma.$transaction).toHaveBeenCalled();
   });
 });

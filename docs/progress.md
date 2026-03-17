@@ -175,6 +175,9 @@
 - The public storefront header now resolves the active session server-side and only shows seller navigation for seller accounts, which keeps customer sessions from seeing stale `Login` links or merchant-only entry points.
 - The API build now clears stale output and runs `dist/apps/api/src/main.js`, which fixes a broken compile-output mismatch that had left newer modules like cart, seller, and admin unavailable at runtime even though their source code existed.
 - Storefront cart quantity and checkout trigger buttons now clear their local pending state after successful mutations and on fetch failures, which prevents the controls from getting stuck disabled after the first interaction.
+- Storefront and admin login now both finalize through same-origin auth proxies, and the generic storefront login now redirects admin and seller accounts into their dedicated workspaces by default instead of dropping every role into the customer account shell.
+- The storefront header and account shell now expose explicit admin and seller workspace links based on the active session roles, which makes catalog, refund, and merchant tooling reachable without guessing the correct app entrypoint.
+- Sellers can now update their own offer pricing, compare-at pricing, and storefront visibility from the seller listings page, while platform-wide promotions remain centralized in the admin pricing console.
 
 ## Known follow-up items
 

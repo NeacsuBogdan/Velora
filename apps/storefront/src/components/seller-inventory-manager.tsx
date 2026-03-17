@@ -14,18 +14,19 @@ export function SellerInventoryManager({
   listings: SellerListingSummary[];
 }): React.JSX.Element {
   const router = useRouter();
-  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<Record<string, string>>({});
 
-  async function handleSubmit(
+  async function handleInventorySubmit(
     event: React.FormEvent<HTMLFormElement>,
     listing: SellerListingSummary
   ) {
     event.preventDefault();
-    setPendingId(listing.inventoryItemId);
+    const feedbackKey = `inventory:${listing.inventoryItemId}`;
+    setPendingKey(feedbackKey);
     setFeedback((current) => {
       const next = { ...current };
-      delete next[listing.inventoryItemId];
+      delete next[feedbackKey];
       return next;
     });
 
@@ -53,16 +54,16 @@ export function SellerInventoryManager({
       if (!response.ok) {
         setFeedback((current) => ({
           ...current,
-          [listing.inventoryItemId]:
+          [feedbackKey]:
             "The update was rejected. Review reserved stock and try again."
         }));
-        setPendingId(null);
+        setPendingKey(null);
         return;
       }
 
       setFeedback((current) => ({
         ...current,
-        [listing.inventoryItemId]: "Inventory synced to the commerce engine."
+        [feedbackKey]: "Inventory synced to the commerce engine."
       }));
 
       startTransition(() => {
@@ -71,11 +72,76 @@ export function SellerInventoryManager({
     } catch {
       setFeedback((current) => ({
         ...current,
-        [listing.inventoryItemId]:
+        [feedbackKey]:
           "The API is unavailable. Start the backend and retry the update."
       }));
     } finally {
-      setPendingId(null);
+      setPendingKey(null);
+    }
+  }
+
+  async function handleCommercialSubmit(
+    event: React.FormEvent<HTMLFormElement>,
+    listing: SellerListingSummary
+  ) {
+    event.preventDefault();
+    const feedbackKey = `listing:${listing.listingId}`;
+    setPendingKey(feedbackKey);
+    setFeedback((current) => {
+      const next = { ...current };
+      delete next[feedbackKey];
+      return next;
+    });
+
+    const formData = new FormData(event.currentTarget);
+    const priceAmount = Number(formData.get("priceAmount"));
+    const compareAtRaw = String(formData.get("compareAtAmount") ?? "").trim();
+    const payload = {
+      priceAmount,
+      compareAtAmount: compareAtRaw ? Number(compareAtRaw) : null,
+      isActive: String(formData.get("isActive")) === "true",
+      note: String(formData.get("priceNote") ?? "").trim() || undefined
+    };
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api"}/seller/listings/${listing.listingId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          credentials: "include",
+          body: JSON.stringify(payload)
+        }
+      );
+
+      if (!response.ok) {
+        setFeedback((current) => ({
+          ...current,
+          [feedbackKey]:
+            "Commercial changes were rejected. Verify the pricing values and offer visibility."
+        }));
+        setPendingKey(null);
+        return;
+      }
+
+      setFeedback((current) => ({
+        ...current,
+        [feedbackKey]: "Pricing and offer visibility synced to the marketplace."
+      }));
+
+      startTransition(() => {
+        router.refresh();
+      });
+    } catch {
+      setFeedback((current) => ({
+        ...current,
+        [feedbackKey]:
+          "The API is unavailable. Start the backend and retry the pricing update."
+      }));
+    } finally {
+      setPendingKey(null);
     }
   }
 
@@ -136,8 +202,67 @@ export function SellerInventoryManager({
           </div>
 
           <form
+            className="mt-6 grid gap-4 rounded-[28px] border border-[var(--stroke)] bg-white/70 p-5 lg:grid-cols-[repeat(2,minmax(0,1fr))_220px_minmax(0,1.2fr)_auto]"
+            onSubmit={(event) => void handleCommercialSubmit(event, listing)}
+          >
+            <label className="grid gap-2 text-sm">
+              <span className="font-semibold text-[var(--foreground)]">Current price</span>
+              <input
+                className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                defaultValue={listing.price?.amount ?? 0}
+                min={1}
+                name="priceAmount"
+                type="number"
+              />
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <span className="font-semibold text-[var(--foreground)]">Compare-at price</span>
+              <input
+                className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                defaultValue={listing.compareAtPrice?.amount ?? ""}
+                min={1}
+                name="compareAtAmount"
+                placeholder="Optional"
+                type="number"
+              />
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <span className="font-semibold text-[var(--foreground)]">Offer visibility</span>
+              <select
+                className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                defaultValue={String(listing.isActive)}
+                name="isActive"
+              >
+                <option value="true">Visible to customers</option>
+                <option value="false">Hidden from storefront</option>
+              </select>
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <span className="font-semibold text-[var(--foreground)]">Pricing note</span>
+              <input
+                className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                defaultValue=""
+                name="priceNote"
+                placeholder="Campaign adjustment, competitor response, manual repricing"
+                type="text"
+              />
+            </label>
+
+            <div className="flex items-end">
+              <Button disabled={pendingKey === `listing:${listing.listingId}`} type="submit" variant="secondary">
+                {pendingKey === `listing:${listing.listingId}`
+                  ? "Saving..."
+                  : "Update offer"}
+              </Button>
+            </div>
+          </form>
+
+          <form
             className="mt-6 grid gap-4 rounded-[28px] border border-[var(--stroke)] bg-white/70 p-5 lg:grid-cols-[repeat(3,minmax(0,1fr))_minmax(0,1.4fr)_auto]"
-            onSubmit={(event) => void handleSubmit(event, listing)}
+            onSubmit={(event) => void handleInventorySubmit(event, listing)}
           >
             <label className="grid gap-2 text-sm">
               <span className="font-semibold text-[var(--foreground)]">On hand</span>
@@ -185,15 +310,20 @@ export function SellerInventoryManager({
             </label>
 
             <div className="flex items-end">
-              <Button disabled={pendingId === listing.inventoryItemId} type="submit">
-                {pendingId === listing.inventoryItemId ? "Saving..." : "Update stock"}
+              <Button disabled={pendingKey === `inventory:${listing.inventoryItemId}`} type="submit">
+                {pendingKey === `inventory:${listing.inventoryItemId}` ? "Saving..." : "Update stock"}
               </Button>
             </div>
           </form>
 
-          {feedback[listing.inventoryItemId] ? (
+          {feedback[`listing:${listing.listingId}`] ? (
             <p className="mt-4 text-sm text-[var(--muted)]">
-              {feedback[listing.inventoryItemId]}
+              {feedback[`listing:${listing.listingId}`]}
+            </p>
+          ) : null}
+          {feedback[`inventory:${listing.inventoryItemId}`] ? (
+            <p className="mt-2 text-sm text-[var(--muted)]">
+              {feedback[`inventory:${listing.inventoryItemId}`]}
             </p>
           ) : null}
         </Panel>

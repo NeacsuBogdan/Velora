@@ -6,7 +6,8 @@ import {
 import type { AuthenticatedUser } from "@velora/contracts";
 import {
   sellerDashboardSchema,
-  updateSellerInventoryRequestSchema
+  updateSellerInventoryRequestSchema,
+  updateSellerListingCommercialRequestSchema
 } from "@velora/contracts";
 
 import { AuditService } from "../audit/audit.service";
@@ -19,6 +20,7 @@ import {
   mapSellerListingSummary,
   mapSellerOrderDetail,
   mapSellerOrderSummary,
+  resolveActivePrice,
   sellerListingInclude,
   sellerOrderInclude
 } from "./seller.helpers";
@@ -245,6 +247,101 @@ export class SellerService {
     });
 
     return mapSellerListingSummary(listing);
+  }
+
+  async updateListing(
+    viewer: AuthenticatedUser,
+    listingId: string,
+    rawInput: unknown
+  ) {
+    const seller = await this.getSellerScope(viewer.id);
+    const input = updateSellerListingCommercialRequestSchema.parse(rawInput);
+    const listing = await this.prisma.sellerProductListing.findFirst({
+      where: {
+        id: listingId,
+        sellerId: seller.id
+      },
+      include: sellerListingInclude.include
+    });
+
+    if (!listing) {
+      throw new NotFoundException(
+        `Listing ${listingId} was not found for seller ${seller.displayName}.`
+      );
+    }
+
+    if (
+      input.isActive &&
+      (listing.status !== "ACTIVE" || listing.product.status !== "ACTIVE")
+    ) {
+      throw new ConflictException(
+        "Only active listings attached to active products can be exposed to customers."
+      );
+    }
+
+    const currentPrice = resolveActivePrice(listing.prices);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.sellerProductListing.update({
+        where: {
+          id: listingId
+        },
+        data: {
+          isActive: input.isActive
+        }
+      });
+
+      if (
+        !currentPrice ||
+        currentPrice.amount !== input.priceAmount ||
+        (currentPrice.compareAtAmount ?? null) !==
+          (input.compareAtAmount ?? null)
+      ) {
+        await tx.price.create({
+          data: {
+            listingId,
+            amount: input.priceAmount,
+            compareAtAmount: input.compareAtAmount ?? null,
+            currency: currentPrice?.currency ?? "RON"
+          }
+        });
+      }
+
+      await tx.auditLog.create({
+        data: {
+          actorUserId: viewer.id,
+          entityType: "SELLER_PRODUCT_LISTING",
+          entityId: listingId,
+          action: "SELLER_LISTING_UPDATED",
+          details: {
+            priceAmount: input.priceAmount,
+            compareAtAmount: input.compareAtAmount ?? null,
+            isActive: input.isActive,
+            note:
+              input.note?.trim() ||
+              `Seller commercial update by ${viewer.email}.`
+          }
+        }
+      });
+    });
+
+    await this.syncListings(
+      [listingId],
+      viewer.id,
+      "Seller commercial terms updated."
+    );
+    await this.invalidateStorefrontReadCaches();
+
+    const updatedListing = await this.prisma.sellerProductListing.findUniqueOrThrow(
+      {
+        where: {
+          id: listingId
+        },
+        include: sellerListingInclude.include
+      }
+    );
+
+    return mapSellerListingSummary(updatedListing);
   }
 
   async listOrders(viewer: AuthenticatedUser) {

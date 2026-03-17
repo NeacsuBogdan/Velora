@@ -7,7 +7,7 @@ import {
 
 import { calculateAvailableQuantity } from "../search/search.helpers";
 
-function resolveActivePrice(prices: Price[], now = new Date()) {
+export function resolveActivePrice(prices: Price[], now = new Date()) {
   return (
     prices
       .filter((price) => {

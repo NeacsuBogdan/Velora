@@ -10,10 +10,13 @@ const actionLinkClass =
   "inline-flex items-center justify-center rounded-full border border-[var(--stroke)] bg-white px-4 py-2 text-sm font-semibold text-[var(--foreground)] transition-colors hover:border-[var(--foreground)]";
 const subtleButtonClass =
   "inline-flex items-center justify-center rounded-full border border-[var(--stroke)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] transition-colors hover:border-[var(--foreground)]";
+const adminWorkspaceUrl =
+  process.env.NEXT_PUBLIC_ADMIN_URL ?? "http://localhost:3001";
 
 export async function StorefrontHeader(): Promise<React.JSX.Element> {
   const session = await getSession();
   const isSeller = session?.user.roles.some((role) => role.code === "SELLER");
+  const isAdmin = session?.user.roles.some((role) => role.code === "ADMIN");
 
   return (
     <header className="rounded-[32px] border border-[var(--stroke)] bg-white/85 px-6 py-5 shadow-[0_20px_60px_rgba(16,32,47,0.08)] backdrop-blur">
@@ -68,6 +71,11 @@ export async function StorefrontHeader(): Promise<React.JSX.Element> {
                   <Link className={navLinkClass} href="/seller">
                     Seller
                   </Link>
+                ) : null}
+                {isAdmin ? (
+                  <a className={navLinkClass} href={adminWorkspaceUrl}>
+                    Admin
+                  </a>
                 ) : null}
               </nav>
 

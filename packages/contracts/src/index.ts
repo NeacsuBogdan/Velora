@@ -1262,6 +1262,32 @@ export type UpdateSellerInventoryRequest = z.infer<
   typeof updateSellerInventoryRequestSchema
 >;
 
+export const updateSellerListingCommercialRequestSchema = z
+  .object({
+    priceAmount: z.number().int().positive(),
+    compareAtAmount: z.number().int().positive().nullable().optional(),
+    isActive: z.boolean().default(true),
+    note: z.string().trim().max(240).nullable().optional()
+  })
+  .superRefine((value, context) => {
+    if (
+      value.compareAtAmount !== null &&
+      value.compareAtAmount !== undefined &&
+      value.compareAtAmount < value.priceAmount
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["compareAtAmount"],
+        message:
+          "Compare-at amount must be greater than or equal to the current price."
+      });
+    }
+  });
+
+export type UpdateSellerListingCommercialRequest = z.infer<
+  typeof updateSellerListingCommercialRequestSchema
+>;
+
 export const sellerOrderCustomerSchema = z.object({
   label: z.string(),
   email: z.string().email().nullable()

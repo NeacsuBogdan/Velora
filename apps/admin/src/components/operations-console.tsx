@@ -149,7 +149,7 @@ export function OperationsConsole({
       <div className="grid gap-6 xl:grid-cols-2">
         <TableShell>
           <table className="min-w-full border-collapse bg-white">
-            <thead className="bg-[rgba(15,23,42,0.04)] text-left text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+            <thead className="sticky top-0 z-10 bg-[rgba(15,23,42,0.04)] text-left text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
               <tr>
                 <th className="px-4 py-3 font-semibold">Recent reindex jobs</th>
                 <th className="px-4 py-3 font-semibold">Status</th>
@@ -179,7 +179,7 @@ export function OperationsConsole({
 
         <TableShell>
           <table className="min-w-full border-collapse bg-white">
-            <thead className="bg-[rgba(15,23,42,0.04)] text-left text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+            <thead className="sticky top-0 z-10 bg-[rgba(15,23,42,0.04)] text-left text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
               <tr>
                 <th className="px-4 py-3 font-semibold">Projection health</th>
                 <th className="px-4 py-3 font-semibold">Status</th>

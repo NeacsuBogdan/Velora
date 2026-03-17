@@ -251,7 +251,7 @@ export function OrderManager({
               </p>
             </div>
 
-            <div className={ListScrollClassName()}>
+            <div className="grid gap-3">
               <input
                 className={InputClassName()}
                 onChange={(event) => setQuery(event.target.value)}
@@ -280,7 +280,7 @@ export function OrderManager({
               </div>
             </div>
 
-            <div className="grid gap-3">
+            <div className={ListScrollClassName()}>
               {orders.map((order) => (
                 <ListCardButton
                   active={order.number === selectedOrderNumber}

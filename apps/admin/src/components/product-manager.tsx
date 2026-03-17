@@ -212,7 +212,7 @@ export function ProductManager({
               </Button>
             </div>
 
-            <div className={ListScrollClassName()}>
+            <div className="grid gap-3">
               <input
                 className={InputClassName()}
                 onChange={(event) => setQuery(event.target.value)}
@@ -244,7 +244,7 @@ export function ProductManager({
               </div>
             </div>
 
-            <div className="grid gap-3">
+            <div className={ListScrollClassName()}>
               {products.map((product) => (
                 <ListCardButton
                   active={product.productId === selectedProductId}

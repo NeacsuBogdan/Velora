@@ -184,6 +184,7 @@
 - Admin selector panes such as inventory, categories, products, orders, sellers, and promotions now cap their own height and scroll internally, which keeps long management lists from stretching the whole backoffice page.
 - The seller commercial editor now keeps its operational note above the action buttons and collapses into a single-column field stack sooner, which fixes the cramped footer spacing on mid-width layouts.
 - The seller listing editors now keep both commercial and stock fields in a single column, which removes the remaining `Offer visibility` and `Pricing note` compression on narrower seller workspace widths.
+- The admin split panels now keep the left control pane sticky on larger screens, while selector lists and admin tables scroll inside capped containers, which keeps filters visible even when catalog and order volumes grow.
 
 ## Known follow-up items
 

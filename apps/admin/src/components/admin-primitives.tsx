@@ -44,7 +44,7 @@ export function SplitPanel({
 }) {
   return (
     <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-      <Panel className="space-y-4">{aside}</Panel>
+      <Panel className="space-y-4 self-start xl:sticky xl:top-6">{aside}</Panel>
       <Panel>{children}</Panel>
     </div>
   );
@@ -131,7 +131,7 @@ export function TableShell({
 }): React.JSX.Element {
   return (
     <div className="overflow-hidden rounded-[24px] border border-[var(--stroke)]">
-      <div className="overflow-x-auto">{children}</div>
+      <div className="max-h-[34rem] overflow-auto">{children}</div>
     </div>
   );
 }

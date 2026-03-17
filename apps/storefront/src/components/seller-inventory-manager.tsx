@@ -6,7 +6,7 @@ import type {
   SellerListingSummary
 } from "@velora/contracts";
 import { Button, Panel } from "@velora/ui";
-import { startTransition, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { formatMoney } from "../lib/formatting";
@@ -572,30 +572,18 @@ export function SellerInventoryManager({
           </div>
 
           <div className="grid gap-4 xl:grid-cols-4">
-            <label className="grid gap-2 text-sm">
-              <span className="font-semibold text-[var(--foreground)]">
-                Current price
-              </span>
-              <input
-                className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
-                min={1}
-                name="priceAmount"
-                type="number"
-              />
-            </label>
+            <MoneyField
+              label="Current price"
+              name="priceAmount"
+              previewLabel="Live storefront price"
+            />
 
-            <label className="grid gap-2 text-sm">
-              <span className="font-semibold text-[var(--foreground)]">
-                Compare-at price
-              </span>
-              <input
-                className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
-                min={1}
-                name="compareAtAmount"
-                placeholder="Optional"
-                type="number"
-              />
-            </label>
+            <MoneyField
+              label="Compare-at price"
+              name="compareAtAmount"
+              placeholder="Optional"
+              previewLabel="Strikethrough reference"
+            />
 
             <label className="grid gap-2 text-sm">
               <span className="font-semibold text-[var(--foreground)]">
@@ -986,30 +974,18 @@ export function SellerInventoryManager({
           </div>
 
           <div className="grid gap-4 xl:grid-cols-4">
-            <label className="grid gap-2 text-sm">
-              <span className="font-semibold text-[var(--foreground)]">
-                Current price
-              </span>
-              <input
-                className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
-                min={1}
-                name="priceAmount"
-                type="number"
-              />
-            </label>
+            <MoneyField
+              label="Current price"
+              name="priceAmount"
+              previewLabel="Live storefront price"
+            />
 
-            <label className="grid gap-2 text-sm">
-              <span className="font-semibold text-[var(--foreground)]">
-                Compare-at price
-              </span>
-              <input
-                className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
-                min={1}
-                name="compareAtAmount"
-                placeholder="Optional"
-                type="number"
-              />
-            </label>
+            <MoneyField
+              label="Compare-at price"
+              name="compareAtAmount"
+              placeholder="Optional"
+              previewLabel="Strikethrough reference"
+            />
 
             <label className="grid gap-2 text-sm">
               <span className="font-semibold text-[var(--foreground)]">
@@ -1135,32 +1111,20 @@ export function SellerInventoryManager({
               </div>
 
               <div className="grid gap-4">
-                <label className="grid gap-2 text-sm">
-                  <span className="font-semibold text-[var(--foreground)]">
-                    Current price
-                  </span>
-                  <input
-                    className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
-                    defaultValue={listing.price?.amount ?? 0}
-                    min={1}
-                    name="priceAmount"
-                    type="number"
-                  />
-                </label>
+                <MoneyField
+                  defaultValue={listing.price?.amount ?? 0}
+                  label="Current price"
+                  name="priceAmount"
+                  previewLabel="Live storefront price"
+                />
 
-                <label className="grid gap-2 text-sm">
-                  <span className="font-semibold text-[var(--foreground)]">
-                    Compare-at price
-                  </span>
-                  <input
-                    className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
-                    defaultValue={listing.compareAtPrice?.amount ?? ""}
-                    min={1}
-                    name="compareAtAmount"
-                    placeholder="Optional"
-                    type="number"
-                  />
-                </label>
+                <MoneyField
+                  defaultValue={listing.compareAtPrice?.amount ?? ""}
+                  label="Compare-at price"
+                  name="compareAtAmount"
+                  placeholder="Optional"
+                  previewLabel="Strikethrough reference"
+                />
 
                 <label className="grid gap-2 text-sm">
                   <span className="font-semibold text-[var(--foreground)]">
@@ -1346,6 +1310,50 @@ function MetricCard({
   );
 }
 
+function MoneyField({
+  defaultValue = "",
+  label,
+  name,
+  placeholder,
+  previewLabel
+}: {
+  defaultValue?: number | string;
+  label: string;
+  name: string;
+  placeholder?: string;
+  previewLabel: string;
+}): React.JSX.Element {
+  const initialValue = String(defaultValue ?? "");
+  const [rawValue, setRawValue] = useState(initialValue);
+
+  useEffect(() => {
+    setRawValue(initialValue);
+  }, [initialValue]);
+
+  const preview = formatMinorUnitPreview(rawValue);
+
+  return (
+    <label className="grid gap-2 text-sm">
+      <span className="font-semibold text-[var(--foreground)]">{label}</span>
+      <input
+        className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+        min={1}
+        name={name}
+        onChange={(event) => setRawValue(event.target.value)}
+        placeholder={placeholder}
+        step={1}
+        type="number"
+        value={rawValue}
+      />
+      <p className="text-xs leading-6 text-[var(--muted)]">
+        {preview
+          ? `${previewLabel}: ${preview}`
+          : "Enter the amount in minor units to preview the displayed RON price."}
+      </p>
+    </label>
+  );
+}
+
 function dedupeOwnedProducts(
   listings: SellerListingSummary[]
 ): SellerListingSummary[] {
@@ -1372,6 +1380,25 @@ function resolveDefaultVariantId(
     option?.variants[0]?.variantId ??
     ""
   );
+}
+
+function formatMinorUnitPreview(rawValue: string): string | null {
+  const normalized = rawValue.trim();
+
+  if (!normalized) {
+    return null;
+  }
+
+  const parsed = Number(normalized);
+
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return null;
+  }
+
+  return formatMoney({
+    amount: Math.round(parsed),
+    currency: "RON"
+  });
 }
 
 async function readResponseMessage(response: Response): Promise<string | null> {

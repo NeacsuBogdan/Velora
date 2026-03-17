@@ -1,6 +1,7 @@
 "use client";
 
 import type {
+  SellerProductCreationOptions,
   SellerListingCatalogOption,
   SellerListingSummary
 } from "@velora/contracts";
@@ -16,9 +17,11 @@ const apiBaseUrl =
 
 export function SellerInventoryManager({
   catalogOptions,
+  creationOptions,
   listings
 }: {
   catalogOptions: SellerListingCatalogOption[];
+  creationOptions: SellerProductCreationOptions | null;
   listings: SellerListingSummary[];
 }): React.JSX.Element {
   const router = useRouter();
@@ -35,6 +38,7 @@ export function SellerInventoryManager({
     catalogOptions.find((option) => option.productId === selectedProductId) ??
     null;
   const createDisabled = !selectedProduct;
+  const catalogCreationDisabled = !creationOptions?.categories.length;
 
   async function handleCreateSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -91,6 +95,81 @@ export function SellerInventoryManager({
         ...current,
         [feedbackKey]:
           "The API is unavailable. Start the backend and retry the offer creation."
+      }));
+    } finally {
+      setPendingKey(null);
+    }
+  }
+
+  async function handleCreateCatalogProductSubmit(
+    event: React.FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
+    const feedbackKey = "create-catalog-product";
+    setPendingKey(feedbackKey);
+    clearFeedback(feedbackKey);
+
+    const formData = new FormData(event.currentTarget);
+    const compareAtRaw = String(formData.get("compareAtAmount") ?? "").trim();
+    const brandNameRaw = String(formData.get("brandName") ?? "").trim();
+    const variantTitleRaw = String(formData.get("variantTitle") ?? "").trim();
+    const imageUrlRaw = String(formData.get("imageUrl") ?? "").trim();
+    const imageAltRaw = String(formData.get("imageAlt") ?? "").trim();
+    const payload = {
+      title: String(formData.get("title") ?? "").trim(),
+      description: String(formData.get("description") ?? "").trim(),
+      categoryId: String(formData.get("categoryId") ?? "").trim(),
+      brandName: brandNameRaw || null,
+      variantTitle: variantTitleRaw || null,
+      sellerSku: String(formData.get("sellerSku") ?? "").trim(),
+      leadTimeDays: Number(formData.get("leadTimeDays")),
+      priceAmount: Number(formData.get("priceAmount")),
+      compareAtAmount: compareAtRaw ? Number(compareAtRaw) : null,
+      onHand: Number(formData.get("onHand")),
+      safetyStock: Number(formData.get("safetyStock")),
+      isActive: String(formData.get("isActive")) === "true",
+      imageUrl: imageUrlRaw || null,
+      imageAlt: imageAltRaw || null,
+      note: String(formData.get("note") ?? "").trim() || undefined
+    };
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/seller/catalog-products`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        credentials: "include",
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const responseMessage = await readResponseMessage(response);
+        setFeedback((current) => ({
+          ...current,
+          [feedbackKey]:
+            responseMessage ??
+            "The product could not be created. Review the category, content, and offer values."
+        }));
+        return;
+      }
+
+      setFeedback((current) => ({
+        ...current,
+        [feedbackKey]:
+          "Product created, first offer published, and admin review has been notified."
+      }));
+
+      event.currentTarget.reset();
+
+      startTransition(() => {
+        router.refresh();
+      });
+    } catch {
+      setFeedback((current) => ({
+        ...current,
+        [feedbackKey]:
+          "The API is unavailable. Start the backend and retry product creation."
       }));
     } finally {
       setPendingKey(null);
@@ -279,12 +358,268 @@ export function SellerInventoryManager({
       <Panel className="space-y-6">
         <div className="space-y-3">
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
+            Create product
+          </p>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h2 className="font-[var(--font-heading)] text-3xl font-bold tracking-tight">
+                Add your own product and publish the first seller offer.
+              </h2>
+              <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--muted)]">
+                Use this when the product does not already exist on Velora.
+                The seller portal will create the catalog record, attach your
+                first offer, sync storefront availability, and notify admin
+                operations.
+              </p>
+            </div>
+            <div className="rounded-[24px] bg-black/3 px-5 py-4 text-sm text-[var(--muted)]">
+              {creationOptions?.categories.length ?? 0} active categor{(creationOptions?.categories.length ?? 0) === 1 ? "y" : "ies"}
+            </div>
+          </div>
+        </div>
+
+        <form
+          className="grid gap-5 rounded-[28px] border border-[var(--stroke)] bg-white/80 p-6"
+          onSubmit={(event) => void handleCreateCatalogProductSubmit(event)}
+        >
+          <div className="grid gap-4 xl:grid-cols-2">
+            <label className="grid gap-2 text-sm">
+              <span className="font-semibold text-[var(--foreground)]">
+                Product title
+              </span>
+              <input
+                className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                name="title"
+                placeholder="Atlas Reader Desk Lamp"
+                type="text"
+              />
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <span className="font-semibold text-[var(--foreground)]">
+                Category
+              </span>
+              <select
+                className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                disabled={catalogCreationDisabled}
+                name="categoryId"
+              >
+                {(creationOptions?.categories ?? []).map((category) => (
+                  <option key={category.categoryId} value={category.categoryId}>
+                    {category.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-2">
+            <label className="grid gap-2 text-sm">
+              <span className="font-semibold text-[var(--foreground)]">
+                Brand
+              </span>
+              <input
+                className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                name="brandName"
+                placeholder="Lumio"
+                type="text"
+              />
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <span className="font-semibold text-[var(--foreground)]">
+                Variant title
+              </span>
+              <input
+                className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                name="variantTitle"
+                placeholder="Black / USB-C"
+                type="text"
+              />
+            </label>
+          </div>
+
+          <label className="grid gap-2 text-sm">
+            <span className="font-semibold text-[var(--foreground)]">
+              Product description
+            </span>
+            <textarea
+              className="min-h-32 rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+              name="description"
+              placeholder="Describe the product clearly for storefront discovery, search, and customer trust."
+            />
+          </label>
+
+          <div className="grid gap-4 xl:grid-cols-2">
+            <label className="grid gap-2 text-sm">
+              <span className="font-semibold text-[var(--foreground)]">
+                Hero image URL
+              </span>
+              <input
+                className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                name="imageUrl"
+                placeholder="https://images.example.com/product-hero.jpg"
+                type="url"
+              />
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <span className="font-semibold text-[var(--foreground)]">
+                Image alt text
+              </span>
+              <input
+                className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                name="imageAlt"
+                placeholder="Atlas Reader Desk Lamp in matte black"
+                type="text"
+              />
+            </label>
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-2">
+            <label className="grid gap-2 text-sm">
+              <span className="font-semibold text-[var(--foreground)]">
+                Seller SKU
+              </span>
+              <input
+                className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                name="sellerSku"
+                placeholder="LUM-ATLAS-BLK"
+                type="text"
+              />
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <span className="font-semibold text-[var(--foreground)]">
+                Offer visibility
+              </span>
+              <select
+                className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                defaultValue="true"
+                name="isActive"
+              >
+                <option value="true">Visible to customers</option>
+                <option value="false">Hidden until ready</option>
+              </select>
+            </label>
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-4">
+            <label className="grid gap-2 text-sm">
+              <span className="font-semibold text-[var(--foreground)]">
+                Current price
+              </span>
+              <input
+                className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                min={1}
+                name="priceAmount"
+                type="number"
+              />
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <span className="font-semibold text-[var(--foreground)]">
+                Compare-at price
+              </span>
+              <input
+                className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                min={1}
+                name="compareAtAmount"
+                placeholder="Optional"
+                type="number"
+              />
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <span className="font-semibold text-[var(--foreground)]">
+                On hand
+              </span>
+              <input
+                className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                defaultValue={0}
+                min={0}
+                name="onHand"
+                type="number"
+              />
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <span className="font-semibold text-[var(--foreground)]">
+                Safety stock
+              </span>
+              <input
+                className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                defaultValue={0}
+                min={0}
+                name="safetyStock"
+                type="number"
+              />
+            </label>
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
+            <label className="grid gap-2 text-sm">
+              <span className="font-semibold text-[var(--foreground)]">
+                Lead time
+              </span>
+              <input
+                className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                defaultValue={2}
+                max={30}
+                min={1}
+                name="leadTimeDays"
+                type="number"
+              />
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <span className="font-semibold text-[var(--foreground)]">
+                Product note
+              </span>
+              <input
+                className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                name="note"
+                placeholder="Merchant launch, handcrafted line, exclusive import, or other operator context"
+                type="text"
+              />
+            </label>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm leading-7 text-[var(--muted)]">
+              New seller-created products stay seller-scoped operationally, and
+              admin is notified for catalog visibility.
+            </p>
+            <Button
+              disabled={
+                catalogCreationDisabled ||
+                pendingKey === "create-catalog-product"
+              }
+              type="submit"
+            >
+              {pendingKey === "create-catalog-product"
+                ? "Creating product..."
+                : "Create product and offer"}
+            </Button>
+          </div>
+
+          {feedback["create-catalog-product"] ? (
+            <p className="text-sm text-[var(--muted)]">
+              {feedback["create-catalog-product"]}
+            </p>
+          ) : null}
+        </form>
+      </Panel>
+
+      <Panel className="space-y-6">
+        <div className="space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
             Add offer
           </p>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <h2 className="font-[var(--font-heading)] text-3xl font-bold tracking-tight">
-                Add a new seller offer from the shared marketplace catalog.
+                Attach an offer to a product that already exists on Velora.
               </h2>
               <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--muted)]">
                 Sellers attach their own SKU, pricing, stock, and visibility to

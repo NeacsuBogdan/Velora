@@ -37,6 +37,19 @@ export class SellerController {
     return this.sellerService.listCatalogOptions(viewer);
   }
 
+  @Get("creation-options")
+  getProductCreationOptions(@CurrentUser() viewer: AuthenticatedUser) {
+    return this.sellerService.getProductCreationOptions(viewer);
+  }
+
+  @Post("catalog-products")
+  createCatalogProduct(
+    @CurrentUser() viewer: AuthenticatedUser,
+    @Body() body: unknown
+  ) {
+    return this.sellerService.createCatalogProduct(viewer, body);
+  }
+
   @Post("listings")
   createListing(
     @CurrentUser() viewer: AuthenticatedUser,

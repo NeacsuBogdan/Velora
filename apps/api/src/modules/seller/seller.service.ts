@@ -3,16 +3,20 @@ import {
   Injectable,
   NotFoundException
 } from "@nestjs/common";
+import type { Prisma } from "@prisma/client";
 import type { AuthenticatedUser } from "@velora/contracts";
 import {
+  createSellerCatalogProductRequestSchema,
   createSellerListingRequestSchema,
   sellerDashboardSchema,
+  sellerProductCreationOptionsSchema,
   updateSellerInventoryRequestSchema,
   updateSellerListingCommercialRequestSchema
 } from "@velora/contracts";
 
 import { AuditService } from "../audit/audit.service";
 import { PrismaService } from "../database/prisma.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import { PlatformCacheService } from "../platform-cache/platform-cache.service";
 import { calculateAvailableQuantity } from "../search/search.helpers";
 import { OpenSearchService } from "../search/opensearch.service";
@@ -23,19 +27,26 @@ import {
   mapSellerOrderDetail,
   mapSellerOrderSummary,
   resolveActivePrice,
+  slugify,
   sellerCatalogOptionInclude,
   sellerListingInclude,
   sellerOrderInclude
 } from "./seller.helpers";
 
+type PrismaTransactionClient = Prisma.TransactionClient;
+
 @Injectable()
 export class SellerService {
+  private readonly adminUrl =
+    process.env.NEXT_PUBLIC_ADMIN_URL ?? "http://localhost:3001";
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
     private readonly projectionService: SearchProjectionService,
     private readonly openSearchService: OpenSearchService,
-    private readonly cacheService: PlatformCacheService
+    private readonly cacheService: PlatformCacheService,
+    private readonly notificationsService: NotificationsService
   ) {}
 
   async getDashboard(viewer: AuthenticatedUser) {
@@ -169,6 +180,165 @@ export class SellerService {
     return products.map((product) =>
       mapSellerListingCatalogOption(product, seller.id)
     );
+  }
+
+  async getProductCreationOptions(viewer: AuthenticatedUser) {
+    await this.getSellerScope(viewer.id);
+
+    const categories = await this.prisma.category.findMany({
+      where: {
+        isActive: true
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        parentId: true
+      },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }]
+    });
+
+    const categoryMap = new Map(categories.map((category) => [category.id, category]));
+
+    return sellerProductCreationOptionsSchema.parse({
+      categories: categories.map((category) => ({
+        categoryId: category.id,
+        name: category.name,
+        slug: category.slug,
+        label: this.buildCategoryLabel(category.id, categoryMap)
+      }))
+    });
+  }
+
+  async createCatalogProduct(viewer: AuthenticatedUser, rawInput: unknown) {
+    const seller = await this.getSellerScope(viewer.id);
+    const input = createSellerCatalogProductRequestSchema.parse(rawInput);
+    await this.ensureSellerSkuAvailable(input.sellerSku);
+
+    const createdListing = await this.prisma.$transaction(async (tx) => {
+      const category = await this.resolveActiveCategoryWithinTransaction(
+        tx,
+        input.categoryId
+      );
+      const brandId = await this.resolveBrandIdWithinTransaction(
+        tx,
+        input.brandName ?? null
+      );
+      const productSlug = await this.generateUniqueProductSlug(
+        tx,
+        input.title,
+        seller.slug
+      );
+      const productStatus = seller.status === "ACTIVE" ? "ACTIVE" : "DRAFT";
+      const product = await tx.product.create({
+        data: {
+          title: input.title,
+          slug: productSlug,
+          description: input.description,
+          status: productStatus,
+          categoryId: category.id,
+          brandId
+        }
+      });
+      const variantTitle = input.variantTitle?.trim();
+      const variant = variantTitle
+        ? await tx.productVariant.create({
+            data: {
+              productId: product.id,
+              sku: `SELL-${product.id.slice(-8).toUpperCase()}`,
+              title: variantTitle,
+              isDefault: true
+            }
+          })
+        : null;
+      const listing = await tx.sellerProductListing.create({
+        data: {
+          sellerId: seller.id,
+          productId: product.id,
+          variantId: variant?.id ?? null,
+          sellerSku: input.sellerSku.trim(),
+          status: productStatus,
+          isActive: productStatus === "ACTIVE" && input.isActive,
+          leadTimeDays: input.leadTimeDays
+        }
+      });
+
+      await tx.price.create({
+        data: {
+          listingId: listing.id,
+          amount: input.priceAmount,
+          compareAtAmount: input.compareAtAmount ?? null,
+          currency: "RON"
+        }
+      });
+
+      await tx.inventoryItem.create({
+        data: {
+          listingId: listing.id,
+          onHand: input.onHand,
+          safetyStock: input.safetyStock
+        }
+      });
+
+      if (input.imageUrl) {
+        await tx.productMedia.create({
+          data: {
+            productId: product.id,
+            storageKey: `seller-products/${seller.slug}/${product.id}/hero`,
+            url: input.imageUrl,
+            altText: input.imageAlt?.trim() || input.title,
+            sortOrder: 0
+          }
+        });
+      }
+
+      await tx.auditLog.create({
+        data: {
+          actorUserId: viewer.id,
+          entityType: "PRODUCT",
+          entityId: product.id,
+          action: "SELLER_PRODUCT_CREATED",
+          details: {
+            categoryId: category.id,
+            listingId: listing.id,
+            sellerId: seller.id,
+            sellerSku: input.sellerSku.trim(),
+            note:
+              input.note?.trim() ||
+              `Seller product created by ${viewer.email}.`
+          }
+        }
+      });
+
+      return listing;
+    });
+
+    if (createdListing.isActive) {
+      await this.syncListings(
+        [createdListing.id],
+        viewer.id,
+        "Seller-created catalog product published."
+      );
+    }
+
+    await this.invalidateStorefrontReadCaches();
+    await this.notificationsService.notifyAdmins({
+      kind: "OPERATIONS",
+      level: "INFO",
+      title: "Seller catalog product created",
+      message: `${seller.displayName} created a new catalog product: ${input.title}.`,
+      linkUrl: `${this.adminUrl}#products`,
+      actorUserId: viewer.id
+    });
+
+    const listing = await this.prisma.sellerProductListing.findUniqueOrThrow({
+      where: {
+        id: createdListing.id
+      },
+      include: sellerListingInclude.include
+    });
+
+    return mapSellerListingSummary(listing);
   }
 
   async createListing(viewer: AuthenticatedUser, rawInput: unknown) {
@@ -614,6 +784,28 @@ export class SellerService {
     return seller;
   }
 
+  private buildCategoryLabel(
+    categoryId: string,
+    categoryMap: Map<
+      string,
+      {
+        id: string;
+        name: string;
+        parentId: string | null;
+      }
+    >
+  ) {
+    const path: string[] = [];
+    let current = categoryMap.get(categoryId);
+
+    while (current) {
+      path.unshift(current.name);
+      current = current.parentId ? categoryMap.get(current.parentId) : undefined;
+    }
+
+    return path.join(" / ");
+  }
+
   private async ensureSellerSkuAvailable(sellerSku: string) {
     const existingListing = await this.prisma.sellerProductListing.findFirst({
       where: {
@@ -629,6 +821,93 @@ export class SellerService {
         `Seller SKU ${sellerSku.trim()} is already assigned to another offer.`
       );
     }
+  }
+
+  private async resolveActiveCategoryWithinTransaction(
+    tx: PrismaTransactionClient,
+    categoryId: string
+  ) {
+    const category = await tx.category.findFirst({
+      where: {
+        id: categoryId,
+        isActive: true
+      },
+      select: {
+        id: true,
+        name: true
+      }
+    });
+
+    if (!category) {
+      throw new NotFoundException(
+        `Category ${categoryId} is not available for seller-created products.`
+      );
+    }
+
+    return category;
+  }
+
+  private async resolveBrandIdWithinTransaction(
+    tx: PrismaTransactionClient,
+    brandName: string | null
+  ) {
+    const normalizedBrandName = brandName?.trim();
+
+    if (!normalizedBrandName) {
+      return null;
+    }
+
+    const brandSlug = slugify(normalizedBrandName);
+    const existingBrand = await tx.brand.findUnique({
+      where: {
+        slug: brandSlug
+      },
+      select: {
+        id: true
+      }
+    });
+
+    if (existingBrand) {
+      return existingBrand.id;
+    }
+
+    const createdBrand = await tx.brand.create({
+      data: {
+        name: normalizedBrandName,
+        slug: brandSlug
+      },
+      select: {
+        id: true
+      }
+    });
+
+    return createdBrand.id;
+  }
+
+  private async generateUniqueProductSlug(
+    tx: PrismaTransactionClient,
+    title: string,
+    sellerSlug: string
+  ) {
+    const baseSlug = slugify(title) || "seller-product";
+    let candidate = `${baseSlug}-${sellerSlug}`;
+    let suffix = 2;
+
+    while (
+      await tx.product.findUnique({
+        where: {
+          slug: candidate
+        },
+        select: {
+          id: true
+        }
+      })
+    ) {
+      candidate = `${baseSlug}-${sellerSlug}-${suffix}`;
+      suffix += 1;
+    }
+
+    return candidate;
   }
 
   private async syncListings(

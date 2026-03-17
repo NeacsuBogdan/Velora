@@ -16,6 +16,7 @@ import type {
   ProductDetail,
   SellerActivationPreview,
   SellerDashboard,
+  SellerProductCreationOptions,
   SellerListingCatalogOption,
   SellerListingSummary,
   SellerOrderDetail,
@@ -171,6 +172,14 @@ export async function getSellerListingCatalogOptions(): Promise<
     (await getAuthenticatedJson<SellerListingCatalogOption[]>(
       "/seller/catalog-options",
     )) ?? []
+  );
+}
+
+export async function getSellerProductCreationOptions(): Promise<
+  SellerProductCreationOptions | null
+> {
+  return getAuthenticatedJson<SellerProductCreationOptions>(
+    "/seller/creation-options"
   );
 }
 

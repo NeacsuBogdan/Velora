@@ -23,9 +23,26 @@ const viewer: AuthenticatedUser = {
 
 function createService() {
   const tx = {
+    brand: {
+      create: vi.fn(),
+      findUnique: vi.fn()
+    },
+    category: {
+      findFirst: vi.fn()
+    },
     inventoryItem: {
       create: vi.fn(),
       update: vi.fn()
+    },
+    product: {
+      create: vi.fn(),
+      findUnique: vi.fn()
+    },
+    productMedia: {
+      create: vi.fn()
+    },
+    productVariant: {
+      create: vi.fn()
     },
     sellerProductListing: {
       create: vi.fn(),
@@ -51,6 +68,9 @@ function createService() {
     product: {
       findMany: vi.fn(),
       findUnique: vi.fn()
+    },
+    category: {
+      findMany: vi.fn()
     },
     inventoryItem: {
       findFirst: vi.fn()
@@ -86,6 +106,9 @@ function createService() {
   const cacheService = {
     deleteByPrefix: vi.fn().mockResolvedValue(undefined)
   };
+  const notificationsService = {
+    notifyAdmins: vi.fn().mockResolvedValue({ count: 1 })
+  };
 
   return {
     tx,
@@ -94,12 +117,14 @@ function createService() {
     projectionService,
     openSearchService,
     cacheService,
+    notificationsService,
     service: new SellerService(
       prisma as never,
       auditService as never,
       projectionService as never,
       openSearchService as never,
-      cacheService as never
+      cacheService as never,
+      notificationsService as never
     )
   };
 }
@@ -410,6 +435,95 @@ describe("SellerService", () => {
     expect(result.listingId).toBe("listing-3");
     expect(result.sellerSku).toBe("NST-AX1P-NEW");
     expect(tx.sellerProductListing.create).toHaveBeenCalled();
+  });
+
+  it("creates a seller-owned catalog product and first offer", async () => {
+    const { notificationsService, prisma, service, tx } = createService();
+    prisma.seller.findUnique.mockResolvedValue({
+      id: "seller-1",
+      slug: "north-star-electronics",
+      displayName: "North Star Electronics",
+      status: "ACTIVE"
+    });
+    prisma.sellerProductListing.findFirst.mockResolvedValue(null);
+    tx.category.findFirst.mockResolvedValue({
+      id: "category-1",
+      name: "Desk Lamps"
+    });
+    tx.brand.findUnique.mockResolvedValue(null);
+    tx.brand.create.mockResolvedValue({
+      id: "brand-1"
+    });
+    tx.product.findUnique.mockResolvedValue(null);
+    tx.product.create.mockResolvedValue({
+      id: "product-9"
+    });
+    tx.productVariant.create.mockResolvedValue({
+      id: "variant-9"
+    });
+    tx.sellerProductListing.create.mockResolvedValue({
+      id: "listing-9",
+      isActive: true
+    });
+    prisma.sellerProductListing.findUniqueOrThrow.mockResolvedValue({
+      id: "listing-9",
+      sellerId: "seller-1",
+      productId: "product-9",
+      status: "ACTIVE",
+      isActive: true,
+      leadTimeDays: 3,
+      sellerSku: "NST-LAMP-001",
+      updatedAt: new Date("2026-03-17T11:00:00.000Z"),
+      prices: [
+        {
+          amount: 129900,
+          compareAtAmount: 149900,
+          currency: "RON",
+          startsAt: null,
+          endsAt: null,
+          createdAt: new Date("2026-03-17T11:00:00.000Z")
+        }
+      ],
+      product: {
+        id: "product-9",
+        status: "ACTIVE",
+        slug: "atlas-reader-desk-lamp-north-star-electronics",
+        title: "Atlas Reader Desk Lamp",
+        media: []
+      },
+      variant: {
+        title: "Black / USB-C"
+      },
+      inventoryItem: {
+        id: "inventory-9",
+        onHand: 14,
+        reserved: 0,
+        safetyStock: 2
+      }
+    });
+
+    const result = await service.createCatalogProduct(viewer, {
+      title: "Atlas Reader Desk Lamp",
+      description:
+        "A compact reading lamp with USB-C power, adjustable warmth, and a weighted desk base.",
+      categoryId: "categc000001",
+      brandName: "Lumio",
+      variantTitle: "Black / USB-C",
+      sellerSku: "NST-LAMP-001",
+      leadTimeDays: 3,
+      priceAmount: 129900,
+      compareAtAmount: 149900,
+      onHand: 14,
+      safetyStock: 2,
+      isActive: true,
+      note: "First seller-created catalog product."
+    });
+
+    expect(result.listingId).toBe("listing-9");
+    expect(result.title).toBe("Atlas Reader Desk Lamp");
+    expect(tx.product.create).toHaveBeenCalled();
+    expect(tx.sellerProductListing.create).toHaveBeenCalled();
+    expect(notificationsService.notifyAdmins).toHaveBeenCalled();
   });
 
   it("archives seller-owned offers and removes them from search", async () => {

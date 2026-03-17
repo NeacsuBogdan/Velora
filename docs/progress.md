@@ -170,6 +170,7 @@
 - Tightened the storefront seller application schema to treat whitespace-only reference links as empty input instead of a validation failure.
 - Reworded the onboarding form copy around seller name, reference link, assortment summary, and review messaging so the flow reads like a marketplace application rather than a requirement to already run an external storefront.
 - Moved the protected seller portal into a dedicated route group so `/seller/login` and `/seller/activate` stay public while `/seller`, `/seller/listings`, and `/seller/orders` remain guarded by the seller workspace layout.
+- Added a seller-owned product creation flow so merchants can create a net-new catalog product, attach the first offer, assign it to an active category, and notify admin operations without waiting for a preexisting shared-catalog record.
 
 ## Important implementation notes
 

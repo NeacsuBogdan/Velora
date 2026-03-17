@@ -1396,6 +1396,25 @@ export const sellerDashboardSchema = z.object({
 
 export type SellerDashboard = z.infer<typeof sellerDashboardSchema>;
 
+export const sellerCreationCategorySchema = z.object({
+  categoryId: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  label: z.string()
+});
+
+export type SellerCreationCategory = z.infer<
+  typeof sellerCreationCategorySchema
+>;
+
+export const sellerProductCreationOptionsSchema = z.object({
+  categories: z.array(sellerCreationCategorySchema)
+});
+
+export type SellerProductCreationOptions = z.infer<
+  typeof sellerProductCreationOptionsSchema
+>;
+
 export const sellerListingCatalogOptionSchema = z.object({
   productId: z.string(),
   slug: z.string(),
@@ -1453,6 +1472,43 @@ export const updateSellerInventoryRequestSchema = z.object({
 
 export type UpdateSellerInventoryRequest = z.infer<
   typeof updateSellerInventoryRequestSchema
+>;
+
+export const createSellerCatalogProductRequestSchema = z
+  .object({
+    title: z.string().trim().min(3).max(160),
+    description: z.string().trim().min(16).max(4_000),
+    categoryId: z.string().cuid(),
+    brandName: z.string().trim().max(80).nullable().optional(),
+    variantTitle: z.string().trim().max(120).nullable().optional(),
+    sellerSku: z.string().trim().min(3).max(120),
+    leadTimeDays: z.number().int().min(1).max(30),
+    priceAmount: z.number().int().positive(),
+    compareAtAmount: z.number().int().positive().nullable().optional(),
+    onHand: z.number().int().nonnegative(),
+    safetyStock: z.number().int().nonnegative(),
+    isActive: z.boolean().default(true),
+    imageUrl: z.string().url().nullable().optional(),
+    imageAlt: z.string().trim().max(160).nullable().optional(),
+    note: z.string().trim().max(240).nullable().optional()
+  })
+  .superRefine((value, context) => {
+    if (
+      value.compareAtAmount !== null &&
+      value.compareAtAmount !== undefined &&
+      value.compareAtAmount < value.priceAmount
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["compareAtAmount"],
+        message:
+          "Compare-at amount must be greater than or equal to the current price."
+      });
+    }
+  });
+
+export type CreateSellerCatalogProductRequest = z.infer<
+  typeof createSellerCatalogProductRequestSchema
 >;
 
 export const createSellerListingRequestSchema = z

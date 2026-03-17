@@ -34,37 +34,44 @@ export function StartCheckoutButton({
     setErrorMessage(null);
 
     startTransition(async () => {
-      const response = await fetch(`${apiUrl}/checkout/sessions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          idempotencyKey: crypto.randomUUID()
-        })
-      });
+      try {
+        const response = await fetch(`${apiUrl}/checkout/sessions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            idempotencyKey: crypto.randomUUID()
+          })
+        });
 
-      if (response.status === 401) {
-        router.push(`/login?from=${encodeURIComponent(pathname)}`);
-        return;
-      }
+        if (response.status === 401) {
+          router.push(`/login?from=${encodeURIComponent(pathname)}`);
+          return;
+        }
 
-      if (!response.ok) {
+        if (!response.ok) {
+          setErrorMessage(
+            "Reservation could not be started. Verify stock and cart consistency."
+          );
+          setIsPending(false);
+          return;
+        }
+
+        const checkoutSession = (await response.json()) as {
+          checkoutSessionId: string;
+        };
+        router.push(
+          `/checkout?session=${encodeURIComponent(checkoutSession.checkoutSessionId)}`
+        );
+        router.refresh();
+      } catch {
         setErrorMessage(
-          "Reservation could not be started. Verify stock and cart consistency."
+          "The checkout reservation could not be started right now."
         );
         setIsPending(false);
-        return;
       }
-
-      const checkoutSession = (await response.json()) as {
-        checkoutSessionId: string;
-      };
-      router.push(
-        `/checkout?session=${encodeURIComponent(checkoutSession.checkoutSessionId)}`
-      );
-      router.refresh();
     });
   }
 

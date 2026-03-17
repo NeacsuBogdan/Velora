@@ -25,23 +25,29 @@ export function CartItemActions({
     setErrorMessage(null);
 
     startTransition(async () => {
-      const response = await fetch(url, {
-        ...init,
-        credentials: "include"
-      });
+      try {
+        const response = await fetch(url, {
+          ...init,
+          credentials: "include"
+        });
 
-      if (response.status === 401) {
-        router.push(`/login?from=${encodeURIComponent(pathname)}`);
-        return;
-      }
+        if (response.status === 401) {
+          router.push(`/login?from=${encodeURIComponent(pathname)}`);
+          return;
+        }
 
-      if (!response.ok) {
-        setErrorMessage("The cart update was rejected. Refresh and try again.");
+        if (!response.ok) {
+          setErrorMessage("The cart update was rejected. Refresh and try again.");
+          setIsPending(false);
+          return;
+        }
+
+        router.refresh();
         setIsPending(false);
-        return;
+      } catch {
+        setErrorMessage("The cart update could not be completed right now.");
+        setIsPending(false);
       }
-
-      router.refresh();
     });
   }
 

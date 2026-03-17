@@ -174,6 +174,7 @@
 - Added explicit ownership on seller-created catalog products, which keeps shared marketplace products platform-managed while letting merchants maintain content only for products their store owns.
 - Restricted seller offer attachment so products created by one merchant cannot be relisted by another merchant through the shared-catalog flow.
 - Added seller-side catalog-content editing for owned products, including title, description, category, brand, and hero-image maintenance with audit logging, admin notification, cache invalidation, and search refresh.
+- Moved seller portal mutations behind a same-origin storefront proxy, which removes fragile browser-to-API CORS dependence for seller product creation, offer updates, stock changes, and archive actions.
 
 ## Important implementation notes
 
@@ -221,6 +222,7 @@
 - Seller access now follows an approval and activation flow instead of public self-registration, which keeps merchant onboarding aligned with a marketplace review model while still being testable locally without an email service.
 - Notifications are now durable in-app records with unread state and deep links, which makes cross-role activity tracking workable even before outbound email or push infrastructure exists.
 - Seller-created catalog products now carry explicit merchant ownership, which lets the platform distinguish between shared catalog supply and merchant-owned catalog records without introducing a separate product table.
+- Seller portal writes now flow through a storefront-side proxy route before hitting the API, which keeps seller operations aligned with the same-origin session model already used for login and registration.
 
 ## Known follow-up items
 

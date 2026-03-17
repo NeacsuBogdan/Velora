@@ -12,8 +12,7 @@ import { useRouter } from "next/navigation";
 import { formatMoney } from "../lib/formatting";
 import { StatusBadge } from "./status-badge";
 
-const apiBaseUrl =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+const sellerApiBaseUrl = "/api/seller";
 
 export function SellerInventoryManager({
   catalogOptions,
@@ -63,7 +62,7 @@ export function SellerInventoryManager({
     };
 
     try {
-      const response = await fetch(`${apiBaseUrl}/seller/listings`, {
+      const response = await fetch(`${sellerApiBaseUrl}/listings`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -135,7 +134,7 @@ export function SellerInventoryManager({
     };
 
     try {
-      const response = await fetch(`${apiBaseUrl}/seller/catalog-products`, {
+      const response = await fetch(`${sellerApiBaseUrl}/catalog-products`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -196,7 +195,7 @@ export function SellerInventoryManager({
 
     try {
       const response = await fetch(
-        `${apiBaseUrl}/seller/inventory/${listing.inventoryItemId}`,
+        `${sellerApiBaseUrl}/inventory/${listing.inventoryItemId}`,
         {
           method: "PATCH",
           headers: {
@@ -262,7 +261,7 @@ export function SellerInventoryManager({
 
     try {
       const response = await fetch(
-        `${apiBaseUrl}/seller/catalog-products/${listing.productId}`,
+        `${sellerApiBaseUrl}/catalog-products/${listing.productId}`,
         {
           method: "PATCH",
           headers: {
@@ -324,7 +323,7 @@ export function SellerInventoryManager({
 
     try {
       const response = await fetch(
-        `${apiBaseUrl}/seller/listings/${listing.listingId}`,
+        `${sellerApiBaseUrl}/listings/${listing.listingId}`,
         {
           method: "PATCH",
           headers: {
@@ -381,7 +380,7 @@ export function SellerInventoryManager({
 
     try {
       const response = await fetch(
-        `${apiBaseUrl}/seller/listings/${listing.listingId}`,
+        `${sellerApiBaseUrl}/listings/${listing.listingId}`,
         {
           method: "DELETE",
           credentials: "include"

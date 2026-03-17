@@ -1,4 +1,4 @@
-import { UnauthorizedException } from "@nestjs/common";
+import { ConflictException, UnauthorizedException } from "@nestjs/common";
 import { SessionStatus } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import bcrypt from "bcryptjs";
@@ -7,8 +7,12 @@ import { AuthService } from "./auth.service";
 
 describe("AuthService", () => {
   const prisma = {
-    user: {
+    role: {
       findUnique: vi.fn()
+    },
+    user: {
+      findUnique: vi.fn(),
+      create: vi.fn()
     },
     session: {
       create: vi.fn(),
@@ -68,6 +72,92 @@ describe("AuthService", () => {
     expect(result.token).toHaveLength(64);
     expect(result.session.user.email).toBe("customer@velora.local");
     expect(result.session.user.roles[0]?.code).toBe("CUSTOMER");
+  });
+
+  it("registers a new customer account and issues a session", async () => {
+    vi.spyOn(bcrypt, "hash").mockResolvedValue("hashed-password" as never);
+
+    prisma.user.findUnique.mockResolvedValue(null);
+    prisma.role.findUnique.mockResolvedValue({
+      id: "role_customer",
+      code: "CUSTOMER",
+      name: "Customer"
+    });
+    prisma.user.create.mockResolvedValue({
+      id: "user_2",
+      email: "new.customer@velora.local",
+      firstName: "New",
+      lastName: "Customer",
+      isActive: true,
+      passwordHash: "hashed-password",
+      roleAssignments: [
+        {
+          role: {
+            code: "CUSTOMER",
+            name: "Customer"
+          }
+        }
+      ]
+    });
+    prisma.session.create.mockResolvedValue({
+      id: "session_2",
+      expiresAt: new Date("2026-04-10T10:00:00.000Z")
+    });
+
+    const result = await authService.register(
+      {
+        firstName: "New",
+        lastName: "Customer",
+        email: "new.customer@velora.local",
+        password: "Demo123!"
+      },
+      {
+        ipAddress: "127.0.0.1",
+        userAgent: "vitest"
+      }
+    );
+
+    expect(prisma.user.create).toHaveBeenCalledWith({
+      data: {
+        email: "new.customer@velora.local",
+        passwordHash: "hashed-password",
+        firstName: "New",
+        lastName: "Customer",
+        roleAssignments: {
+          create: {
+            roleId: "role_customer"
+          }
+        }
+      },
+      include: {
+        roleAssignments: {
+          include: {
+            role: true
+          }
+        }
+      }
+    });
+    expect(prisma.session.create).toHaveBeenCalled();
+    expect(result.session.user.email).toBe("new.customer@velora.local");
+    expect(result.session.user.roles[0]?.code).toBe("CUSTOMER");
+  });
+
+  it("rejects duplicate customer registrations", async () => {
+    prisma.user.findUnique.mockResolvedValue({
+      id: "user_existing"
+    });
+
+    await expect(
+      authService.register(
+        {
+          firstName: "Demo",
+          lastName: "Customer",
+          email: "customer@velora.local",
+          password: "Demo123!"
+        },
+        {}
+      )
+    ).rejects.toBeInstanceOf(ConflictException);
   });
 
   it("rejects invalid credentials", async () => {

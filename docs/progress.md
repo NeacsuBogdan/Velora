@@ -188,6 +188,7 @@
 - The admin order summary card now wraps long customer and seller identifiers and holds a two-column layout until extra-wide screens, which prevents identity fields from colliding inside the order detail header.
 - The admin refund form now accepts major-currency amounts, shows the remaining refundable balance, validates against over-refunding before submission, and surfaces the backend validation message instead of a generic failure state.
 - The admin order queue now truncates long preview fields and hides horizontal overflow inside the selector pane, which removes the stray bottom scrollbar and keeps queue cards compact on narrower layouts.
+- The storefront auth surface now includes public customer self-registration, a same-origin register proxy, a signed-out `Register` entry in the header, and explicit return-to-marketplace links on the login and register screens while keeping admin and seller roles seed-managed.
 
 ## Known follow-up items
 

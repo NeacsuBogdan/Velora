@@ -1,11 +1,18 @@
-import { Injectable, UnauthorizedException } from "@nestjs/common";
+import {
+  ConflictException,
+  Injectable,
+  InternalServerErrorException,
+  UnauthorizedException
+} from "@nestjs/common";
 import { Prisma, SessionStatus } from "@prisma/client";
 import {
   authenticatedUserSchema,
   loginRequestSchema,
+  registerRequestSchema,
   sessionResponseSchema,
   type AuthenticatedUser,
   type LoginRequest,
+  type RegisterRequest,
   type SessionResponse
 } from "@velora/contracts";
 import bcrypt from "bcryptjs";
@@ -62,6 +69,81 @@ export class AuthService {
       throw new UnauthorizedException("Invalid email or password.");
     }
 
+    return this.createSessionForUser(user, context, "AUTH_LOGIN");
+  }
+
+  async register(
+    rawInput: RegisterRequest,
+    context: LoginContext
+  ): Promise<{ token: string; session: SessionResponse }> {
+    const input = registerRequestSchema.parse(rawInput);
+    const normalizedEmail = input.email.toLowerCase();
+    const existingUser = await this.prisma.user.findUnique({
+      where: {
+        email: normalizedEmail
+      }
+    });
+
+    if (existingUser) {
+      throw new ConflictException("An account with this email already exists.");
+    }
+
+    const customerRole = await this.prisma.role.findUnique({
+      where: {
+        code: "CUSTOMER"
+      }
+    });
+
+    if (!customerRole) {
+      throw new InternalServerErrorException(
+        "Customer registration is unavailable because the customer role is missing."
+      );
+    }
+
+    const passwordHash = await bcrypt.hash(input.password, 12);
+    const user = await this.prisma.user.create({
+      data: {
+        email: normalizedEmail,
+        passwordHash,
+        firstName: input.firstName.trim(),
+        lastName: input.lastName.trim(),
+        roleAssignments: {
+          create: {
+            roleId: customerRole.id
+          }
+        }
+      },
+      include: {
+        roleAssignments: {
+          include: {
+            role: true
+          }
+        }
+      }
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        actorUserId: user.id,
+        entityType: "USER",
+        entityId: user.id,
+        action: "AUTH_REGISTER",
+        details: {
+          email: user.email,
+          userAgent: context.userAgent ?? null,
+          ipAddress: context.ipAddress ?? null
+        }
+      }
+    });
+
+    return this.createSessionForUser(user, context, "AUTH_REGISTER");
+  }
+
+  private async createSessionForUser(
+    user: UserWithRoles,
+    context: LoginContext,
+    action: "AUTH_LOGIN" | "AUTH_REGISTER"
+  ): Promise<{ token: string; session: SessionResponse }> {
     const token = randomBytes(32).toString("hex");
     const expiresAt = new Date(
       Date.now() + SESSION_DURATION_DAYS * 24 * 60 * 60 * 1000
@@ -83,7 +165,7 @@ export class AuthService {
         actorUserId: user.id,
         entityType: "SESSION",
         entityId: sessionRecord.id,
-        action: "AUTH_LOGIN",
+        action,
         details: {
           userAgent: context.userAgent ?? null,
           ipAddress: context.ipAddress ?? null

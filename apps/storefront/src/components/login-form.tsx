@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { SessionResponse } from "@velora/contracts";
 import { Button, Panel } from "@velora/ui";
+import Link from "next/link";
 import { startTransition, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useSearchParams } from "next/navigation";
@@ -135,6 +136,21 @@ export function LoginForm({
           <Button disabled={isPending} type="submit">
             {isPending ? "Signing in..." : "Sign in"}
           </Button>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--stroke)] pt-4 text-sm">
+          <Link
+            className="font-medium text-[var(--muted)] transition-colors hover:text-[var(--foreground)]"
+            href="/"
+          >
+            Back to marketplace
+          </Link>
+          <Link
+            className="font-semibold text-[var(--foreground)] transition-colors hover:text-[var(--accent)]"
+            href="/register"
+          >
+            Create a customer account
+          </Link>
         </div>
       </form>
     </Panel>

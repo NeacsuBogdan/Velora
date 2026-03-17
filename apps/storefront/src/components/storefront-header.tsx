@@ -86,9 +86,14 @@ export async function StorefrontHeader(): Promise<React.JSX.Element> {
                   </button>
                 </form>
               ) : (
-                <Link className={actionLinkClass} href="/login">
-                  Login
-                </Link>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link className={subtleButtonClass} href="/register">
+                    Register
+                  </Link>
+                  <Link className={actionLinkClass} href="/login">
+                    Login
+                  </Link>
+                </div>
               )}
             </div>
           </div>

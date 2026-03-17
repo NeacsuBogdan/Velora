@@ -1,5 +1,6 @@
 export const rateLimitPresets = [
   "AUTH_LOGIN",
+  "AUTH_REGISTER",
   "CART_COUPON",
   "CHECKOUT_CREATE",
   "PAYMENT_ATTEMPT_CREATE",

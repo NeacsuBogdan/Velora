@@ -65,6 +65,17 @@ export class RateLimitService {
       };
     }
 
+    if (preset === "AUTH_REGISTER") {
+      return {
+        identity: "ip",
+        limit:
+          this.configService.get<number>("RATE_LIMIT_REGISTER_MAX") ?? 6,
+        windowSeconds:
+          this.configService.get<number>("RATE_LIMIT_REGISTER_WINDOW_SECONDS") ??
+          300
+      };
+    }
+
     if (preset === "CART_COUPON") {
       return {
         identity: "viewer_or_ip",

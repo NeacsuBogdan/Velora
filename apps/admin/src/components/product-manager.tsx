@@ -16,6 +16,7 @@ import { apiUrl } from "../lib/api-url";
 import {
   FieldShell,
   InputClassName,
+  ListScrollClassName,
   ListCardButton,
   SectionShell,
   SplitPanel,
@@ -211,7 +212,7 @@ export function ProductManager({
               </Button>
             </div>
 
-            <div className="grid gap-3">
+            <div className={ListScrollClassName()}>
               <input
                 className={InputClassName()}
                 onChange={(event) => setQuery(event.target.value)}
@@ -262,7 +263,7 @@ export function ProductManager({
                     <StatusPill value={product.status} />
                   </div>
                   <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-                    {product.sellerName ?? "No seller"} ·{" "}
+                    {product.sellerName ?? "No seller"} -{" "}
                     {product.price
                       ? `${(product.price.amount / 100).toFixed(2)} ${product.price.currency}`
                       : "No active price"}
@@ -271,7 +272,7 @@ export function ProductManager({
                     {product.inventory
                       ? `${product.inventory.availableQuantity} available`
                       : "Inventory pending"}{" "}
-                    · {product.listingCount} listings
+                    - {product.listingCount} listings
                   </p>
                 </ListCardButton>
               ))}
@@ -341,7 +342,7 @@ export function ProductManager({
               <select className={InputClassName()} {...form.register("sellerId")}>
                 {options.sellers.map((seller) => (
                   <option key={seller.sellerId} value={seller.sellerId}>
-                    {seller.displayName} · {seller.status}
+                    {seller.displayName} - {seller.status}
                   </option>
                 ))}
               </select>

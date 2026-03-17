@@ -14,6 +14,7 @@ import {
   EmptyState,
   FieldShell,
   InputClassName,
+  ListScrollClassName,
   ListCardButton,
   SectionShell,
   SplitPanel,
@@ -163,7 +164,7 @@ export function CategoryManager({
               </Button>
             </div>
 
-            <div className="grid gap-3">
+            <div className={ListScrollClassName()}>
               {categories.map((category) => (
                 <ListCardButton
                   active={category.categoryId === selectedCategoryId}
@@ -185,7 +186,7 @@ export function CategoryManager({
                     Parent: {category.parentName ?? "Root category"}
                   </p>
                   <p className="mt-3 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
-                    {category.productCount} products · {category.childCount} children
+                    {category.productCount} products - {category.childCount} children
                   </p>
                 </ListCardButton>
               ))}

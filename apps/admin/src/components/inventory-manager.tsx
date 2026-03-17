@@ -15,6 +15,7 @@ import { apiUrl } from "../lib/api-url";
 import {
   FieldShell,
   InputClassName,
+  ListScrollClassName,
   ListCardButton,
   SectionShell,
   SplitPanel
@@ -170,7 +171,7 @@ export function InventoryManager({
               </Button>
             </div>
 
-            <div className="grid gap-3">
+            <div className={ListScrollClassName()}>
               {items.map((item) => (
                 <ListCardButton
                   active={item.inventoryItemId === selectedInventoryItemId}
@@ -192,7 +193,7 @@ export function InventoryManager({
                     {item.sellerName}
                   </p>
                   <p className="mt-3 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
-                    {item.availableQuantity} available · {item.reserved} reserved
+                    {item.availableQuantity} available - {item.reserved} reserved
                   </p>
                 </ListCardButton>
               ))}

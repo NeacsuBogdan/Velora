@@ -181,6 +181,8 @@
 - The seller listings workspace now includes a dedicated create-offer flow plus archive actions, which lets merchants add or retire their own offers without needing the admin backoffice for routine catalog operations.
 - The seller listings editor now uses stacked commercial and inventory panels instead of one cramped horizontal row, which makes the pricing and stock controls readable on typical laptop widths.
 - The admin workspace header now includes an explicit marketplace return link, which removes the need to bounce back to the storefront by manually editing the URL.
+- Admin selector panes such as inventory, categories, products, orders, sellers, and promotions now cap their own height and scroll internally, which keeps long management lists from stretching the whole backoffice page.
+- The seller commercial editor now keeps its operational note above the action buttons and collapses into a single-column field stack sooner, which fixes the cramped footer spacing on mid-width layouts.
 
 ## Known follow-up items
 

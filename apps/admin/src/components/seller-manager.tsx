@@ -15,6 +15,7 @@ import { apiUrl } from "../lib/api-url";
 import {
   FieldShell,
   InputClassName,
+  ListScrollClassName,
   ListCardButton,
   SectionShell,
   SplitPanel
@@ -145,7 +146,7 @@ export function SellerManager({
               </p>
             </div>
 
-            <div className="grid gap-3">
+            <div className={ListScrollClassName()}>
               <input
                 className={InputClassName()}
                 onChange={(event) => setQuery(event.target.value)}
@@ -195,7 +196,7 @@ export function SellerManager({
                     {seller.contactEmail}
                   </p>
                   <p className="mt-3 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
-                    {seller.activeListings} active listings · {seller.lowStockListings} low stock
+                    {seller.activeListings} active listings - {seller.lowStockListings} low stock
                   </p>
                 </ListCardButton>
               ))}

@@ -20,6 +20,7 @@ import { apiUrl } from "../lib/api-url";
 import {
   FieldShell,
   InputClassName,
+  ListScrollClassName,
   ListCardButton,
   SectionShell,
   SplitPanel
@@ -250,7 +251,7 @@ export function OrderManager({
               </p>
             </div>
 
-            <div className="grid gap-3">
+            <div className={ListScrollClassName()}>
               <input
                 className={InputClassName()}
                 onChange={(event) => setQuery(event.target.value)}
@@ -298,7 +299,7 @@ export function OrderManager({
                     <StatusPill value={order.status} />
                   </div>
                   <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-                    {(order.total.amount / 100).toFixed(2)} {order.total.currency} ·{" "}
+                    {(order.total.amount / 100).toFixed(2)} {order.total.currency} -{" "}
                     {order.itemCount} items
                   </p>
                   <p className="mt-3 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
@@ -416,7 +417,7 @@ export function OrderManager({
                         </p>
                       </div>
                       <p className="mt-3 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
-                        Qty {item.quantity} · Unit {(item.unitPrice.amount / 100).toFixed(2)}{" "}
+                        Qty {item.quantity} - Unit {(item.unitPrice.amount / 100).toFixed(2)}{" "}
                         {item.unitPrice.currency}
                       </p>
                     </div>

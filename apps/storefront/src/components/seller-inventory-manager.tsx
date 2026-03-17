@@ -548,7 +548,7 @@ export function SellerInventoryManager({
                 </p>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 2xl:grid-cols-2">
                 <label className="grid gap-2 text-sm">
                   <span className="font-semibold text-[var(--foreground)]">
                     Current price
@@ -604,7 +604,11 @@ export function SellerInventoryManager({
                 </label>
               </div>
 
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="grid gap-3 border-t border-[var(--stroke)] pt-4">
+                <p className="max-w-xl text-sm leading-7 text-[var(--muted)]">
+                  Hiding removes the offer from search. Archiving closes it out
+                  operationally.
+                </p>
                 <div className="flex flex-wrap gap-3">
                   <Button
                     disabled={pendingKey === `listing:${listing.listingId}`}
@@ -627,10 +631,6 @@ export function SellerInventoryManager({
                       : "Archive offer"}
                   </Button>
                 </div>
-                <p className="text-sm text-[var(--muted)]">
-                  Hiding removes the offer from search. Archiving closes it out
-                  operationally.
-                </p>
               </div>
 
               {feedback[`listing:${listing.listingId}`] ? (
@@ -659,7 +659,7 @@ export function SellerInventoryManager({
                 </p>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 2xl:grid-cols-2">
                 <label className="grid gap-2 text-sm">
                   <span className="font-semibold text-[var(--foreground)]">
                     On hand

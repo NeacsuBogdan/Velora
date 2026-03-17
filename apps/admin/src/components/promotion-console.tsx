@@ -11,6 +11,7 @@ import { startTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { apiUrl } from "../lib/api-url";
+import { ListScrollClassName } from "./admin-primitives";
 
 const promotionTypes: PromotionType[] = [
   "PERCENTAGE",
@@ -299,7 +300,7 @@ export function PromotionConsole({
           </Button>
         </div>
 
-        <div className="grid gap-3">
+        <div className={ListScrollClassName()}>
           {promotions.map((promotion) => (
             <button
               key={promotion.promotionId}
@@ -323,7 +324,7 @@ export function PromotionConsole({
                 {promotion.description}
               </p>
               <p className="mt-3 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
-                Priority {promotion.priority} · {promotion.stackingMode}
+                Priority {promotion.priority} - {promotion.stackingMode}
               </p>
             </button>
           ))}

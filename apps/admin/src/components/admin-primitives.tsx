@@ -81,6 +81,10 @@ export function TextAreaClassName() {
   return `${InputClassName()} min-h-28 resize-y`;
 }
 
+export function ListScrollClassName() {
+  return "grid gap-3 max-h-[34rem] overflow-y-auto pr-1";
+}
+
 export function ListCardButton({
   active,
   children,

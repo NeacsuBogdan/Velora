@@ -193,7 +193,7 @@ export function OperationsConsole({
                       {log.documentId ?? "Projection event"}
                     </p>
                     <p className="mt-1 text-xs leading-6 text-[var(--muted)]">
-                      {log.message ?? "No message"} ·{" "}
+                      {log.message ?? "No message"} -{" "}
                       {new Date(log.createdAt).toLocaleString("en-GB")}
                     </p>
                   </td>

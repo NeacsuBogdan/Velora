@@ -2,6 +2,7 @@ import "server-only";
 
 import type {
   AddressSummary,
+  AuthenticatedUser,
   CatalogNavigation,
   CatalogSearchResponse,
   CartDetail,
@@ -17,6 +18,10 @@ import type {
   SellerOrderDetail,
   SellerOrderSummary,
   SessionResponse,
+} from "@velora/contracts";
+import {
+  authenticatedUserSchema,
+  customerProfileSchema,
 } from "@velora/contracts";
 import { cookies } from "next/headers";
 
@@ -79,7 +84,25 @@ export async function getAuthenticatedOverview(
 }
 
 export async function getCurrentUserProfile(): Promise<CustomerProfile | null> {
-  return getAuthenticatedJson<CustomerProfile>("/users/me");
+  const profile = await getAuthenticatedJson<unknown>("/users/me");
+
+  if (!profile) {
+    return null;
+  }
+
+  const parsedProfile = customerProfileSchema.safeParse(profile);
+
+  if (parsedProfile.success) {
+    return parsedProfile.data;
+  }
+
+  const parsedUser = authenticatedUserSchema.safeParse(profile);
+
+  if (!parsedUser.success) {
+    return null;
+  }
+
+  return toFallbackCustomerProfile(parsedUser.data);
 }
 
 export async function getUserAddresses(): Promise<AddressSummary[]> {
@@ -184,4 +207,16 @@ export async function searchCatalog(
       next: { revalidate: 60 },
     },
   );
+}
+
+function toFallbackCustomerProfile(user: AuthenticatedUser): CustomerProfile {
+  return {
+    ...user,
+    defaultShippingAddress: null,
+    defaultBillingAddress: null,
+    metrics: {
+      addressCount: 0,
+      orderCount: 0,
+    },
+  };
 }

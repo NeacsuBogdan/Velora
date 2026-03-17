@@ -7,7 +7,7 @@ import { formatDateTime, formatMoney } from "../../lib/formatting";
 import {
   getCurrentUserProfile,
   getOrders,
-  getUserAddresses
+  getUserAddresses,
 } from "../../lib/storefront-api";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +19,7 @@ export default async function AccountPage(): Promise<React.JSX.Element> {
   const [profile, addresses, orders] = await Promise.all([
     getCurrentUserProfile(),
     getUserAddresses(),
-    getOrders()
+    getOrders(),
   ]);
 
   if (!profile) {
@@ -37,9 +37,25 @@ export default async function AccountPage(): Promise<React.JSX.Element> {
   }
 
   const recentOrders = orders.slice(0, 3);
-  const addressCoverage = [profile.defaultShippingAddress, profile.defaultBillingAddress]
-    .filter(Boolean)
-    .length;
+  const normalizedProfile = {
+    ...profile,
+    defaultShippingAddress: profile.defaultShippingAddress ?? null,
+    defaultBillingAddress: profile.defaultBillingAddress ?? null,
+    metrics: {
+      orderCount:
+        typeof profile.metrics?.orderCount === "number"
+          ? profile.metrics.orderCount
+          : orders.length,
+      addressCount:
+        typeof profile.metrics?.addressCount === "number"
+          ? profile.metrics.addressCount
+          : addresses.length,
+    },
+  };
+  const addressCoverage = [
+    normalizedProfile.defaultShippingAddress,
+    normalizedProfile.defaultBillingAddress,
+  ].filter(Boolean).length;
 
   return (
     <div className="grid gap-6">
@@ -52,15 +68,18 @@ export default async function AccountPage(): Promise<React.JSX.Element> {
             </h2>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--muted)]">
               The account workspace now reads from the same live customer
-              profile, address, and order records used by checkout and post-purchase
-              support flows.
+              profile, address, and order records used by checkout and
+              post-purchase support flows.
             </p>
           </div>
 
           <div className="rounded-[24px] bg-black/3 px-5 py-4 text-sm text-[var(--muted)]">
-            <p className="font-semibold text-[var(--foreground)]">{profile.email}</p>
+            <p className="font-semibold text-[var(--foreground)]">
+              {normalizedProfile.email}
+            </p>
             <p className="mt-2">
-              Active roles: {profile.roles.map((role) => role.name).join(", ")}
+              Active roles:{" "}
+              {normalizedProfile.roles.map((role) => role.name).join(", ")}
             </p>
           </div>
         </div>
@@ -69,7 +88,7 @@ export default async function AccountPage(): Promise<React.JSX.Element> {
       <div className="grid gap-4 xl:grid-cols-3">
         <StatTile
           label="Orders"
-          value={profile.metrics.orderCount.toString()}
+          value={normalizedProfile.metrics.orderCount.toString()}
           detail={
             recentOrders.length
               ? `Most recent order ${recentOrders[0]?.number} is ${recentOrders[0]?.status.toLowerCase().replace(/_/g, " ")}.`
@@ -78,7 +97,7 @@ export default async function AccountPage(): Promise<React.JSX.Element> {
         />
         <StatTile
           label="Saved addresses"
-          value={profile.metrics.addressCount.toString()}
+          value={normalizedProfile.metrics.addressCount.toString()}
           detail={
             addresses.length
               ? `${addresses.filter((address) => address.isDefault).length} default address record(s) are active.`
@@ -110,7 +129,7 @@ export default async function AccountPage(): Promise<React.JSX.Element> {
             </p>
           </div>
 
-          <AccountProfileForm profile={profile} />
+          <AccountProfileForm profile={normalizedProfile} />
         </Panel>
 
         <Panel className="space-y-5">
@@ -123,37 +142,39 @@ export default async function AccountPage(): Promise<React.JSX.Element> {
             </h3>
           </div>
 
-          {[profile.defaultShippingAddress, profile.defaultBillingAddress].map(
-            (address, index) => (
-              <div
-                key={address?.addressId ?? `empty-${index + 1}`}
-                className="rounded-[24px] border border-[var(--stroke)] bg-white/80 p-4"
-              >
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
-                  {index === 0 ? "Default shipping" : "Default billing"}
-                </p>
-                {address ? (
-                  <div className="mt-3 text-sm leading-7 text-[var(--muted)]">
-                    <p className="font-semibold text-[var(--foreground)]">
-                      {address.fullName}
-                    </p>
-                    <p>{address.label}</p>
-                    <p>{address.line1}</p>
-                    {address.line2 ? <p>{address.line2}</p> : null}
-                    <p>
-                      {address.city}
-                      {address.state ? `, ${address.state}` : ""} {address.postalCode}
-                    </p>
-                    <p>{address.countryCode}</p>
-                  </div>
-                ) : (
-                  <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
-                    No default address is configured for this type yet.
+          {[
+            normalizedProfile.defaultShippingAddress,
+            normalizedProfile.defaultBillingAddress,
+          ].map((address, index) => (
+            <div
+              key={address?.addressId ?? `empty-${index + 1}`}
+              className="rounded-[24px] border border-[var(--stroke)] bg-white/80 p-4"
+            >
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+                {index === 0 ? "Default shipping" : "Default billing"}
+              </p>
+              {address ? (
+                <div className="mt-3 text-sm leading-7 text-[var(--muted)]">
+                  <p className="font-semibold text-[var(--foreground)]">
+                    {address.fullName}
                   </p>
-                )}
-              </div>
-            )
-          )}
+                  <p>{address.label}</p>
+                  <p>{address.line1}</p>
+                  {address.line2 ? <p>{address.line2}</p> : null}
+                  <p>
+                    {address.city}
+                    {address.state ? `, ${address.state}` : ""}{" "}
+                    {address.postalCode}
+                  </p>
+                  <p>{address.countryCode}</p>
+                </div>
+              ) : (
+                <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
+                  No default address is configured for this type yet.
+                </p>
+              )}
+            </div>
+          ))}
 
           <Link className={secondaryLinkClass} href="/account/addresses">
             Manage address book
@@ -192,8 +213,7 @@ export default async function AccountPage(): Promise<React.JSX.Element> {
                       {order.number}
                     </Link>
                     <p className="mt-2 text-sm text-[var(--muted)]">
-                      Placed{" "}
-                      {formatDateTime(order.placedAt ?? order.createdAt)}
+                      Placed {formatDateTime(order.placedAt ?? order.createdAt)}
                     </p>
                   </div>
                   <StatusBadge value={order.status} />

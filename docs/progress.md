@@ -169,6 +169,7 @@
 - Storefront and admin typecheck now normalize `next-env.d.ts` before `tsc`, which prevents malformed `.next/dev` route references from breaking verification after local Next dev sessions.
 - The API development runner now compiles with `tsc-watch` and restarts `dist/main.js`, which avoids the missing decorator-metadata crash that `tsx watch` caused in Nest during local development.
 - The API dev script now checks whether the configured port is already occupied before starting, which prevents duplicate `pnpm dev:api` runs from failing with a raw `EADDRINUSE` stack trace.
+- The storefront account overview now tolerates malformed `/users/me` payloads by validating the profile shape and falling back to safe derived metrics, which prevents `/account` from crashing if the API returns only session-like user data.
 
 ## Known follow-up items
 

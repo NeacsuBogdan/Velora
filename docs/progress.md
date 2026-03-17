@@ -183,6 +183,7 @@
 - The admin workspace header now includes an explicit marketplace return link, which removes the need to bounce back to the storefront by manually editing the URL.
 - Admin selector panes such as inventory, categories, products, orders, sellers, and promotions now cap their own height and scroll internally, which keeps long management lists from stretching the whole backoffice page.
 - The seller commercial editor now keeps its operational note above the action buttons and collapses into a single-column field stack sooner, which fixes the cramped footer spacing on mid-width layouts.
+- The seller listing editors now keep both commercial and stock fields in a single column, which removes the remaining `Offer visibility` and `Pricing note` compression on narrower seller workspace widths.
 
 ## Known follow-up items
 

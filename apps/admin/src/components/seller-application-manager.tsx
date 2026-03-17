@@ -169,7 +169,7 @@ export function SellerApplicationManager({
       setActivationLink(savedApplication.activationLink ?? null);
       setStatusMessage(
         savedApplication.activationLink
-          ? "Seller activation link generated."
+          ? "Seller activation link generated. The application remains activation pending until the seller completes password setup."
           : "Seller application updated."
       );
       setIsPending(false);
@@ -400,6 +400,20 @@ export function SellerApplicationManager({
               ) : null}
             </div>
 
+            {selectedApplication.status === "ACTIVATION_PENDING" ? (
+              <div className="rounded-[24px] border border-[rgba(15,118,110,0.14)] bg-[rgba(15,118,110,0.06)] px-5 py-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
+                  Waiting for seller activation
+                </p>
+                <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
+                  Approval only issues the activation link. The application
+                  changes to activated after the seller opens the link, sets a
+                  password, and submits the activation form. Refresh the queue
+                  after that step to see the final status.
+                </p>
+              </div>
+            ) : null}
+
             {activationLink ? (
               <div className="rounded-[24px] border border-[rgba(15,118,110,0.14)] bg-[rgba(15,118,110,0.06)] px-5 py-5">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
@@ -422,7 +436,8 @@ export function SellerApplicationManager({
                 <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
                   In a production delivery this link would be sent by email.
                   For local and portfolio use, copy it directly into the seller
-                  activation page.
+                  activation page. The application stays activation pending
+                  until the seller submits the activation form successfully.
                 </p>
                 {copyMessage ? (
                   <p className="mt-2 text-sm text-[var(--accent)]">

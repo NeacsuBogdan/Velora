@@ -21,6 +21,27 @@ const viewer: AuthenticatedUser = {
   ]
 };
 
+function createListingProduct(
+  overrides: Record<string, unknown> = {}
+): Record<string, unknown> {
+  return {
+    id: "product-1",
+    status: "ACTIVE",
+    slug: "astra-x1-pro",
+    title: "Astra X1 Pro",
+    description:
+      "A premium marketplace product record used to validate seller catalog flows.",
+    categoryId: "category-1",
+    ownerSellerId: null,
+    brand: null,
+    category: {
+      name: "Phones"
+    },
+    media: [],
+    ...overrides
+  };
+}
+
 function createService() {
   const tx = {
     brand: {
@@ -36,10 +57,13 @@ function createService() {
     },
     product: {
       create: vi.fn(),
-      findUnique: vi.fn()
+      findUnique: vi.fn(),
+      update: vi.fn()
     },
     productMedia: {
-      create: vi.fn()
+      create: vi.fn(),
+      delete: vi.fn(),
+      update: vi.fn()
     },
     productVariant: {
       create: vi.fn()
@@ -78,6 +102,7 @@ function createService() {
     sellerProductListing: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
+      findFirstOrThrow: vi.fn(),
       findUniqueOrThrow: vi.fn()
     },
     order: {
@@ -285,11 +310,7 @@ describe("SellerService", () => {
         }
       ],
       product: {
-        id: "product-1",
-        status: "ACTIVE",
-        slug: "astra-x1-pro",
-        title: "Astra X1 Pro",
-        media: []
+        ...createListingProduct()
       },
       variant: null,
       inventoryItem: {
@@ -319,11 +340,7 @@ describe("SellerService", () => {
         }
       ],
       product: {
-        id: "product-1",
-        status: "ACTIVE",
-        slug: "astra-x1-pro",
-        title: "Astra X1 Pro",
-        media: []
+        ...createListingProduct()
       },
       variant: null,
       inventoryItem: {
@@ -362,7 +379,10 @@ describe("SellerService", () => {
       id: "cproduct0001",
       slug: "astra-x1-pro",
       title: "Astra X1 Pro",
+      description:
+        "Shared marketplace product available for seller offer attachment.",
       status: "ACTIVE",
+      ownerSellerId: null,
       brand: {
         name: "Astra"
       },
@@ -403,11 +423,10 @@ describe("SellerService", () => {
         }
       ],
       product: {
-        id: "cproduct0001",
-        status: "ACTIVE",
-        slug: "astra-x1-pro",
-        title: "Astra X1 Pro",
-        media: []
+        ...createListingProduct({
+          id: "cproduct0001",
+          title: "Astra X1 Pro"
+        })
       },
       variant: {
         title: "256 GB / Midnight"
@@ -485,11 +504,21 @@ describe("SellerService", () => {
         }
       ],
       product: {
-        id: "product-9",
-        status: "ACTIVE",
-        slug: "atlas-reader-desk-lamp-north-star-electronics",
-        title: "Atlas Reader Desk Lamp",
-        media: []
+        ...createListingProduct({
+          id: "product-9",
+          slug: "atlas-reader-desk-lamp-north-star-electronics",
+          title: "Atlas Reader Desk Lamp",
+          description:
+            "A compact reading lamp with USB-C power, adjustable warmth, and a weighted desk base.",
+          categoryId: "category-1",
+          ownerSellerId: "seller-1",
+          brand: {
+            name: "Lumio"
+          },
+          category: {
+            name: "Desk Lamps"
+          }
+        })
       },
       variant: {
         title: "Black / USB-C"
@@ -521,9 +550,193 @@ describe("SellerService", () => {
 
     expect(result.listingId).toBe("listing-9");
     expect(result.title).toBe("Atlas Reader Desk Lamp");
-    expect(tx.product.create).toHaveBeenCalled();
+    expect(tx.product.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          ownerSellerId: "seller-1"
+        })
+      })
+    );
     expect(tx.sellerProductListing.create).toHaveBeenCalled();
     expect(notificationsService.notifyAdmins).toHaveBeenCalled();
+  });
+
+  it("rejects attaching an offer to another seller's owned product", async () => {
+    const { prisma, service } = createService();
+    prisma.seller.findUnique.mockResolvedValue({
+      id: "seller-1",
+      slug: "north-star-electronics",
+      displayName: "North Star Electronics",
+      status: "ACTIVE"
+    });
+    prisma.product.findUnique.mockResolvedValue({
+      id: "cproduct0002",
+      slug: "artisan-desk-lamp-south-harbor",
+      title: "Artisan Desk Lamp",
+      description: "Seller-owned product already created by another merchant.",
+      status: "ACTIVE",
+      ownerSellerId: "seller-2",
+      brand: {
+        name: "South Harbor"
+      },
+      category: {
+        name: "Desk Lamps"
+      },
+      media: [],
+      variants: [],
+      listings: []
+    });
+
+    await expect(
+      service.createListing(viewer, {
+        productId: "cproduct0002",
+        sellerSku: "NST-CROSS-LIST",
+        leadTimeDays: 2,
+        priceAmount: 199900,
+        compareAtAmount: null,
+        onHand: 4,
+        safetyStock: 0,
+        isActive: true
+      })
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it("updates seller-owned catalog product content", async () => {
+    const { notificationsService, prisma, service, tx } = createService();
+    prisma.seller.findUnique.mockResolvedValue({
+      id: "seller-1",
+      slug: "north-star-electronics",
+      displayName: "North Star Electronics",
+      status: "ACTIVE"
+    });
+    prisma.product.findUnique.mockResolvedValue({
+      id: "product-9",
+      ownerSellerId: "seller-1",
+      media: [
+        {
+          id: "media-1",
+          url: "https://example.com/old-hero.jpg",
+          altText: "Old hero",
+          sortOrder: 0
+        }
+      ],
+      listings: [
+        {
+          id: "listing-9",
+          status: "ACTIVE",
+          isActive: true
+        }
+      ]
+    });
+    tx.category.findFirst.mockResolvedValue({
+      id: "categc000002",
+      name: "Ambient Lighting"
+    });
+    tx.brand.findUnique.mockResolvedValue({
+      id: "brand-2"
+    });
+    prisma.sellerProductListing.findFirstOrThrow.mockResolvedValue({
+      id: "listing-9",
+      sellerId: "seller-1",
+      productId: "product-9",
+      status: "ACTIVE",
+      isActive: true,
+      leadTimeDays: 3,
+      sellerSku: "NST-LAMP-001",
+      updatedAt: new Date("2026-03-17T12:15:00.000Z"),
+      prices: [
+        {
+          amount: 129900,
+          compareAtAmount: 149900,
+          currency: "RON",
+          startsAt: null,
+          endsAt: null,
+          createdAt: new Date("2026-03-17T11:00:00.000Z")
+        }
+      ],
+      product: {
+        ...createListingProduct({
+          id: "product-9",
+          slug: "atlas-reader-desk-lamp-north-star-electronics",
+          title: "Atlas Reader Desk Lamp Mk II",
+          description:
+            "Updated seller-owned product content with refreshed copy and imagery.",
+          categoryId: "categc000002",
+          ownerSellerId: "seller-1",
+          brand: {
+            name: "Lumio"
+          },
+          category: {
+            name: "Ambient Lighting"
+          },
+          media: [
+            {
+              url: "https://example.com/new-hero.jpg",
+              altText: "Atlas Reader Desk Lamp Mk II"
+            }
+          ]
+        })
+      },
+      variant: {
+        title: "Black / USB-C"
+      },
+      inventoryItem: {
+        id: "inventory-9",
+        onHand: 14,
+        reserved: 0,
+        safetyStock: 2
+      }
+    });
+
+    const result = await service.updateCatalogProduct(viewer, "product-9", {
+      title: "Atlas Reader Desk Lamp Mk II",
+      description:
+        "Updated seller-owned product content with refreshed copy and imagery.",
+      categoryId: "categc000002",
+      brandName: "Lumio",
+      imageUrl: "https://example.com/new-hero.jpg",
+      imageAlt: "Atlas Reader Desk Lamp Mk II",
+      note: "Copy refresh after merchant QA."
+    });
+
+    expect(result.title).toBe("Atlas Reader Desk Lamp Mk II");
+    expect(tx.product.update).toHaveBeenCalled();
+    expect(tx.productMedia.update).toHaveBeenCalled();
+    expect(notificationsService.notifyAdmins).toHaveBeenCalled();
+  });
+
+  it("rejects catalog-content edits on platform-owned products", async () => {
+    const { prisma, service } = createService();
+    prisma.seller.findUnique.mockResolvedValue({
+      id: "seller-1",
+      slug: "north-star-electronics",
+      displayName: "North Star Electronics",
+      status: "ACTIVE"
+    });
+    prisma.product.findUnique.mockResolvedValue({
+      id: "cproduct0001",
+      ownerSellerId: null,
+      media: [],
+      listings: [
+        {
+          id: "listing-3",
+          status: "ACTIVE",
+          isActive: true
+        }
+      ]
+    });
+
+    await expect(
+      service.updateCatalogProduct(viewer, "cproduct0001", {
+        title: "Shared catalog edit",
+        description:
+          "This should be rejected because shared marketplace products remain platform-managed.",
+        categoryId: "categc000001",
+        brandName: "Astra",
+        imageUrl: null,
+        imageAlt: null
+      })
+    ).rejects.toBeInstanceOf(ConflictException);
   });
 
   it("archives seller-owned offers and removes them from search", async () => {
@@ -545,11 +758,7 @@ describe("SellerService", () => {
       updatedAt: new Date("2026-03-17T08:00:00.000Z"),
       prices: [],
       product: {
-        id: "product-1",
-        status: "ACTIVE",
-        slug: "astra-x1-pro",
-        title: "Astra X1 Pro",
-        media: []
+        ...createListingProduct()
       },
       variant: null,
       inventoryItem: {
@@ -570,11 +779,7 @@ describe("SellerService", () => {
       updatedAt: new Date("2026-03-17T08:15:00.000Z"),
       prices: [],
       product: {
-        id: "product-1",
-        status: "ACTIVE",
-        slug: "astra-x1-pro",
-        title: "Astra X1 Pro",
-        media: []
+        ...createListingProduct()
       },
       variant: null,
       inventoryItem: {

@@ -163,27 +163,27 @@ model Role {
 }
 
 model User {
-  id                   String               @id @default(cuid())
-  email                String               @unique
-  passwordHash         String
-  firstName            String
-  lastName             String
-  isActive             Boolean              @default(true)
-  createdAt            DateTime             @default(now())
-  updatedAt            DateTime             @updatedAt
-  addresses            Address[]
-  auditLogs            AuditLog[]
-  carts                Cart[]
-  checkoutSessions     CheckoutSession[]
-  notifications        Notification[]       @relation("UserNotifications")
-  orders               Order[]
-  reindexJobs          ReindexJob[]
-  roleAssignments      UserRoleAssignment[]
-  reviewedSellerApplications SellerApplication[] @relation("SellerApplicationReviewer")
-  sellerProfile        Seller?              @relation("SellerOwner")
-  sessions             Session[]
-  statusHistoryEntries OrderStatusHistory[]
-  triggeredNotifications Notification[]     @relation("NotificationActor")
+  id                         String               @id @default(cuid())
+  email                      String               @unique
+  passwordHash               String
+  firstName                  String
+  lastName                   String
+  isActive                   Boolean              @default(true)
+  createdAt                  DateTime             @default(now())
+  updatedAt                  DateTime             @updatedAt
+  addresses                  Address[]
+  auditLogs                  AuditLog[]
+  carts                      Cart[]
+  checkoutSessions           CheckoutSession[]
+  notifications              Notification[]       @relation("UserNotifications")
+  orders                     Order[]
+  reindexJobs                ReindexJob[]
+  roleAssignments            UserRoleAssignment[]
+  reviewedSellerApplications SellerApplication[]  @relation("SellerApplicationReviewer")
+  sellerProfile              Seller?              @relation("SellerOwner")
+  sessions                   Session[]
+  statusHistoryEntries       OrderStatusHistory[]
+  triggeredNotifications     Notification[]       @relation("NotificationActor")
 }
 
 model UserRoleAssignment {
@@ -289,6 +289,7 @@ model Product {
   status         ProductStatus          @default(DRAFT)
   brandId        String?
   categoryId     String?
+  ownerSellerId  String?
   createdAt      DateTime               @default(now())
   updatedAt      DateTime               @updatedAt
   attributes     ProductAttribute[]
@@ -296,12 +297,14 @@ model Product {
   category       Category?              @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   listings       SellerProductListing[]
   media          ProductMedia[]
+  ownerSeller    Seller?                @relation(fields: [ownerSellerId], references: [id], onDelete: SetNull)
   orderItems     OrderItem[]
   specifications ProductSpecification[]
   variants       ProductVariant[]
 
   @@index([categoryId, status])
   @@index([brandId])
+  @@index([ownerSellerId])
 }
 
 model ProductVariant {
@@ -358,44 +361,45 @@ model ProductSpecification {
 }
 
 model Seller {
-  id           String                 @id @default(cuid())
-  slug         String                 @unique
-  displayName  String
-  legalName    String
-  contactEmail String                 @unique
-  status       SellerStatus           @default(ACTIVE)
-  ownerUserId  String?                @unique
-  createdAt    DateTime               @default(now())
-  updatedAt    DateTime               @updatedAt
-  application  SellerApplication?
-  listings     SellerProductListing[]
-  orders       Order[]
-  ownerUser    User?                  @relation("SellerOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  id            String                 @id @default(cuid())
+  slug          String                 @unique
+  displayName   String
+  legalName     String
+  contactEmail  String                 @unique
+  status        SellerStatus           @default(ACTIVE)
+  ownerUserId   String?                @unique
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  application   SellerApplication?
+  listings      SellerProductListing[]
+  ownedProducts Product[]
+  orders        Order[]
+  ownerUser     User?                  @relation("SellerOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
 }
 
 model SellerApplication {
-  id                String                  @id @default(cuid())
-  displayName       String
-  legalName         String
-  contactFirstName  String
-  contactLastName   String
-  contactEmail      String
-  contactPhone      String?
-  websiteUrl        String?
-  catalogSummary    String
-  notes             String?
-  status            SellerApplicationStatus @default(SUBMITTED)
-  reviewedByUserId  String?
-  reviewedAt        DateTime?
-  reviewNote        String?
-  sellerId          String?                 @unique
+  id                  String                  @id @default(cuid())
+  displayName         String
+  legalName           String
+  contactFirstName    String
+  contactLastName     String
+  contactEmail        String
+  contactPhone        String?
+  websiteUrl          String?
+  catalogSummary      String
+  notes               String?
+  status              SellerApplicationStatus @default(SUBMITTED)
+  reviewedByUserId    String?
+  reviewedAt          DateTime?
+  reviewNote          String?
+  sellerId            String?                 @unique
   activationExpiresAt DateTime?
-  activatedAt       DateTime?
-  createdAt         DateTime                @default(now())
-  updatedAt         DateTime                @updatedAt
-  activationToken   SellerActivationToken?
-  reviewedByUser    User?                   @relation("SellerApplicationReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
-  seller            Seller?                 @relation(fields: [sellerId], references: [id], onDelete: SetNull)
+  activatedAt         DateTime?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  activationToken     SellerActivationToken?
+  reviewedByUser      User?                   @relation("SellerApplicationReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  seller              Seller?                 @relation(fields: [sellerId], references: [id], onDelete: SetNull)
 
   @@index([status, createdAt])
   @@index([contactEmail])
@@ -414,25 +418,25 @@ model SellerActivationToken {
 }
 
 model SellerProductListing {
-  id             String                @id @default(cuid())
+  id             String          @id @default(cuid())
   sellerId       String
   productId      String
   variantId      String?
-  sellerSku      String                @unique
-  status         ProductStatus         @default(ACTIVE)
-  isActive       Boolean               @default(true)
-  leadTimeDays   Int                   @default(1)
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
+  sellerSku      String          @unique
+  status         ProductStatus   @default(ACTIVE)
+  isActive       Boolean         @default(true)
+  leadTimeDays   Int             @default(1)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
   cartItems      CartItem[]
   inventoryItem  InventoryItem?
   orderItems     OrderItem[]
   prices         Price[]
-  product        Product               @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product        Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
   searchDocument SearchDocument?
   searchSyncLogs SearchSyncLog[]
-  seller         Seller                @relation(fields: [sellerId], references: [id], onDelete: Cascade)
-  variant        ProductVariant?       @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  seller         Seller          @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  variant        ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
 
   @@index([sellerId, status])
   @@index([productId, isActive, status])
@@ -454,18 +458,18 @@ model Price {
 }
 
 model Promotion {
-  id           String                   @id @default(cuid())
+  id           String                    @id @default(cuid())
   name         String
-  code         String?                  @unique
+  code         String?                   @unique
   description  String
   type         PromotionType
   stackingMode PromotionStackingMode
-  priority     Int                      @default(100)
-  isActive     Boolean                  @default(true)
+  priority     Int                       @default(100)
+  isActive     Boolean                   @default(true)
   startsAt     DateTime?
   endsAt       DateTime?
-  createdAt    DateTime                 @default(now())
-  updatedAt    DateTime                 @updatedAt
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
   coupons      Coupon[]
   discounts    AppliedDiscountSnapshot[]
   rules        PromotionRule[]
@@ -517,19 +521,19 @@ model AppliedDiscountSnapshot {
 }
 
 model InventoryItem {
-  id           String                @id @default(cuid())
-  listingId    String                @unique
-  onHand       Int                   @default(0)
-  reserved     Int                   @default(0)
-  safetyStock  Int                   @default(0)
-  updatedAt    DateTime              @updatedAt
-  listing      SellerProductListing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  id           String               @id @default(cuid())
+  listingId    String               @unique
+  onHand       Int                  @default(0)
+  reserved     Int                  @default(0)
+  safetyStock  Int                  @default(0)
+  updatedAt    DateTime             @updatedAt
+  listing      SellerProductListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
   movements    InventoryMovement[]
   reservations StockReservation[]
 }
 
 model StockReservation {
-  id                String                      @id @default(cuid())
+  id                String                     @id @default(cuid())
   inventoryItemId   String
   cartId            String?
   checkoutSessionId String?
@@ -537,11 +541,11 @@ model StockReservation {
   quantity          Int
   status            InventoryReservationStatus @default(ACTIVE)
   expiresAt         DateTime
-  createdAt         DateTime                    @default(now())
-  updatedAt         DateTime                    @updatedAt
-  cart              Cart?                       @relation(fields: [cartId], references: [id], onDelete: SetNull)
-  checkoutSession   CheckoutSession?            @relation(fields: [checkoutSessionId], references: [id], onDelete: SetNull)
-  inventoryItem     InventoryItem               @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+  cart              Cart?                      @relation(fields: [cartId], references: [id], onDelete: SetNull)
+  checkoutSession   CheckoutSession?           @relation(fields: [checkoutSessionId], references: [id], onDelete: SetNull)
+  inventoryItem     InventoryItem              @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
   movements         InventoryMovement[]
 
   @@index([inventoryItemId, status])
@@ -565,22 +569,22 @@ model InventoryMovement {
 }
 
 model Cart {
-  id               String            @id @default(cuid())
+  id               String             @id @default(cuid())
   userId           String?
-  status           CartStatus        @default(ACTIVE)
-  currency         String            @default("RON")
+  status           CartStatus         @default(ACTIVE)
+  currency         String             @default("RON")
   couponCode       String?
-  idempotencyKey   String?           @unique
-  subtotal         Int               @default(0)
-  discountTotal    Int               @default(0)
-  total            Int               @default(0)
+  idempotencyKey   String?            @unique
+  subtotal         Int                @default(0)
+  discountTotal    Int                @default(0)
+  total            Int                @default(0)
   expiresAt        DateTime?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
   checkoutSessions CheckoutSession[]
   items            CartItem[]
   reservations     StockReservation[]
-  user             User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user             User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId, status])
 }
@@ -669,30 +673,30 @@ model RefundRecord {
 }
 
 model Order {
-  id                String                  @id @default(cuid())
-  number            String                  @unique
+  id                String                    @id @default(cuid())
+  number            String                    @unique
   userId            String?
   sellerId          String?
-  checkoutSessionId String?                 @unique
+  checkoutSessionId String?                   @unique
   paymentAttemptId  String?
-  status            OrderStatus             @default(CREATED)
-  paymentStatus     PaymentStatus           @default(PENDING)
-  currency          String                  @default("RON")
+  status            OrderStatus               @default(CREATED)
+  paymentStatus     PaymentStatus             @default(PENDING)
+  currency          String                    @default("RON")
   subtotal          Int
-  discountTotal     Int                     @default(0)
+  discountTotal     Int                       @default(0)
   total             Int
   placedAt          DateTime?
-  createdAt         DateTime                @default(now())
-  updatedAt         DateTime                @updatedAt
-  checkoutSession   CheckoutSession?        @relation(fields: [checkoutSessionId], references: [id], onDelete: SetNull)
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+  checkoutSession   CheckoutSession?          @relation(fields: [checkoutSessionId], references: [id], onDelete: SetNull)
   discountSnapshots AppliedDiscountSnapshot[]
   items             OrderItem[]
-  paymentAttempt    PaymentAttempt?         @relation(fields: [paymentAttemptId], references: [id], onDelete: SetNull)
+  paymentAttempt    PaymentAttempt?           @relation(fields: [paymentAttemptId], references: [id], onDelete: SetNull)
   returnRequests    ReturnRequest[]
-  seller            Seller?                 @relation(fields: [sellerId], references: [id], onDelete: SetNull)
+  seller            Seller?                   @relation(fields: [sellerId], references: [id], onDelete: SetNull)
   shipments         Shipment[]
   statusHistory     OrderStatusHistory[]
-  user              User?                   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user              User?                     @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId, status])
   @@index([userId, createdAt])
@@ -734,26 +738,26 @@ model OrderStatusHistory {
 }
 
 model Shipment {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   orderId        String
   trackingNumber String?
   carrier        String?
-  status         String   @default("PENDING")
+  status         String    @default("PENDING")
   shippedAt      DateTime?
   deliveredAt    DateTime?
-  createdAt      DateTime @default(now())
-  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  createdAt      DateTime  @default(now())
+  order          Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
 
 model ReturnRequest {
-  id          String    @id @default(cuid())
+  id          String     @id @default(cuid())
   orderId     String
   orderItemId String?
   reason      String
-  status      String    @default("REQUESTED")
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status      String     @default("REQUESTED")
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  order       Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
   orderItem   OrderItem? @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
 }
 

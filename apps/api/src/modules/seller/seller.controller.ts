@@ -50,6 +50,15 @@ export class SellerController {
     return this.sellerService.createCatalogProduct(viewer, body);
   }
 
+  @Patch("catalog-products/:productId")
+  updateCatalogProduct(
+    @CurrentUser() viewer: AuthenticatedUser,
+    @Param("productId") productId: string,
+    @Body() body: unknown
+  ) {
+    return this.sellerService.updateCatalogProduct(viewer, productId, body);
+  }
+
   @Post("listings")
   createListing(
     @CurrentUser() viewer: AuthenticatedUser,

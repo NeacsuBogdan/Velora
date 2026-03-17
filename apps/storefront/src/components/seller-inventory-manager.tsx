@@ -39,6 +39,7 @@ export function SellerInventoryManager({
     null;
   const createDisabled = !selectedProduct;
   const catalogCreationDisabled = !creationOptions?.categories.length;
+  const ownedProducts = dedupeOwnedProducts(listings);
 
   async function handleCreateSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -230,6 +231,73 @@ export function SellerInventoryManager({
         ...current,
         [feedbackKey]:
           "The API is unavailable. Start the backend and retry the update."
+      }));
+    } finally {
+      setPendingKey(null);
+    }
+  }
+
+  async function handleProductContentSubmit(
+    event: React.FormEvent<HTMLFormElement>,
+    listing: SellerListingSummary
+  ) {
+    event.preventDefault();
+    const feedbackKey = `product:${listing.productId}`;
+    setPendingKey(feedbackKey);
+    clearFeedback(feedbackKey);
+
+    const formData = new FormData(event.currentTarget);
+    const brandNameRaw = String(formData.get("brandName") ?? "").trim();
+    const imageUrlRaw = String(formData.get("imageUrl") ?? "").trim();
+    const imageAltRaw = String(formData.get("imageAlt") ?? "").trim();
+    const payload = {
+      title: String(formData.get("title") ?? "").trim(),
+      description: String(formData.get("description") ?? "").trim(),
+      categoryId: String(formData.get("categoryId") ?? "").trim(),
+      brandName: brandNameRaw || null,
+      imageUrl: imageUrlRaw || null,
+      imageAlt: imageAltRaw || null,
+      note: String(formData.get("note") ?? "").trim() || undefined
+    };
+
+    try {
+      const response = await fetch(
+        `${apiBaseUrl}/seller/catalog-products/${listing.productId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          credentials: "include",
+          body: JSON.stringify(payload)
+        }
+      );
+
+      if (!response.ok) {
+        const responseMessage = await readResponseMessage(response);
+        setFeedback((current) => ({
+          ...current,
+          [feedbackKey]:
+            responseMessage ??
+            "The product content update was rejected. Review the catalog fields and try again."
+        }));
+        return;
+      }
+
+      setFeedback((current) => ({
+        ...current,
+        [feedbackKey]:
+          "Seller-owned product content updated and storefront search refreshed."
+      }));
+
+      startTransition(() => {
+        router.refresh();
+      });
+    } catch {
+      setFeedback((current) => ({
+        ...current,
+        [feedbackKey]:
+          "The API is unavailable. Start the backend and retry the product update."
       }));
     } finally {
       setPendingKey(null);
@@ -614,17 +682,201 @@ export function SellerInventoryManager({
       <Panel className="space-y-6">
         <div className="space-y-3">
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
+            Owned catalog
+          </p>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h2 className="font-[var(--font-heading)] text-3xl font-bold tracking-tight">
+                Maintain the product content your store owns.
+              </h2>
+              <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--muted)]">
+                Seller-created products stay editable by their owning merchant.
+                Shared marketplace catalog products remain platform-managed, so
+                this section only appears for products your store introduced to
+                Velora.
+              </p>
+            </div>
+            <div className="rounded-[24px] bg-black/3 px-5 py-4 text-sm text-[var(--muted)]">
+              {ownedProducts.length} owned product{ownedProducts.length === 1 ? "" : "s"}
+            </div>
+          </div>
+        </div>
+
+        {ownedProducts.length ? (
+          <div className="grid gap-5">
+            {ownedProducts.map((listing) => (
+              <form
+                key={`product-${listing.productId}`}
+                className="grid gap-5 rounded-[28px] border border-[var(--stroke)] bg-white/80 p-6"
+                onSubmit={(event) => void handleProductContentSubmit(event, listing)}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <h3 className="font-[var(--font-heading)] text-2xl font-bold tracking-tight">
+                      {listing.title}
+                    </h3>
+                    <p className="mt-2 text-sm leading-7 text-[var(--muted)]">
+                      {listing.categoryName ?? "Uncategorized"}
+                      {listing.brandName ? ` / ${listing.brandName}` : ""}
+                      {listing.variantTitle ? ` / ${listing.variantTitle}` : ""}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <StatusBadge value={listing.status} />
+                    <StatusBadge value="SELLER" />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 xl:grid-cols-2">
+                  <label className="grid gap-2 text-sm">
+                    <span className="font-semibold text-[var(--foreground)]">
+                      Product title
+                    </span>
+                    <input
+                      className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                      defaultValue={listing.title}
+                      name="title"
+                      type="text"
+                    />
+                  </label>
+
+                  <label className="grid gap-2 text-sm">
+                    <span className="font-semibold text-[var(--foreground)]">
+                      Category
+                    </span>
+                    <select
+                      className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                      defaultValue={listing.categoryId ?? ""}
+                      disabled={catalogCreationDisabled}
+                      name="categoryId"
+                    >
+                      {(creationOptions?.categories ?? []).map((category) => (
+                        <option
+                          key={category.categoryId}
+                          value={category.categoryId}
+                        >
+                          {category.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <div className="grid gap-4 xl:grid-cols-2">
+                  <label className="grid gap-2 text-sm">
+                    <span className="font-semibold text-[var(--foreground)]">
+                      Brand
+                    </span>
+                    <input
+                      className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                      defaultValue={listing.brandName ?? ""}
+                      name="brandName"
+                      placeholder="Lumio"
+                      type="text"
+                    />
+                  </label>
+
+                  <label className="grid gap-2 text-sm">
+                    <span className="font-semibold text-[var(--foreground)]">
+                      Audit note
+                    </span>
+                    <input
+                      className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                      defaultValue=""
+                      name="note"
+                      placeholder="Why this product content changed"
+                      type="text"
+                    />
+                  </label>
+                </div>
+
+                <div className="grid gap-4 xl:grid-cols-2">
+                  <label className="grid gap-2 text-sm">
+                    <span className="font-semibold text-[var(--foreground)]">
+                      Hero image URL
+                    </span>
+                    <input
+                      className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                      defaultValue={listing.image?.url ?? ""}
+                      name="imageUrl"
+                      placeholder="https://images.example.com/product-hero.jpg"
+                      type="url"
+                    />
+                  </label>
+
+                  <label className="grid gap-2 text-sm">
+                    <span className="font-semibold text-[var(--foreground)]">
+                      Image alt text
+                    </span>
+                    <input
+                      className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                      defaultValue={listing.image?.altText ?? listing.title}
+                      name="imageAlt"
+                      placeholder="Describe the hero image for accessibility"
+                      type="text"
+                    />
+                  </label>
+                </div>
+
+                <label className="grid gap-2 text-sm">
+                  <span className="font-semibold text-[var(--foreground)]">
+                    Product description
+                  </span>
+                  <textarea
+                    className="min-h-32 rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                    defaultValue={listing.productDescription}
+                    name="description"
+                  />
+                </label>
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm leading-7 text-[var(--muted)]">
+                    Content changes propagate to this seller-owned product
+                    across search and storefront detail pages.
+                  </p>
+                  <Button
+                    disabled={pendingKey === `product:${listing.productId}`}
+                    type="submit"
+                    variant="secondary"
+                  >
+                    {pendingKey === `product:${listing.productId}`
+                      ? "Saving..."
+                      : "Update product content"}
+                  </Button>
+                </div>
+
+                {feedback[`product:${listing.productId}`] ? (
+                  <p className="text-sm text-[var(--muted)]">
+                    {feedback[`product:${listing.productId}`]}
+                  </p>
+                ) : null}
+              </form>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-[28px] border border-dashed border-[var(--stroke)] bg-white/60 px-6 py-5 text-sm leading-7 text-[var(--muted)]">
+            Create your first seller-owned product above to unlock catalog
+            content editing here. Shared marketplace products stay offer-only in
+            the seller workspace.
+          </div>
+        )}
+      </Panel>
+
+      <Panel className="space-y-6">
+        <div className="space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
             Add offer
           </p>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <h2 className="font-[var(--font-heading)] text-3xl font-bold tracking-tight">
-                Attach an offer to a product that already exists on Velora.
+                Attach an offer to a product that is already in the Velora catalog.
               </h2>
               <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--muted)]">
                 Sellers attach their own SKU, pricing, stock, and visibility to
-                existing products. Canonical products stay platform-managed,
-                while merchant offers stay seller-scoped.
+                shared marketplace products or to additional variants they own.
+                Products created by other sellers stay private to their owning
+                merchant and will not appear here.
               </p>
             </div>
             <div className="rounded-[24px] bg-black/3 px-5 py-4 text-sm text-[var(--muted)]">
@@ -1093,6 +1345,24 @@ function MetricCard({
       </p>
     </div>
   );
+}
+
+function dedupeOwnedProducts(
+  listings: SellerListingSummary[]
+): SellerListingSummary[] {
+  const seen = new Set<string>();
+  const ownedProducts: SellerListingSummary[] = [];
+
+  for (const listing of listings) {
+    if (!listing.canEditProductContent || seen.has(listing.productId)) {
+      continue;
+    }
+
+    seen.add(listing.productId);
+    ownedProducts.push(listing);
+  }
+
+  return ownedProducts;
 }
 
 function resolveDefaultVariantId(

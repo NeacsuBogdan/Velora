@@ -10,6 +10,7 @@ import {
   createSellerListingRequestSchema,
   sellerDashboardSchema,
   sellerProductCreationOptionsSchema,
+  updateSellerCatalogProductRequestSchema,
   updateSellerInventoryRequestSchema,
   updateSellerListingCommercialRequestSchema
 } from "@velora/contracts";
@@ -169,7 +170,15 @@ export class SellerService {
     const seller = await this.getSellerScope(viewer.id);
     const products = await this.prisma.product.findMany({
       where: {
-        status: "ACTIVE"
+        status: "ACTIVE",
+        OR: [
+          {
+            ownerSellerId: null
+          },
+          {
+            ownerSellerId: seller.id
+          }
+        ]
       },
       include: sellerCatalogOptionInclude.include,
       orderBy: {
@@ -237,7 +246,8 @@ export class SellerService {
           description: input.description,
           status: productStatus,
           categoryId: category.id,
-          brandId
+          brandId,
+          ownerSellerId: seller.id
         }
       });
       const variantTitle = input.variantTitle?.trim();
@@ -359,6 +369,12 @@ export class SellerService {
       );
     }
 
+    if (product.ownerSellerId && product.ownerSellerId !== seller.id) {
+      throw new ConflictException(
+        "Seller-owned catalog products can only be listed by the merchant that owns them."
+      );
+    }
+
     const selectedVariant =
       (input.variantId
         ? product.variants.find((variant) => variant.id === input.variantId)
@@ -453,6 +469,154 @@ export class SellerService {
         id: createdListing.id
       },
       include: sellerListingInclude.include
+    });
+
+    return mapSellerListingSummary(listing);
+  }
+
+  async updateCatalogProduct(
+    viewer: AuthenticatedUser,
+    productId: string,
+    rawInput: unknown
+  ) {
+    const seller = await this.getSellerScope(viewer.id);
+    const input = updateSellerCatalogProductRequestSchema.parse(rawInput);
+    const product = await this.prisma.product.findUnique({
+      where: {
+        id: productId
+      },
+      include: {
+        media: {
+          orderBy: {
+            sortOrder: "asc"
+          }
+        },
+        listings: {
+          select: {
+            id: true,
+            status: true,
+            isActive: true
+          }
+        }
+      }
+    });
+
+    if (!product) {
+      throw new NotFoundException(`Product ${productId} was not found.`);
+    }
+
+    if (product.ownerSellerId !== seller.id) {
+      throw new ConflictException(
+        "Only seller-owned catalog products can be edited from the seller workspace."
+      );
+    }
+
+    const category = await this.prisma.$transaction(async (tx) => {
+      const resolvedCategory = await this.resolveActiveCategoryWithinTransaction(
+        tx,
+        input.categoryId
+      );
+      const brandId = await this.resolveBrandIdWithinTransaction(
+        tx,
+        input.brandName ?? null
+      );
+
+      await tx.product.update({
+        where: {
+          id: productId
+        },
+        data: {
+          title: input.title,
+          description: input.description,
+          categoryId: resolvedCategory.id,
+          brandId
+        }
+      });
+
+      const heroMedia = product.media[0] ?? null;
+      const imageUrl = input.imageUrl?.trim() ?? "";
+
+      if (imageUrl.length > 0) {
+        if (heroMedia) {
+          await tx.productMedia.update({
+            where: {
+              id: heroMedia.id
+            },
+            data: {
+              url: imageUrl,
+              altText: input.imageAlt?.trim() || input.title
+            }
+          });
+        } else {
+          await tx.productMedia.create({
+            data: {
+              productId,
+              storageKey: `seller-products/${seller.slug}/${productId}/hero`,
+              url: imageUrl,
+              altText: input.imageAlt?.trim() || input.title,
+              sortOrder: 0
+            }
+          });
+        }
+      } else if (heroMedia) {
+        await tx.productMedia.delete({
+          where: {
+            id: heroMedia.id
+          }
+        });
+      }
+
+      await tx.auditLog.create({
+        data: {
+          actorUserId: viewer.id,
+          entityType: "PRODUCT",
+          entityId: productId,
+          action: "SELLER_PRODUCT_UPDATED",
+          details: {
+            sellerId: seller.id,
+            categoryId: resolvedCategory.id,
+            note:
+              input.note?.trim() ||
+              `Seller catalog product updated by ${viewer.email}.`
+          }
+        }
+      });
+
+      return resolvedCategory;
+    });
+
+    const listingIds = product.listings.map((listing) => listing.id);
+    const hasSearchEligibleListings = product.listings.some(
+      (listing) => listing.status === "ACTIVE" && listing.isActive
+    );
+
+    if (hasSearchEligibleListings) {
+      await this.syncListings(
+        listingIds,
+        viewer.id,
+        "Seller-owned catalog product updated."
+      );
+    }
+
+    await this.invalidateStorefrontReadCaches();
+    await this.notificationsService.notifyAdmins({
+      kind: "OPERATIONS",
+      level: "INFO",
+      title: "Seller catalog product updated",
+      message: `${seller.displayName} updated a seller-owned catalog product in ${category.name}.`,
+      linkUrl: `${this.adminUrl}#products`,
+      actorUserId: viewer.id
+    });
+
+    const listing = await this.prisma.sellerProductListing.findFirstOrThrow({
+      where: {
+        sellerId: seller.id,
+        productId
+      },
+      include: sellerListingInclude.include,
+      orderBy: {
+        updatedAt: "desc"
+      }
     });
 
     return mapSellerListingSummary(listing);

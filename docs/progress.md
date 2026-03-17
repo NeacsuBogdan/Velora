@@ -171,6 +171,9 @@
 - Reworded the onboarding form copy around seller name, reference link, assortment summary, and review messaging so the flow reads like a marketplace application rather than a requirement to already run an external storefront.
 - Moved the protected seller portal into a dedicated route group so `/seller/login` and `/seller/activate` stay public while `/seller`, `/seller/listings`, and `/seller/orders` remain guarded by the seller workspace layout.
 - Added a seller-owned product creation flow so merchants can create a net-new catalog product, attach the first offer, assign it to an active category, and notify admin operations without waiting for a preexisting shared-catalog record.
+- Added explicit ownership on seller-created catalog products, which keeps shared marketplace products platform-managed while letting merchants maintain content only for products their store owns.
+- Restricted seller offer attachment so products created by one merchant cannot be relisted by another merchant through the shared-catalog flow.
+- Added seller-side catalog-content editing for owned products, including title, description, category, brand, and hero-image maintenance with audit logging, admin notification, cache invalidation, and search refresh.
 
 ## Important implementation notes
 
@@ -217,13 +220,14 @@
 - The storefront auth surface now includes public customer self-registration, a same-origin register proxy, a signed-out `Register` entry in the header, and explicit return-to-marketplace links on the login and register screens while keeping admin and seller roles seed-managed.
 - Seller access now follows an approval and activation flow instead of public self-registration, which keeps merchant onboarding aligned with a marketplace review model while still being testable locally without an email service.
 - Notifications are now durable in-app records with unread state and deep links, which makes cross-role activity tracking workable even before outbound email or push infrastructure exists.
+- Seller-created catalog products now carry explicit merchant ownership, which lets the platform distinguish between shared catalog supply and merchant-owned catalog records without introducing a separate product table.
 
 ## Known follow-up items
 
 - Extend Stage 5 refund handling into richer administrative flows and customer-facing refund visibility in later account and backoffice stages.
 - Expand Stage 8 order-management tooling with shipment creation, carrier metadata, and manual exception workflows once fulfillment basics are added.
 - Add richer customer-visible shipment and return-request details once the fulfillment and seller workflow stages are in place.
-- Extend the seller portal with listing content edits, seller-facing promotion visibility, and shipment handling once fulfillment and performance stages are completed.
+- Extend the seller portal with richer media galleries, merchant-side product moderation states, seller-facing promotion visibility, and shipment handling once fulfillment and performance stages are completed.
 - Run the new Stage 10 migration and `pnpm perf:smoke` once local infrastructure is available again so the EXPLAIN output can be captured alongside the committed query-review notes.
 - Replace manual activation-link handoff with email delivery and expirable admin-issued invites once outbound notification infrastructure is introduced.
 - Extend the new in-app notification system with digest preferences, outbound delivery channels, and real-time transport once notification infrastructure moves beyond the MVP phase.

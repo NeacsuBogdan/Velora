@@ -35,6 +35,8 @@ export const sellerListingInclude =
     include: {
       product: {
         include: {
+          brand: true,
+          category: true,
           media: {
             orderBy: {
               sortOrder: "asc"
@@ -125,11 +127,17 @@ export function mapSellerListingSummary(listing: SellerListingRecord) {
     productId: listing.productId,
     slug: listing.product.slug,
     title: listing.product.title,
+    productDescription: listing.product.description,
+    categoryId: listing.product.categoryId,
+    categoryName: listing.product.category?.name ?? null,
+    brandName: listing.product.brand?.name ?? null,
     variantTitle: listing.variant?.title ?? null,
     sellerSku: listing.sellerSku,
     status: listing.status,
     isActive: listing.isActive,
     leadTimeDays: listing.leadTimeDays,
+    canEditProductContent: listing.product.ownerSellerId === listing.sellerId,
+    productOwnership: listing.product.ownerSellerId ? "SELLER" : "PLATFORM",
     price: price
       ? {
           amount: price.amount,

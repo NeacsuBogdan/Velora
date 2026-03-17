@@ -1415,6 +1415,12 @@ export type SellerProductCreationOptions = z.infer<
   typeof sellerProductCreationOptionsSchema
 >;
 
+export const sellerProductOwnershipSchema = z.enum(["PLATFORM", "SELLER"]);
+
+export type SellerProductOwnership = z.infer<
+  typeof sellerProductOwnershipSchema
+>;
+
 export const sellerListingCatalogOptionSchema = z.object({
   productId: z.string(),
   slug: z.string(),
@@ -1442,11 +1448,17 @@ export const sellerListingSummarySchema = z.object({
   productId: z.string(),
   slug: z.string(),
   title: z.string(),
+  productDescription: z.string(),
+  categoryId: z.string().nullable(),
+  categoryName: z.string().nullable(),
+  brandName: z.string().nullable(),
   variantTitle: z.string().nullable(),
   sellerSku: z.string(),
   status: productStatusSchema,
   isActive: z.boolean(),
   leadTimeDays: z.number().int().positive(),
+  canEditProductContent: z.boolean(),
+  productOwnership: sellerProductOwnershipSchema,
   price: moneySchema.nullable(),
   compareAtPrice: moneySchema.nullable(),
   inventory: z.object({
@@ -1509,6 +1521,20 @@ export const createSellerCatalogProductRequestSchema = z
 
 export type CreateSellerCatalogProductRequest = z.infer<
   typeof createSellerCatalogProductRequestSchema
+>;
+
+export const updateSellerCatalogProductRequestSchema = z.object({
+  title: z.string().trim().min(3).max(160),
+  description: z.string().trim().min(16).max(4_000),
+  categoryId: z.string().cuid(),
+  brandName: z.string().trim().max(80).nullable().optional(),
+  imageUrl: z.string().url().nullable().optional(),
+  imageAlt: z.string().trim().max(160).nullable().optional(),
+  note: z.string().trim().max(240).nullable().optional()
+});
+
+export type UpdateSellerCatalogProductRequest = z.infer<
+  typeof updateSellerCatalogProductRequestSchema
 >;
 
 export const createSellerListingRequestSchema = z

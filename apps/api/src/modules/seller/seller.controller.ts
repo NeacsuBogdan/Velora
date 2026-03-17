@@ -85,12 +85,28 @@ export class SellerController {
     return this.sellerService.updateListing(viewer, listingId, body);
   }
 
+  @Patch("listings/:listingId/reactivate")
+  reactivateListing(
+    @CurrentUser() viewer: AuthenticatedUser,
+    @Param("listingId") listingId: string
+  ) {
+    return this.sellerService.reactivateListing(viewer, listingId);
+  }
+
   @Delete("listings/:listingId")
   archiveListing(
     @CurrentUser() viewer: AuthenticatedUser,
     @Param("listingId") listingId: string
   ) {
     return this.sellerService.archiveListing(viewer, listingId);
+  }
+
+  @Delete("catalog-products/:productId")
+  deleteCatalogProduct(
+    @CurrentUser() viewer: AuthenticatedUser,
+    @Param("productId") productId: string
+  ) {
+    return this.sellerService.deleteCatalogProduct(viewer, productId);
   }
 
   @Get("orders")

@@ -57,6 +57,7 @@ function createService() {
     },
     product: {
       create: vi.fn(),
+      delete: vi.fn(),
       findUnique: vi.fn(),
       update: vi.fn()
     },
@@ -797,5 +798,144 @@ describe("SellerService", () => {
       "listing-1"
     ]);
     expect(openSearchService.removeDocuments).toHaveBeenCalledWith(["listing-1"]);
+  });
+
+  it("reactivates archived seller-owned offers", async () => {
+    const { prisma, service, tx } = createService();
+    prisma.seller.findUnique.mockResolvedValue({
+      id: "seller-1",
+      slug: "north-star-electronics",
+      displayName: "North Star Electronics",
+      status: "ACTIVE"
+    });
+    prisma.sellerProductListing.findFirst.mockResolvedValue({
+      id: "listing-1",
+      sellerId: "seller-1",
+      productId: "product-1",
+      status: "ARCHIVED",
+      isActive: false,
+      leadTimeDays: 2,
+      sellerSku: "NST-AX1P-256",
+      updatedAt: new Date("2026-03-17T08:00:00.000Z"),
+      prices: [],
+      product: {
+        ...createListingProduct()
+      },
+      variant: null,
+      inventoryItem: {
+        id: "inventory-1",
+        onHand: 12,
+        reserved: 0,
+        safetyStock: 1
+      }
+    });
+    prisma.sellerProductListing.findUniqueOrThrow.mockResolvedValue({
+      id: "listing-1",
+      sellerId: "seller-1",
+      productId: "product-1",
+      status: "ACTIVE",
+      isActive: true,
+      leadTimeDays: 2,
+      sellerSku: "NST-AX1P-256",
+      updatedAt: new Date("2026-03-17T08:15:00.000Z"),
+      prices: [],
+      product: {
+        ...createListingProduct()
+      },
+      variant: null,
+      inventoryItem: {
+        id: "inventory-1",
+        onHand: 12,
+        reserved: 0,
+        safetyStock: 1
+      }
+    });
+
+    const result = await service.reactivateListing(viewer, "listing-1");
+
+    expect(result.status).toBe("ACTIVE");
+    expect(result.isActive).toBe(true);
+    expect(tx.sellerProductListing.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: "listing-1"
+        },
+        data: expect.objectContaining({
+          status: "ACTIVE",
+          isActive: true
+        })
+      })
+    );
+  });
+
+  it("deletes archived seller-owned products without live dependencies", async () => {
+    const { notificationsService, prisma, service, tx } = createService();
+    prisma.seller.findUnique.mockResolvedValue({
+      id: "seller-1",
+      slug: "north-star-electronics",
+      displayName: "North Star Electronics",
+      status: "ACTIVE"
+    });
+    prisma.product.findUnique.mockResolvedValue({
+      id: "product-9",
+      title: "Atlas Reader Desk Lamp",
+      ownerSellerId: "seller-1",
+      orderItems: [],
+      listings: [
+        {
+          id: "listing-9",
+          status: "ARCHIVED",
+          sellerSku: "NST-LAMP-001",
+          cartItems: [],
+          inventoryItem: {
+            reserved: 0
+          }
+        }
+      ]
+    });
+
+    const result = await service.deleteCatalogProduct(viewer, "product-9");
+
+    expect(result).toEqual({
+      deletedProductId: "product-9",
+      deletedListingCount: 1
+    });
+    expect(tx.product.delete).toHaveBeenCalledWith({
+      where: {
+        id: "product-9"
+      }
+    });
+    expect(notificationsService.notifyAdmins).toHaveBeenCalled();
+  });
+
+  it("rejects deleting seller-owned products before the offer is archived", async () => {
+    const { prisma, service } = createService();
+    prisma.seller.findUnique.mockResolvedValue({
+      id: "seller-1",
+      slug: "north-star-electronics",
+      displayName: "North Star Electronics",
+      status: "ACTIVE"
+    });
+    prisma.product.findUnique.mockResolvedValue({
+      id: "product-9",
+      title: "Atlas Reader Desk Lamp",
+      ownerSellerId: "seller-1",
+      orderItems: [],
+      listings: [
+        {
+          id: "listing-9",
+          status: "ACTIVE",
+          sellerSku: "NST-LAMP-001",
+          cartItems: [],
+          inventoryItem: {
+            reserved: 0
+          }
+        }
+      ]
+    });
+
+    await expect(
+      service.deleteCatalogProduct(viewer, "product-9")
+    ).rejects.toBeInstanceOf(ConflictException);
   });
 });

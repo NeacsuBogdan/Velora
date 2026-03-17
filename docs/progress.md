@@ -176,6 +176,7 @@
 - Added seller-side catalog-content editing for owned products, including title, description, category, brand, and hero-image maintenance with audit logging, admin notification, cache invalidation, and search refresh.
 - Moved seller portal mutations behind a same-origin storefront proxy, which removes fragile browser-to-API CORS dependence for seller product creation, offer updates, stock changes, and archive actions.
 - Added major-currency seller price entry with live RON previews, so merchants now type normal amounts like `20.00` while the platform still persists minor units internally.
+- Reworked the owned-catalog seller editor into a selector/detail workspace with lifecycle controls, so sellers can archive, reactivate, and delete their own archived products from a single operational pane instead of managing separate per-product forms.
 
 ## Important implementation notes
 
@@ -227,6 +228,7 @@
 - Seller price entry now accepts normal RON values and shows a live currency preview in the workspace UI, while the underlying commerce engine continues to store pricing in minor units.
 - The owned-catalog editor now uses a selector/detail layout with a product list on the left and a focused edit form on the right, which keeps seller-owned product maintenance consistent with operational backoffice patterns.
 - Seller SKU labels now explicitly describe the field as the merchant's internal stock code, which removes the ambiguity around that identifier in seller create and listing views.
+- Seller-owned product deletion is now intentionally gated behind an archived offer state, which keeps destructive merchant cleanup aligned with safer marketplace operations while still allowing reactivation from the same workspace.
 
 ## Known follow-up items
 

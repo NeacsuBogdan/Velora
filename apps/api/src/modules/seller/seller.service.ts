@@ -823,6 +823,71 @@ export class SellerService {
     return mapSellerListingSummary(updatedListing);
   }
 
+  async reactivateListing(viewer: AuthenticatedUser, listingId: string) {
+    const seller = await this.getSellerScope(viewer.id);
+    const listing = await this.prisma.sellerProductListing.findFirst({
+      where: {
+        id: listingId,
+        sellerId: seller.id
+      },
+      include: sellerListingInclude.include
+    });
+
+    if (!listing) {
+      throw new NotFoundException(
+        `Listing ${listingId} was not found for seller ${seller.displayName}.`
+      );
+    }
+
+    if (listing.status !== "ARCHIVED") {
+      return mapSellerListingSummary(listing);
+    }
+
+    const canExposeToCustomers =
+      seller.status === "ACTIVE" && listing.product.status === "ACTIVE";
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.sellerProductListing.update({
+        where: {
+          id: listingId
+        },
+        data: {
+          status: "ACTIVE",
+          isActive: canExposeToCustomers
+        }
+      });
+
+      await tx.auditLog.create({
+        data: {
+          actorUserId: viewer.id,
+          entityType: "SELLER_PRODUCT_LISTING",
+          entityId: listingId,
+          action: "SELLER_LISTING_REACTIVATED",
+          details: {
+            sellerSku: listing.sellerSku,
+            isActive: canExposeToCustomers,
+            note: `Seller reactivated offer ${listing.sellerSku}.`
+          }
+        }
+      });
+    });
+
+    if (canExposeToCustomers) {
+      await this.syncListings([listingId], viewer.id, "Seller offer reactivated.");
+    } else {
+      await this.invalidateStorefrontReadCaches();
+    }
+
+    const updatedListing = await this.prisma.sellerProductListing.findUniqueOrThrow({
+      where: {
+        id: listingId
+      },
+      include: sellerListingInclude.include
+    });
+
+    return mapSellerListingSummary(updatedListing);
+  }
+
   async archiveListing(viewer: AuthenticatedUser, listingId: string) {
     const seller = await this.getSellerScope(viewer.id);
     const listing = await this.prisma.sellerProductListing.findFirst({
@@ -887,6 +952,121 @@ export class SellerService {
     );
 
     return mapSellerListingSummary(archivedListing);
+  }
+
+  async deleteCatalogProduct(viewer: AuthenticatedUser, productId: string) {
+    const seller = await this.getSellerScope(viewer.id);
+    const product = await this.prisma.product.findUnique({
+      where: {
+        id: productId
+      },
+      include: {
+        orderItems: {
+          select: {
+            id: true
+          },
+          take: 1
+        },
+        listings: {
+          select: {
+            id: true,
+            status: true,
+            sellerSku: true,
+            cartItems: {
+              select: {
+                id: true
+              },
+              take: 1
+            },
+            inventoryItem: {
+              select: {
+                reserved: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!product) {
+      throw new NotFoundException(`Product ${productId} was not found.`);
+    }
+
+    if (product.ownerSellerId !== seller.id) {
+      throw new ConflictException(
+        "Only seller-owned catalog products can be deleted from the seller workspace."
+      );
+    }
+
+    if (product.orderItems.length > 0) {
+      throw new ConflictException(
+        "Products that already appear in placed orders cannot be deleted. Archive the offer instead."
+      );
+    }
+
+    if (product.listings.some((listing) => listing.status !== "ARCHIVED")) {
+      throw new ConflictException(
+        "Archive the seller-owned offer before deleting the product."
+      );
+    }
+
+    if (
+      product.listings.some((listing) => (listing.inventoryItem?.reserved ?? 0) > 0)
+    ) {
+      throw new ConflictException(
+        "Products with reserved inventory cannot be deleted until active reservations are released."
+      );
+    }
+
+    if (product.listings.some((listing) => listing.cartItems.length > 0)) {
+      throw new ConflictException(
+        "Products that still exist in active carts cannot be deleted. Remove or expire those carts first."
+      );
+    }
+
+    const listingIds = product.listings.map((listing) => listing.id);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.product.delete({
+        where: {
+          id: productId
+        }
+      });
+
+      await tx.auditLog.create({
+        data: {
+          actorUserId: viewer.id,
+          entityType: "PRODUCT",
+          entityId: productId,
+          action: "SELLER_PRODUCT_DELETED",
+          details: {
+            sellerId: seller.id,
+            listingIds,
+            note: `Seller deleted owned catalog product ${productId}.`
+          }
+        }
+      });
+    });
+
+    await this.removeListingsFromSearch(
+      listingIds,
+      viewer.id,
+      "Seller-owned catalog product deleted."
+    );
+    await this.invalidateStorefrontReadCaches();
+    await this.notificationsService.notifyAdmins({
+      kind: "OPERATIONS",
+      level: "WARNING",
+      title: "Seller catalog product deleted",
+      message: `${seller.displayName} deleted the seller-owned product ${product.title}.`,
+      linkUrl: `${this.adminUrl}#products`,
+      actorUserId: viewer.id
+    });
+
+    return {
+      deletedProductId: productId,
+      deletedListingCount: listingIds.length
+    };
   }
 
   async listOrders(viewer: AuthenticatedUser) {

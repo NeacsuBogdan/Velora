@@ -510,6 +510,102 @@ export function SellerInventoryManager({
     }
   }
 
+  async function handleReactivate(listing: SellerListingSummary) {
+    const feedbackKey = `reactivate:${listing.listingId}`;
+    setPendingKey(feedbackKey);
+    clearFeedback(feedbackKey);
+
+    try {
+      const response = await fetch(
+        `${sellerApiBaseUrl}/listings/${listing.listingId}/reactivate`,
+        {
+          method: "PATCH",
+          credentials: "include"
+        }
+      );
+
+      if (!response.ok) {
+        const responseMessage = await readResponseMessage(response);
+        setFeedback((current) => ({
+          ...current,
+          [feedbackKey]:
+            responseMessage ?? "The archived offer could not be reactivated."
+        }));
+        return;
+      }
+
+      setFeedback((current) => ({
+        ...current,
+        [feedbackKey]: "Offer reactivated and returned to storefront discovery."
+      }));
+
+      startTransition(() => {
+        router.refresh();
+      });
+    } catch {
+      setFeedback((current) => ({
+        ...current,
+        [feedbackKey]:
+          "The API is unavailable. Start the backend and retry the reactivation."
+      }));
+    } finally {
+      setPendingKey(null);
+    }
+  }
+
+  async function handleDeleteOwnedProduct(listing: SellerListingSummary) {
+    const feedbackKey = `delete:${listing.productId}`;
+
+    if (
+      !window.confirm(
+        `Delete ${listing.title}? This permanently removes the seller-owned product and all of its offers if no orders, carts, or reservations still depend on it.`
+      )
+    ) {
+      return;
+    }
+
+    setPendingKey(feedbackKey);
+    clearFeedback(feedbackKey);
+
+    try {
+      const response = await fetch(
+        `${sellerApiBaseUrl}/catalog-products/${listing.productId}`,
+        {
+          method: "DELETE",
+          credentials: "include"
+        }
+      );
+
+      if (!response.ok) {
+        const responseMessage = await readResponseMessage(response);
+        setFeedback((current) => ({
+          ...current,
+          [feedbackKey]:
+            responseMessage ??
+            "The seller-owned product could not be deleted right now."
+        }));
+        return;
+      }
+
+      setFeedback((current) => ({
+        ...current,
+        [feedbackKey]: "Seller-owned product deleted from the catalog workspace."
+      }));
+
+      startTransition(() => {
+        router.refresh();
+      });
+    } catch {
+      setFeedback((current) => ({
+        ...current,
+        [feedbackKey]:
+          "The API is unavailable. Start the backend and retry the delete action."
+      }));
+    } finally {
+      setPendingKey(null);
+    }
+  }
+
   function clearFeedback(feedbackKey: string) {
     setFeedback((current) => {
       const next = { ...current };
@@ -791,7 +887,7 @@ export function SellerInventoryManager({
         </div>
 
         {ownedProducts.length && selectedOwnedProduct ? (
-          <div className="grid gap-5 xl:grid-cols-[300px_minmax(0,1fr)]">
+          <div className="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)]">
             <div className="grid gap-3 rounded-[28px] border border-[var(--stroke)] bg-white/70 p-4">
               {ownedProducts.map((listing) => {
                 const isSelected = listing.productId === selectedOwnedProduct.productId;
@@ -826,7 +922,7 @@ export function SellerInventoryManager({
             </div>
 
             <form
-              className="grid gap-5 rounded-[28px] border border-[var(--stroke)] bg-white/80 p-6"
+              className="grid min-w-0 gap-5 rounded-[28px] border border-[var(--stroke)] bg-white/80 p-6"
               onSubmit={(event) =>
                 void handleProductContentSubmit(event, selectedOwnedProduct)
               }
@@ -853,24 +949,24 @@ export function SellerInventoryManager({
               </div>
 
               <div className="grid gap-4 xl:grid-cols-2">
-                <label className="grid gap-2 text-sm">
+                <label className="grid min-w-0 gap-2 text-sm">
                   <span className="font-semibold text-[var(--foreground)]">
                     Product title
                   </span>
                   <input
-                    className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                    className="min-w-0 rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
                     defaultValue={selectedOwnedProduct.title}
                     name="title"
                     type="text"
                   />
                 </label>
 
-                <label className="grid gap-2 text-sm">
+                <label className="grid min-w-0 gap-2 text-sm">
                   <span className="font-semibold text-[var(--foreground)]">
                     Category
                   </span>
                   <select
-                    className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                    className="min-w-0 w-full rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
                     defaultValue={selectedOwnedProduct.categoryId ?? ""}
                     disabled={catalogCreationDisabled}
                     name="categoryId"
@@ -885,12 +981,12 @@ export function SellerInventoryManager({
               </div>
 
               <div className="grid gap-4 xl:grid-cols-2">
-                <label className="grid gap-2 text-sm">
+                <label className="grid min-w-0 gap-2 text-sm">
                   <span className="font-semibold text-[var(--foreground)]">
                     Brand
                   </span>
                   <input
-                    className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                    className="min-w-0 rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
                     defaultValue={selectedOwnedProduct.brandName ?? ""}
                     name="brandName"
                     placeholder="Lumio"
@@ -898,12 +994,12 @@ export function SellerInventoryManager({
                   />
                 </label>
 
-                <label className="grid gap-2 text-sm">
+                <label className="grid min-w-0 gap-2 text-sm">
                   <span className="font-semibold text-[var(--foreground)]">
                     Audit note
                   </span>
                   <input
-                    className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                    className="min-w-0 rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
                     defaultValue=""
                     name="note"
                     placeholder="Why this product content changed"
@@ -913,12 +1009,12 @@ export function SellerInventoryManager({
               </div>
 
               <div className="grid gap-4 xl:grid-cols-2">
-                <label className="grid gap-2 text-sm">
+                <label className="grid min-w-0 gap-2 text-sm">
                   <span className="font-semibold text-[var(--foreground)]">
                     Hero image URL
                   </span>
                   <input
-                    className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                    className="min-w-0 rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
                     defaultValue={selectedOwnedProduct.image?.url ?? ""}
                     name="imageUrl"
                     placeholder="https://images.example.com/product-hero.jpg"
@@ -926,12 +1022,12 @@ export function SellerInventoryManager({
                   />
                 </label>
 
-                <label className="grid gap-2 text-sm">
+                <label className="grid min-w-0 gap-2 text-sm">
                   <span className="font-semibold text-[var(--foreground)]">
                     Image alt text
                   </span>
                   <input
-                    className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                    className="min-w-0 rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
                     defaultValue={
                       selectedOwnedProduct.image?.altText ?? selectedOwnedProduct.title
                     }
@@ -942,36 +1038,96 @@ export function SellerInventoryManager({
                 </label>
               </div>
 
-              <label className="grid gap-2 text-sm">
+              <label className="grid min-w-0 gap-2 text-sm">
                 <span className="font-semibold text-[var(--foreground)]">
                   Product description
                 </span>
                 <textarea
-                  className="min-h-32 rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                  className="min-h-32 min-w-0 rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
                   defaultValue={selectedOwnedProduct.productDescription}
                   name="description"
                 />
               </label>
 
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="grid gap-3 border-t border-[var(--stroke)] pt-4">
                 <p className="text-sm leading-7 text-[var(--muted)]">
                   Content changes propagate to this seller-owned product across
                   search and storefront detail pages.
+                  {selectedOwnedProduct.status === "ARCHIVED"
+                    ? " Archived products can be reactivated for storefront exposure or deleted once they are no longer needed."
+                    : " Archive the offer first if you later want to remove the product completely."}
                 </p>
-                <Button
-                  disabled={pendingKey === `product:${selectedOwnedProduct.productId}`}
-                  type="submit"
-                  variant="secondary"
-                >
-                  {pendingKey === `product:${selectedOwnedProduct.productId}`
-                    ? "Saving..."
-                    : "Update product content"}
-                </Button>
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    disabled={pendingKey === `product:${selectedOwnedProduct.productId}`}
+                    type="submit"
+                    variant="secondary"
+                  >
+                    {pendingKey === `product:${selectedOwnedProduct.productId}`
+                      ? "Saving..."
+                      : "Update product content"}
+                  </Button>
+                  {selectedOwnedProduct.status === "ARCHIVED" ? (
+                    <>
+                      <Button
+                        disabled={
+                          pendingKey === `reactivate:${selectedOwnedProduct.listingId}`
+                        }
+                        onClick={() => void handleReactivate(selectedOwnedProduct)}
+                        type="button"
+                        variant="secondary"
+                      >
+                        {pendingKey ===
+                        `reactivate:${selectedOwnedProduct.listingId}`
+                          ? "Reactivating..."
+                          : "Reactivate offer"}
+                      </Button>
+                      <Button
+                        className="text-[var(--accent)]"
+                        disabled={pendingKey === `delete:${selectedOwnedProduct.productId}`}
+                        onClick={() => void handleDeleteOwnedProduct(selectedOwnedProduct)}
+                        type="button"
+                        variant="secondary"
+                      >
+                        {pendingKey === `delete:${selectedOwnedProduct.productId}`
+                          ? "Deleting..."
+                          : "Delete product"}
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      className="text-[var(--accent)]"
+                      disabled={pendingKey === `archive:${selectedOwnedProduct.listingId}`}
+                      onClick={() => void handleArchive(selectedOwnedProduct)}
+                      type="button"
+                      variant="secondary"
+                    >
+                      {pendingKey === `archive:${selectedOwnedProduct.listingId}`
+                        ? "Archiving..."
+                        : "Archive offer"}
+                    </Button>
+                  )}
+                </div>
               </div>
 
               {feedback[`product:${selectedOwnedProduct.productId}`] ? (
                 <p className="text-sm text-[var(--muted)]">
                   {feedback[`product:${selectedOwnedProduct.productId}`]}
+                </p>
+              ) : null}
+              {feedback[`archive:${selectedOwnedProduct.listingId}`] ? (
+                <p className="text-sm text-[var(--muted)]">
+                  {feedback[`archive:${selectedOwnedProduct.listingId}`]}
+                </p>
+              ) : null}
+              {feedback[`reactivate:${selectedOwnedProduct.listingId}`] ? (
+                <p className="text-sm text-[var(--muted)]">
+                  {feedback[`reactivate:${selectedOwnedProduct.listingId}`]}
+                </p>
+              ) : null}
+              {feedback[`delete:${selectedOwnedProduct.productId}`] ? (
+                <p className="text-sm text-[var(--muted)]">
+                  {feedback[`delete:${selectedOwnedProduct.productId}`]}
                 </p>
               ) : null}
             </form>
@@ -1308,17 +1464,30 @@ export function SellerInventoryManager({
                       ? "Saving..."
                       : "Update offer"}
                   </Button>
-                  <Button
-                    className="text-[var(--accent)]"
-                    disabled={pendingKey === `archive:${listing.listingId}`}
-                    onClick={() => void handleArchive(listing)}
-                    type="button"
-                    variant="secondary"
-                  >
-                    {pendingKey === `archive:${listing.listingId}`
-                      ? "Archiving..."
-                      : "Archive offer"}
-                  </Button>
+                  {listing.status === "ARCHIVED" ? (
+                    <Button
+                      disabled={pendingKey === `reactivate:${listing.listingId}`}
+                      onClick={() => void handleReactivate(listing)}
+                      type="button"
+                      variant="secondary"
+                    >
+                      {pendingKey === `reactivate:${listing.listingId}`
+                        ? "Reactivating..."
+                        : "Reactivate offer"}
+                    </Button>
+                  ) : (
+                    <Button
+                      className="text-[var(--accent)]"
+                      disabled={pendingKey === `archive:${listing.listingId}`}
+                      onClick={() => void handleArchive(listing)}
+                      type="button"
+                      variant="secondary"
+                    >
+                      {pendingKey === `archive:${listing.listingId}`
+                        ? "Archiving..."
+                        : "Archive offer"}
+                    </Button>
+                  )}
                 </div>
               </div>
 
@@ -1330,6 +1499,11 @@ export function SellerInventoryManager({
               {feedback[`archive:${listing.listingId}`] ? (
                 <p className="text-sm text-[var(--muted)]">
                   {feedback[`archive:${listing.listingId}`]}
+                </p>
+              ) : null}
+              {feedback[`reactivate:${listing.listingId}`] ? (
+                <p className="text-sm text-[var(--muted)]">
+                  {feedback[`reactivate:${listing.listingId}`]}
                 </p>
               ) : null}
             </form>

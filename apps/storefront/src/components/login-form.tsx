@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, Panel } from "@velora/ui";
 import { startTransition, useState } from "react";
 import { useForm } from "react-hook-form";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 import { loginFormSchema, type LoginFormValues } from "../lib/login-schema";
 
@@ -17,7 +17,6 @@ export function LoginForm({
   defaultEmail = "customer@velora.local",
   defaultRedirectPath = "/account",
 }: LoginFormProps = {}): React.JSX.Element {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
@@ -36,28 +35,29 @@ export function LoginForm({
 
     startTransition(async () => {
       try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api"}/auth/login`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            credentials: "include",
-            body: JSON.stringify(values),
+        const response = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-        );
+          credentials: "include",
+          body: JSON.stringify(values),
+        });
 
         if (!response.ok) {
+          const errorBody = (await response.json().catch(() => null)) as
+            | { message?: string }
+            | null;
+
           setErrorMessage(
-            "The login request was rejected. Verify the API is running and the demo credentials are intact.",
+            errorBody?.message ??
+              "The login request was rejected. Verify the API is running and the demo credentials are intact.",
           );
           setIsPending(false);
           return;
         }
 
-        router.push(searchParams.get("from") ?? defaultRedirectPath);
-        router.refresh();
+        window.location.assign(searchParams.get("from") ?? defaultRedirectPath);
       } catch {
         setErrorMessage(
           "The storefront cannot reach the API right now. Start `pnpm dev:api` and refresh this page before trying again.",

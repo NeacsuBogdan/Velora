@@ -171,6 +171,8 @@
 - The API dev script now checks whether the configured port is already occupied before starting, which prevents duplicate `pnpm dev:api` runs from failing with a raw `EADDRINUSE` stack trace.
 - The storefront account overview now tolerates malformed `/users/me` payloads by validating the profile shape and falling back to safe derived metrics, which prevents `/account` from crashing if the API returns only session-like user data.
 - Category detail pages now bypass stale fetch caching and can fall back to search-projection metadata when only the category-detail endpoint misses, which prevents valid category listings from degrading into a dead-end not-found panel.
+- Storefront login now completes through a same-origin auth proxy and then performs a full-page redirect, which makes the session cookie visible to subsequent account and cart requests immediately instead of depending on a fragile cross-port client navigation race.
+- The public storefront header now resolves the active session server-side and only shows seller navigation for seller accounts, which keeps customer sessions from seeing stale `Login` links or merchant-only entry points.
 
 ## Known follow-up items
 

@@ -2,7 +2,19 @@ import Link from "next/link";
 
 import { Badge } from "@velora/ui";
 
-export function StorefrontHeader(): React.JSX.Element {
+import { logoutAction } from "../app/account/actions";
+import { getSession } from "../lib/storefront-api";
+
+const navLinkClass = "transition-colors hover:text-[var(--foreground)]";
+const actionLinkClass =
+  "inline-flex items-center justify-center rounded-full border border-[var(--stroke)] bg-white px-4 py-2 text-sm font-semibold text-[var(--foreground)] transition-colors hover:border-[var(--foreground)]";
+const subtleButtonClass =
+  "inline-flex items-center justify-center rounded-full border border-[var(--stroke)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] transition-colors hover:border-[var(--foreground)]";
+
+export async function StorefrontHeader(): Promise<React.JSX.Element> {
+  const session = await getSession();
+  const isSeller = session?.user.roles.some((role) => role.code === "SELLER");
+
   return (
     <header className="rounded-[32px] border border-[var(--stroke)] bg-white/85 px-6 py-5 shadow-[0_20px_60px_rgba(16,32,47,0.08)] backdrop-blur">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
@@ -20,16 +32,58 @@ export function StorefrontHeader(): React.JSX.Element {
         </div>
 
         <div className="flex flex-col gap-4 lg:items-end">
-          <nav className="flex flex-wrap items-center gap-4 text-sm font-medium text-[var(--muted)]">
-            <Link href="/">Home</Link>
-            <Link href="/categories">Categories</Link>
-            <Link href="/products">Products</Link>
-            <Link href="/search">Search</Link>
-            <Link href="/cart">Cart</Link>
-            <Link href="/account">Account</Link>
-            <Link href="/seller">Seller</Link>
-            <Link href="/login">Login</Link>
-          </nav>
+          <div className="flex flex-col gap-3 lg:items-end">
+            {session ? (
+              <div className="text-sm text-[var(--muted)]">
+                Signed in as{" "}
+                <span className="font-semibold text-[var(--foreground)]">
+                  {session.user.firstName} {session.user.lastName}
+                </span>
+              </div>
+            ) : null}
+
+            <div className="flex flex-wrap items-center gap-3">
+              <nav className="flex flex-wrap items-center gap-4 text-sm font-medium text-[var(--muted)]">
+                <Link className={navLinkClass} href="/">
+                  Home
+                </Link>
+                <Link className={navLinkClass} href="/categories">
+                  Categories
+                </Link>
+                <Link className={navLinkClass} href="/products">
+                  Products
+                </Link>
+                <Link className={navLinkClass} href="/search">
+                  Search
+                </Link>
+                <Link className={navLinkClass} href="/cart">
+                  Cart
+                </Link>
+                {session ? (
+                  <Link className={navLinkClass} href="/account">
+                    Account
+                  </Link>
+                ) : null}
+                {isSeller ? (
+                  <Link className={navLinkClass} href="/seller">
+                    Seller
+                  </Link>
+                ) : null}
+              </nav>
+
+              {session ? (
+                <form action={logoutAction}>
+                  <button className={subtleButtonClass} type="submit">
+                    Sign out
+                  </button>
+                </form>
+              ) : (
+                <Link className={actionLinkClass} href="/login">
+                  Login
+                </Link>
+              )}
+            </div>
+          </div>
 
           <form
             action="/search"

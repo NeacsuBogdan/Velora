@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start --port 3000",
     "lint": "eslint .",
-    "typecheck": "node ../../scripts/normalize-next-env.mjs && tsc -p tsconfig.json --noEmit --incremental false",
+    "typecheck": "next typegen . && node ../../scripts/normalize-next-env.mjs && tsc -p tsconfig.json --noEmit --incremental false",
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {

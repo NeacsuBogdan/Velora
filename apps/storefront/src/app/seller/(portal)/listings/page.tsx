@@ -1,10 +1,10 @@
 import { Badge, Panel } from "@velora/ui";
 
-import { SellerInventoryManager } from "../../../components/seller-inventory-manager";
+import { SellerInventoryManager } from "../../../../components/seller-inventory-manager";
 import {
   getSellerListingCatalogOptions,
   getSellerListings
-} from "../../../lib/storefront-api";
+} from "../../../../lib/storefront-api";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +21,8 @@ export default async function SellerListingsPage(): Promise<React.JSX.Element> {
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
             <h1 className="font-[var(--font-heading)] text-4xl font-bold tracking-tight">
-              Create, price, archive, and replenish your seller offers from one workspace.
+              Create, price, archive, and replenish your seller offers from one
+              workspace.
             </h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--muted)]">
               Seller-owned offer changes write into transactional pricing,
@@ -47,17 +48,10 @@ export default async function SellerListingsPage(): Promise<React.JSX.Element> {
         </p>
       </Panel>
 
-      {listings.length ? (
-        <SellerInventoryManager
-          catalogOptions={catalogOptions}
-          listings={listings}
-        />
-      ) : (
-        <SellerInventoryManager
-          catalogOptions={catalogOptions}
-          listings={listings}
-        />
-      )}
+      <SellerInventoryManager
+        catalogOptions={catalogOptions}
+        listings={listings}
+      />
 
       {!listings.length ? (
         <Panel>

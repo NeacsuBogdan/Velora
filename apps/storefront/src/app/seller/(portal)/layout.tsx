@@ -1,31 +1,21 @@
 import Link from "next/link";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Badge, Button, Panel } from "@velora/ui";
 
-import { SellerShellNav } from "../../components/seller-shell-nav";
-import { getSession } from "../../lib/storefront-api";
-import { logoutAction } from "../account/actions";
+import { SellerShellNav } from "../../../components/seller-shell-nav";
+import { getSession } from "../../../lib/storefront-api";
+import { logoutAction } from "../../account/actions";
 
 export const dynamic = "force-dynamic";
 
 const secondaryLinkClass =
   "inline-flex items-center justify-center rounded-full border border-[var(--stroke)] bg-white px-5 py-3 text-sm font-semibold text-[var(--foreground)] transition-colors hover:border-[var(--foreground)]";
 
-export default async function SellerLayout({
+export default async function SellerPortalLayout({
   children
 }: Readonly<{
   children: React.ReactNode;
 }>): Promise<React.JSX.Element> {
-  const requestHeaders = await headers();
-  const pathname = requestHeaders.get("x-velora-pathname");
-  const isPublicSellerRoute =
-    pathname === "/seller/login" || pathname === "/seller/activate";
-
-  if (isPublicSellerRoute) {
-    return <>{children}</>;
-  }
-
   const session = await getSession();
 
   if (!session) {
@@ -47,8 +37,8 @@ export default async function SellerLayout({
                 {session.user.firstName} {session.user.lastName}
               </h1>
               <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
-                Signed in as {session.user.email}. Listings, orders, and inventory
-                are constrained to the linked seller profile.
+                Signed in as {session.user.email}. Listings, orders, and
+                inventory are constrained to the linked seller profile.
               </p>
             </div>
           </div>

@@ -2,10 +2,6 @@ import { NextResponse, type NextRequest } from "next/server";
 
 export function middleware(request: NextRequest): NextResponse {
   const pathname = request.nextUrl.pathname;
-  const requestHeaders = new Headers(request.headers);
-
-  requestHeaders.set("x-velora-pathname", pathname);
-
   const isPublicSellerRoute =
     pathname === "/seller/login" || pathname === "/seller/activate";
   const needsSellerSession =
@@ -22,11 +18,7 @@ export function middleware(request: NextRequest): NextResponse {
     return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.next({
-    request: {
-      headers: requestHeaders
-    }
-  });
+  return NextResponse.next();
 }
 
 export const config = {

@@ -169,7 +169,7 @@
 - Clarified that the seller onboarding reference-link field is optional, so merchants without a standalone website or product sheet can still apply cleanly.
 - Tightened the storefront seller application schema to treat whitespace-only reference links as empty input instead of a validation failure.
 - Reworded the onboarding form copy around seller name, reference link, assortment summary, and review messaging so the flow reads like a marketplace application rather than a requirement to already run an external storefront.
-- Fixed a seller activation deadlock by exempting `/seller/login` and `/seller/activate` from the protected seller shell, which allows first-time merchants to open approval links in a fresh browser session.
+- Moved the protected seller portal into a dedicated route group so `/seller/login` and `/seller/activate` stay public while `/seller`, `/seller/listings`, and `/seller/orders` remain guarded by the seller workspace layout.
 
 ## Important implementation notes
 

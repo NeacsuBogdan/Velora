@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { Badge, Panel } from "@velora/ui";
 
-import { StatusBadge } from "../../../components/status-badge";
-import { formatDateTime, formatMoney } from "../../../lib/formatting";
-import { getSellerOrders } from "../../../lib/storefront-api";
+import { StatusBadge } from "../../../../components/status-badge";
+import { formatDateTime, formatMoney } from "../../../../lib/formatting";
+import { getSellerOrders } from "../../../../lib/storefront-api";
 
 export const dynamic = "force-dynamic";
 

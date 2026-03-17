@@ -76,9 +76,12 @@ export function SellerApplicationManager({
 
   useEffect(() => {
     form.reset(toFormValues(selectedApplication));
+  }, [form, selectedApplication]);
+
+  useEffect(() => {
     setActivationLink(null);
     setCopyMessage(null);
-  }, [form, selectedApplication]);
+  }, [selectedApplicationId]);
 
   async function refreshApplications(
     nextQuery = query,

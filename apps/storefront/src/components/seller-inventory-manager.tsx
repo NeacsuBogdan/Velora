@@ -39,12 +39,31 @@ export function SellerInventoryManager({
   const createDisabled = !selectedProduct;
   const catalogCreationDisabled = !creationOptions?.categories.length;
   const ownedProducts = dedupeOwnedProducts(listings);
+  const [selectedListingId, setSelectedListingId] = useState(
+    listings[0]?.listingId ?? ""
+  );
   const [selectedOwnedProductId, setSelectedOwnedProductId] = useState(
     ownedProducts[0]?.productId ?? ""
   );
+  const selectedListing =
+    listings.find((listing) => listing.listingId === selectedListingId) ?? null;
   const selectedOwnedProduct =
     ownedProducts.find((listing) => listing.productId === selectedOwnedProductId) ??
     null;
+
+  useEffect(() => {
+    if (!listings.length) {
+      if (selectedListingId) {
+        setSelectedListingId("");
+      }
+
+      return;
+    }
+
+    if (!listings.some((listing) => listing.listingId === selectedListingId)) {
+      setSelectedListingId(listings[0]?.listingId ?? "");
+    }
+  }, [listings, selectedListingId]);
 
   useEffect(() => {
     if (!ownedProducts.length) {
@@ -866,39 +885,39 @@ export function SellerInventoryManager({
       <Panel className="space-y-6">
         <div className="space-y-3">
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
-            Owned catalog
+            Seller-created catalog
           </p>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <h2 className="font-[var(--font-heading)] text-3xl font-bold tracking-tight">
-                Maintain the product content your store owns.
+                Maintain catalog content your store introduced.
               </h2>
               <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--muted)]">
                 Seller-created products stay editable by their owning merchant.
                 Shared marketplace catalog products remain platform-managed, so
-                this section only appears for products your store introduced to
-                Velora.
+                offers you attach to existing marketplace products are managed in
+                the offer workspace below, not here.
               </p>
             </div>
             <div className="rounded-[24px] bg-black/3 px-5 py-4 text-sm text-[var(--muted)]">
-              {ownedProducts.length} owned product{ownedProducts.length === 1 ? "" : "s"}
+              {ownedProducts.length} seller-created product{ownedProducts.length === 1 ? "" : "s"}
             </div>
           </div>
         </div>
 
         {ownedProducts.length && selectedOwnedProduct ? (
           <div className="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)]">
-            <div className="grid gap-3 rounded-[28px] border border-[var(--stroke)] bg-white/70 p-4">
+            <div className="overflow-hidden rounded-[28px] border border-[var(--stroke)] bg-white/70">
               {ownedProducts.map((listing) => {
                 const isSelected = listing.productId === selectedOwnedProduct.productId;
 
                 return (
                   <button
                     key={`owned-${listing.productId}`}
-                    className={`grid gap-2 rounded-[22px] border px-4 py-4 text-left transition-colors ${
+                    className={`grid w-full gap-1 border-b border-[var(--stroke)] px-4 py-4 text-left transition-colors last:border-b-0 ${
                       isSelected
-                        ? "border-[var(--accent)] bg-[rgba(190,24,52,0.08)]"
-                        : "border-[var(--stroke)] bg-white/80 hover:border-[var(--accent)]/50"
+                        ? "bg-[rgba(190,24,52,0.08)]"
+                        : "bg-white/80 hover:bg-black/3"
                     }`}
                     onClick={() => setSelectedOwnedProductId(listing.productId)}
                     type="button"
@@ -909,12 +928,12 @@ export function SellerInventoryManager({
                       </p>
                       <StatusBadge value={listing.status} />
                     </div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+                    <p className="text-sm text-[var(--muted)]">
                       {listing.categoryName ?? "Uncategorized"}
                       {listing.brandName ? ` / ${listing.brandName}` : ""}
                     </p>
-                    <p className="text-sm text-[var(--muted)]">
-                      Internal SKU {listing.sellerSku}
+                    <p className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
+                      SKU {listing.sellerSku}
                     </p>
                   </button>
                 );
@@ -1352,254 +1371,334 @@ export function SellerInventoryManager({
         </form>
       </Panel>
 
-      {listings.map((listing) => (
-        <Panel key={listing.listingId} className="space-y-6">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+      <Panel className="space-y-6">
+        <div className="space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
+            Offer workspace
+          </p>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <h2 className="font-[var(--font-heading)] text-2xl font-bold tracking-tight">
-                {listing.title}
+              <h2 className="font-[var(--font-heading)] text-3xl font-bold tracking-tight">
+                Manage every live offer from one place.
               </h2>
-              <p className="mt-2 text-sm text-[var(--muted)]">
-                Internal SKU {listing.sellerSku}
-                {listing.variantTitle ? ` - ${listing.variantTitle}` : ""}
+              <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--muted)]">
+                This workspace includes both seller-created products and offers
+                attached to products that already exist on Velora. Use it for
+                pricing, visibility, stock posture, and offer lifecycle actions.
               </p>
             </div>
-
-            <div className="flex flex-wrap gap-2">
-              <StatusBadge value={listing.status} />
-              <StatusBadge value={listing.isActive ? "ACTIVE" : "ARCHIVED"} />
+            <div className="rounded-[24px] bg-black/3 px-5 py-4 text-sm text-[var(--muted)]">
+              {listings.length} offer{listings.length === 1 ? "" : "s"}
             </div>
           </div>
+        </div>
 
-          <div className="grid gap-4 lg:grid-cols-4">
-            <MetricCard
-              label="Price"
-              value={listing.price ? formatMoney(listing.price) : "Unavailable"}
-            />
-            <MetricCard
-              label="On hand"
-              value={listing.inventory.onHand.toString()}
-            />
-            <MetricCard
-              label="Reserved"
-              value={listing.inventory.reserved.toString()}
-            />
-            <MetricCard
-              label="Available"
-              value={listing.inventory.availableQuantity.toString()}
-            />
-          </div>
+        {listings.length && selectedListing ? (
+          <div className="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)]">
+            <div className="overflow-hidden rounded-[28px] border border-[var(--stroke)] bg-white/70">
+              {listings.map((listing) => {
+                const isSelected = listing.listingId === selectedListing.listingId;
 
-          <div className="grid gap-5 xl:grid-cols-2">
-            <form
-              className="grid gap-4 rounded-[28px] border border-[var(--stroke)] bg-white/70 p-5"
-              onSubmit={(event) => void handleCommercialSubmit(event, listing)}
-            >
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
-                  Commercial terms
-                </p>
-                <p className="mt-2 text-sm leading-7 text-[var(--muted)]">
-                  Control the customer-facing price, strike-through anchor, and
-                  whether this offer remains visible in the storefront.
-                </p>
-              </div>
-
-              <div className="grid gap-4">
-                <MoneyField
-                  defaultValue={listing.price?.amount ?? 0}
-                  label="Current price"
-                  name="priceAmount"
-                  previewLabel="Live storefront price"
-                />
-
-                <MoneyField
-                  defaultValue={listing.compareAtPrice?.amount ?? ""}
-                  label="Compare-at price"
-                  name="compareAtAmount"
-                  placeholder="Optional"
-                  previewLabel="Strikethrough reference"
-                />
-
-                <label className="grid gap-2 text-sm">
-                  <span className="font-semibold text-[var(--foreground)]">
-                    Offer visibility
-                  </span>
-                  <select
-                    className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
-                    defaultValue={String(listing.isActive)}
-                    name="isActive"
+                return (
+                  <button
+                    key={listing.listingId}
+                    className={`grid w-full gap-1 border-b border-[var(--stroke)] px-4 py-4 text-left transition-colors last:border-b-0 ${
+                      isSelected
+                        ? "bg-[rgba(190,24,52,0.08)]"
+                        : "bg-white/80 hover:bg-black/3"
+                    }`}
+                    onClick={() => setSelectedListingId(listing.listingId)}
+                    type="button"
                   >
-                    <option value="true">Visible to customers</option>
-                    <option value="false">Hidden from storefront</option>
-                  </select>
-                </label>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <p className="font-semibold text-[var(--foreground)]">
+                        {listing.title}
+                      </p>
+                      <StatusBadge value={listing.status} />
+                    </div>
+                    <p className="text-sm text-[var(--muted)]">
+                      {formatListingWorkspaceLabel(listing)}
+                    </p>
+                    <p className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
+                      SKU {listing.sellerSku}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
 
-                <label className="grid gap-2 text-sm">
-                  <span className="font-semibold text-[var(--foreground)]">
-                    Pricing note
-                  </span>
-                  <input
-                    className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
-                    defaultValue=""
-                    name="priceNote"
-                    placeholder="Campaign adjustment, competitor response, manual repricing"
-                    type="text"
+            <div className="grid min-w-0 gap-5">
+              <div className="rounded-[28px] border border-[var(--stroke)] bg-white/80 p-6">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <h3 className="font-[var(--font-heading)] text-2xl font-bold tracking-tight">
+                      {selectedListing.title}
+                    </h3>
+                    <p className="mt-2 text-sm leading-7 text-[var(--muted)]">
+                      {formatListingWorkspaceLabel(selectedListing)}
+                    </p>
+                    <p className="mt-1 text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
+                      Internal SKU {selectedListing.sellerSku}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <StatusBadge value={selectedListing.status} />
+                    <StatusBadge
+                      value={selectedListing.productOwnership === "SELLER" ? "SELLER" : "PLATFORM"}
+                    />
+                    <StatusBadge
+                      value={selectedListing.isActive ? "VISIBLE" : "HIDDEN"}
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-6 grid gap-4 lg:grid-cols-4">
+                  <MetricCard
+                    label="Price"
+                    value={
+                      selectedListing.price
+                        ? formatMoney(selectedListing.price)
+                        : "Unavailable"
+                    }
                   />
-                </label>
-              </div>
-
-              <div className="grid gap-3 border-t border-[var(--stroke)] pt-4">
-                <p className="max-w-xl text-sm leading-7 text-[var(--muted)]">
-                  Hiding removes the offer from search. Archiving closes it out
-                  operationally.
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  <Button
-                    disabled={pendingKey === `listing:${listing.listingId}`}
-                    type="submit"
-                    variant="secondary"
-                  >
-                    {pendingKey === `listing:${listing.listingId}`
-                      ? "Saving..."
-                      : "Update offer"}
-                  </Button>
-                  {listing.status === "ARCHIVED" ? (
-                    <Button
-                      disabled={pendingKey === `reactivate:${listing.listingId}`}
-                      onClick={() => void handleReactivate(listing)}
-                      type="button"
-                      variant="secondary"
-                    >
-                      {pendingKey === `reactivate:${listing.listingId}`
-                        ? "Reactivating..."
-                        : "Reactivate offer"}
-                    </Button>
-                  ) : (
-                    <Button
-                      className="text-[var(--accent)]"
-                      disabled={pendingKey === `archive:${listing.listingId}`}
-                      onClick={() => void handleArchive(listing)}
-                      type="button"
-                      variant="secondary"
-                    >
-                      {pendingKey === `archive:${listing.listingId}`
-                        ? "Archiving..."
-                        : "Archive offer"}
-                    </Button>
-                  )}
+                  <MetricCard
+                    label="On hand"
+                    value={selectedListing.inventory.onHand.toString()}
+                  />
+                  <MetricCard
+                    label="Reserved"
+                    value={selectedListing.inventory.reserved.toString()}
+                  />
+                  <MetricCard
+                    label="Available"
+                    value={selectedListing.inventory.availableQuantity.toString()}
+                  />
                 </div>
               </div>
 
-              {feedback[`listing:${listing.listingId}`] ? (
-                <p className="text-sm text-[var(--muted)]">
-                  {feedback[`listing:${listing.listingId}`]}
-                </p>
-              ) : null}
-              {feedback[`archive:${listing.listingId}`] ? (
-                <p className="text-sm text-[var(--muted)]">
-                  {feedback[`archive:${listing.listingId}`]}
-                </p>
-              ) : null}
-              {feedback[`reactivate:${listing.listingId}`] ? (
-                <p className="text-sm text-[var(--muted)]">
-                  {feedback[`reactivate:${listing.listingId}`]}
-                </p>
-              ) : null}
-            </form>
-
-            <form
-              className="grid gap-4 rounded-[28px] border border-[var(--stroke)] bg-white/70 p-5"
-              onSubmit={(event) => void handleInventorySubmit(event, listing)}
-            >
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
-                  Stock posture
-                </p>
-                <p className="mt-2 text-sm leading-7 text-[var(--muted)]">
-                  Keep sellable supply, safety buffers, and lead-time promises
-                  aligned with the live reservation engine.
-                </p>
-              </div>
-
-              <div className="grid gap-4">
-                <label className="grid gap-2 text-sm">
-                  <span className="font-semibold text-[var(--foreground)]">
-                    On hand
-                  </span>
-                  <input
-                    className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
-                    defaultValue={listing.inventory.onHand}
-                    min={listing.inventory.reserved}
-                    name="onHand"
-                    type="number"
-                  />
-                </label>
-
-                <label className="grid gap-2 text-sm">
-                  <span className="font-semibold text-[var(--foreground)]">
-                    Safety stock
-                  </span>
-                  <input
-                    className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
-                    defaultValue={listing.inventory.safetyStock}
-                    min={0}
-                    name="safetyStock"
-                    type="number"
-                  />
-                </label>
-
-                <label className="grid gap-2 text-sm">
-                  <span className="font-semibold text-[var(--foreground)]">
-                    Lead time
-                  </span>
-                  <input
-                    className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
-                    defaultValue={listing.leadTimeDays}
-                    max={30}
-                    min={1}
-                    name="leadTimeDays"
-                    type="number"
-                  />
-                </label>
-
-                <label className="grid gap-2 text-sm">
-                  <span className="font-semibold text-[var(--foreground)]">
-                    Operational note
-                  </span>
-                  <input
-                    className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
-                    defaultValue=""
-                    name="note"
-                    placeholder="Cycle count, inbound receipt, manual correction"
-                    type="text"
-                  />
-                </label>
-              </div>
-
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-[var(--muted)]">
-                  Reserved units cannot be undercut by manual stock updates.
-                </p>
-                <Button
-                  disabled={pendingKey === `inventory:${listing.inventoryItemId}`}
-                  type="submit"
+              <div className="grid gap-5 xl:grid-cols-2">
+                <form
+                  className="grid gap-4 rounded-[28px] border border-[var(--stroke)] bg-white/70 p-5"
+                  onSubmit={(event) => void handleCommercialSubmit(event, selectedListing)}
                 >
-                  {pendingKey === `inventory:${listing.inventoryItemId}`
-                    ? "Saving..."
-                    : "Update stock"}
-                </Button>
-              </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
+                      Commercial terms
+                    </p>
+                    <p className="mt-2 text-sm leading-7 text-[var(--muted)]">
+                      Control the customer-facing price, strike-through anchor, and
+                      whether this offer remains visible in the storefront.
+                    </p>
+                  </div>
 
-              {feedback[`inventory:${listing.inventoryItemId}`] ? (
-                <p className="text-sm text-[var(--muted)]">
-                  {feedback[`inventory:${listing.inventoryItemId}`]}
-                </p>
-              ) : null}
-            </form>
+                  <div className="grid gap-4">
+                    <MoneyField
+                      defaultValue={selectedListing.price?.amount ?? 0}
+                      label="Current price"
+                      name="priceAmount"
+                      previewLabel="Live storefront price"
+                    />
+
+                    <MoneyField
+                      defaultValue={selectedListing.compareAtPrice?.amount ?? ""}
+                      label="Compare-at price"
+                      name="compareAtAmount"
+                      placeholder="Optional"
+                      previewLabel="Strikethrough reference"
+                    />
+
+                    <label className="grid gap-2 text-sm">
+                      <span className="font-semibold text-[var(--foreground)]">
+                        Offer visibility
+                      </span>
+                      <select
+                        className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                        defaultValue={String(selectedListing.isActive)}
+                        name="isActive"
+                      >
+                        <option value="true">Visible to customers</option>
+                        <option value="false">Hidden from storefront</option>
+                      </select>
+                    </label>
+
+                    <label className="grid gap-2 text-sm">
+                      <span className="font-semibold text-[var(--foreground)]">
+                        Pricing note
+                      </span>
+                      <input
+                        className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                        defaultValue=""
+                        name="priceNote"
+                        placeholder="Campaign adjustment, competitor response, manual repricing"
+                        type="text"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="grid gap-3 border-t border-[var(--stroke)] pt-4">
+                    <p className="max-w-xl text-sm leading-7 text-[var(--muted)]">
+                      Hiding removes the offer from search. Archiving closes it
+                      out operationally without removing the underlying product.
+                    </p>
+                    <div className="flex flex-wrap gap-3">
+                      <Button
+                        disabled={pendingKey === `listing:${selectedListing.listingId}`}
+                        type="submit"
+                        variant="secondary"
+                      >
+                        {pendingKey === `listing:${selectedListing.listingId}`
+                          ? "Saving..."
+                          : "Update offer"}
+                      </Button>
+                      {selectedListing.status === "ARCHIVED" ? (
+                        <Button
+                          disabled={
+                            pendingKey === `reactivate:${selectedListing.listingId}`
+                          }
+                          onClick={() => void handleReactivate(selectedListing)}
+                          type="button"
+                          variant="secondary"
+                        >
+                          {pendingKey === `reactivate:${selectedListing.listingId}`
+                            ? "Reactivating..."
+                            : "Reactivate offer"}
+                        </Button>
+                      ) : (
+                        <Button
+                          className="text-[var(--accent)]"
+                          disabled={
+                            pendingKey === `archive:${selectedListing.listingId}`
+                          }
+                          onClick={() => void handleArchive(selectedListing)}
+                          type="button"
+                          variant="secondary"
+                        >
+                          {pendingKey === `archive:${selectedListing.listingId}`
+                            ? "Archiving..."
+                            : "Archive offer"}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {feedback[`listing:${selectedListing.listingId}`] ? (
+                    <p className="text-sm text-[var(--muted)]">
+                      {feedback[`listing:${selectedListing.listingId}`]}
+                    </p>
+                  ) : null}
+                  {feedback[`archive:${selectedListing.listingId}`] ? (
+                    <p className="text-sm text-[var(--muted)]">
+                      {feedback[`archive:${selectedListing.listingId}`]}
+                    </p>
+                  ) : null}
+                  {feedback[`reactivate:${selectedListing.listingId}`] ? (
+                    <p className="text-sm text-[var(--muted)]">
+                      {feedback[`reactivate:${selectedListing.listingId}`]}
+                    </p>
+                  ) : null}
+                </form>
+
+                <form
+                  className="grid gap-4 rounded-[28px] border border-[var(--stroke)] bg-white/70 p-5"
+                  onSubmit={(event) => void handleInventorySubmit(event, selectedListing)}
+                >
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
+                      Stock posture
+                    </p>
+                    <p className="mt-2 text-sm leading-7 text-[var(--muted)]">
+                      Keep sellable supply, safety buffers, and lead-time promises
+                      aligned with the live reservation engine.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-4">
+                    <label className="grid gap-2 text-sm">
+                      <span className="font-semibold text-[var(--foreground)]">
+                        On hand
+                      </span>
+                      <input
+                        className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                        defaultValue={selectedListing.inventory.onHand}
+                        min={selectedListing.inventory.reserved}
+                        name="onHand"
+                        type="number"
+                      />
+                    </label>
+
+                    <label className="grid gap-2 text-sm">
+                      <span className="font-semibold text-[var(--foreground)]">
+                        Safety stock
+                      </span>
+                      <input
+                        className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                        defaultValue={selectedListing.inventory.safetyStock}
+                        min={0}
+                        name="safetyStock"
+                        type="number"
+                      />
+                    </label>
+
+                    <label className="grid gap-2 text-sm">
+                      <span className="font-semibold text-[var(--foreground)]">
+                        Lead time
+                      </span>
+                      <input
+                        className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                        defaultValue={selectedListing.leadTimeDays}
+                        max={30}
+                        min={1}
+                        name="leadTimeDays"
+                        type="number"
+                      />
+                    </label>
+
+                    <label className="grid gap-2 text-sm">
+                      <span className="font-semibold text-[var(--foreground)]">
+                        Operational note
+                      </span>
+                      <input
+                        className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                        defaultValue=""
+                        name="note"
+                        placeholder="Cycle count, inbound receipt, manual correction"
+                        type="text"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-[var(--muted)]">
+                      Reserved units cannot be undercut by manual stock updates.
+                    </p>
+                    <Button
+                      disabled={
+                        pendingKey === `inventory:${selectedListing.inventoryItemId}`
+                      }
+                      type="submit"
+                    >
+                      {pendingKey === `inventory:${selectedListing.inventoryItemId}`
+                        ? "Saving..."
+                        : "Update stock"}
+                    </Button>
+                  </div>
+
+                  {feedback[`inventory:${selectedListing.inventoryItemId}`] ? (
+                    <p className="text-sm text-[var(--muted)]">
+                      {feedback[`inventory:${selectedListing.inventoryItemId}`]}
+                    </p>
+                  ) : null}
+                </form>
+              </div>
+            </div>
           </div>
-        </Panel>
-      ))}
+        ) : (
+          <div className="rounded-[28px] border border-dashed border-[var(--stroke)] bg-white/60 px-6 py-5 text-sm leading-7 text-[var(--muted)]">
+            Create your first offer above to unlock pricing, visibility, and
+            stock management here.
+          </div>
+        )}
+      </Panel>
     </div>
   );
 }
@@ -1684,6 +1783,17 @@ function dedupeOwnedProducts(
   }
 
   return ownedProducts;
+}
+
+function formatListingWorkspaceLabel(listing: SellerListingSummary): string {
+  const scopeLabel =
+    listing.productOwnership === "SELLER"
+      ? "Seller-created catalog"
+      : "Marketplace catalog";
+  const categoryLabel = listing.categoryName ?? "Uncategorized";
+  const variantLabel = listing.variantTitle ? ` / ${listing.variantTitle}` : "";
+
+  return `${scopeLabel} / ${categoryLabel}${variantLabel}`;
 }
 
 function resolveDefaultVariantId(

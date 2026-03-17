@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Badge, Button, Panel } from "@velora/ui";
 
@@ -16,6 +17,15 @@ export default async function SellerLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>): Promise<React.JSX.Element> {
+  const requestHeaders = await headers();
+  const pathname = requestHeaders.get("x-velora-pathname");
+  const isPublicSellerRoute =
+    pathname === "/seller/login" || pathname === "/seller/activate";
+
+  if (isPublicSellerRoute) {
+    return <>{children}</>;
+  }
+
   const session = await getSession();
 
   if (!session) {

@@ -319,24 +319,24 @@ export function OrderManager({
                   <StatusPill value={orderDetail.status} />
                   <StatusPill value={orderDetail.paymentStatus} />
                 </div>
-                <div className="mt-5 grid gap-4 md:grid-cols-3 text-sm">
-                  <div>
+                <div className="mt-5 grid gap-4 text-sm md:grid-cols-2 2xl:grid-cols-3">
+                  <div className="min-w-0">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
                       Customer
                     </p>
-                    <p className="mt-2 text-[var(--foreground)]">
+                    <p className="mt-2 break-words text-[var(--foreground)]">
                       {orderDetail.customer?.label ?? "Guest"}
                     </p>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
                       Seller
                     </p>
-                    <p className="mt-2 text-[var(--foreground)]">
+                    <p className="mt-2 break-words text-[var(--foreground)]">
                       {orderDetail.seller?.label ?? "Multi-seller"}
                     </p>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
                       Total
                     </p>

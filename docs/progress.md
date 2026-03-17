@@ -185,6 +185,7 @@
 - The seller commercial editor now keeps its operational note above the action buttons and collapses into a single-column field stack sooner, which fixes the cramped footer spacing on mid-width layouts.
 - The seller listing editors now keep both commercial and stock fields in a single column, which removes the remaining `Offer visibility` and `Pricing note` compression on narrower seller workspace widths.
 - The admin split panels now keep the left control pane sticky on larger screens, while selector lists and admin tables scroll inside capped containers, which keeps filters visible even when catalog and order volumes grow.
+- The admin order summary card now wraps long customer and seller identifiers and holds a two-column layout until extra-wide screens, which prevents identity fields from colliding inside the order detail header.
 
 ## Known follow-up items
 

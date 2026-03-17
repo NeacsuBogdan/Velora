@@ -1224,6 +1224,27 @@ export const sellerDashboardSchema = z.object({
 
 export type SellerDashboard = z.infer<typeof sellerDashboardSchema>;
 
+export const sellerListingCatalogOptionSchema = z.object({
+  productId: z.string(),
+  slug: z.string(),
+  title: z.string(),
+  categoryName: z.string().nullable(),
+  brandName: z.string().nullable(),
+  image: mediaAssetSchema.nullable(),
+  sellerListingCount: z.number().int().nonnegative(),
+  variants: z.array(
+    z.object({
+      variantId: z.string(),
+      title: z.string(),
+      isDefault: z.boolean()
+    })
+  )
+});
+
+export type SellerListingCatalogOption = z.infer<
+  typeof sellerListingCatalogOptionSchema
+>;
+
 export const sellerListingSummarySchema = z.object({
   listingId: z.string(),
   inventoryItemId: z.string(),
@@ -1260,6 +1281,38 @@ export const updateSellerInventoryRequestSchema = z.object({
 
 export type UpdateSellerInventoryRequest = z.infer<
   typeof updateSellerInventoryRequestSchema
+>;
+
+export const createSellerListingRequestSchema = z
+  .object({
+    productId: z.string().cuid(),
+    variantId: z.string().cuid().nullable().optional(),
+    sellerSku: z.string().trim().min(3).max(120),
+    leadTimeDays: z.number().int().min(1).max(30),
+    priceAmount: z.number().int().positive(),
+    compareAtAmount: z.number().int().positive().nullable().optional(),
+    onHand: z.number().int().nonnegative(),
+    safetyStock: z.number().int().nonnegative(),
+    isActive: z.boolean().default(true),
+    note: z.string().trim().max(240).nullable().optional()
+  })
+  .superRefine((value, context) => {
+    if (
+      value.compareAtAmount !== null &&
+      value.compareAtAmount !== undefined &&
+      value.compareAtAmount < value.priceAmount
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["compareAtAmount"],
+        message:
+          "Compare-at amount must be greater than or equal to the current price."
+      });
+    }
+  });
+
+export type CreateSellerListingRequest = z.infer<
+  typeof createSellerListingRequestSchema
 >;
 
 export const updateSellerListingCommercialRequestSchema = z

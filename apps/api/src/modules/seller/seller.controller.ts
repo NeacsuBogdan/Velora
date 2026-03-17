@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, Patch, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards
+} from "@nestjs/common";
 import type { AuthenticatedUser } from "@velora/contracts";
 
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
@@ -23,6 +32,19 @@ export class SellerController {
     return this.sellerService.listListings(viewer);
   }
 
+  @Get("catalog-options")
+  listCatalogOptions(@CurrentUser() viewer: AuthenticatedUser) {
+    return this.sellerService.listCatalogOptions(viewer);
+  }
+
+  @Post("listings")
+  createListing(
+    @CurrentUser() viewer: AuthenticatedUser,
+    @Body() body: unknown
+  ) {
+    return this.sellerService.createListing(viewer, body);
+  }
+
   @Patch("inventory/:inventoryItemId")
   updateInventory(
     @CurrentUser() viewer: AuthenticatedUser,
@@ -39,6 +61,14 @@ export class SellerController {
     @Body() body: unknown
   ) {
     return this.sellerService.updateListing(viewer, listingId, body);
+  }
+
+  @Delete("listings/:listingId")
+  archiveListing(
+    @CurrentUser() viewer: AuthenticatedUser,
+    @Param("listingId") listingId: string
+  ) {
+    return this.sellerService.archiveListing(viewer, listingId);
   }
 
   @Get("orders")

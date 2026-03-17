@@ -1,5 +1,6 @@
 import { Prisma, type Price } from "@prisma/client";
 import {
+  sellerListingCatalogOptionSchema,
   sellerListingSummarySchema,
   sellerOrderDetailSchema,
   sellerOrderSummarySchema
@@ -45,6 +46,61 @@ export const sellerListingInclude =
 export type SellerListingRecord = Prisma.SellerProductListingGetPayload<
   typeof sellerListingInclude
 >;
+
+export const sellerCatalogOptionInclude =
+  Prisma.validator<Prisma.ProductDefaultArgs>()({
+    include: {
+      brand: true,
+      category: true,
+      media: {
+        orderBy: {
+          sortOrder: "asc"
+        }
+      },
+      variants: {
+        orderBy: {
+          createdAt: "asc"
+        }
+      },
+      listings: {
+        select: {
+          sellerId: true,
+          status: true
+        }
+      }
+    }
+  });
+
+export type SellerCatalogOptionRecord = Prisma.ProductGetPayload<
+  typeof sellerCatalogOptionInclude
+>;
+
+export function mapSellerListingCatalogOption(
+  product: SellerCatalogOptionRecord,
+  sellerId: string
+) {
+  return sellerListingCatalogOptionSchema.parse({
+    productId: product.id,
+    slug: product.slug,
+    title: product.title,
+    categoryName: product.category?.name ?? null,
+    brandName: product.brand?.name ?? null,
+    image: product.media[0]
+      ? {
+          url: product.media[0].url,
+          altText: product.media[0].altText
+        }
+      : null,
+    sellerListingCount: product.listings.filter(
+      (listing) => listing.sellerId === sellerId && listing.status !== "ARCHIVED"
+    ).length,
+    variants: product.variants.map((variant) => ({
+      variantId: variant.id,
+      title: variant.title,
+      isDefault: variant.isDefault
+    }))
+  });
+}
 
 export function mapSellerListingSummary(listing: SellerListingRecord) {
   const price = resolveActivePrice(listing.prices);

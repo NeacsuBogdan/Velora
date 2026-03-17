@@ -178,6 +178,9 @@
 - Storefront and admin login now both finalize through same-origin auth proxies, and the generic storefront login now redirects admin and seller accounts into their dedicated workspaces by default instead of dropping every role into the customer account shell.
 - The storefront header and account shell now expose explicit admin and seller workspace links based on the active session roles, which makes catalog, refund, and merchant tooling reachable without guessing the correct app entrypoint.
 - Sellers can now update their own offer pricing, compare-at pricing, and storefront visibility from the seller listings page, while platform-wide promotions remain centralized in the admin pricing console.
+- The seller listings workspace now includes a dedicated create-offer flow plus archive actions, which lets merchants add or retire their own offers without needing the admin backoffice for routine catalog operations.
+- The seller listings editor now uses stacked commercial and inventory panels instead of one cramped horizontal row, which makes the pricing and stock controls readable on typical laptop widths.
+- The admin workspace header now includes an explicit marketplace return link, which removes the need to bounce back to the storefront by manually editing the URL.
 
 ## Known follow-up items
 

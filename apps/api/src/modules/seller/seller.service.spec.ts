@@ -24,9 +24,11 @@ const viewer: AuthenticatedUser = {
 function createService() {
   const tx = {
     inventoryItem: {
+      create: vi.fn(),
       update: vi.fn()
     },
     sellerProductListing: {
+      create: vi.fn(),
       update: vi.fn()
     },
     price: {
@@ -44,6 +46,10 @@ function createService() {
       callback(tx)
     ),
     seller: {
+      findUnique: vi.fn()
+    },
+    product: {
+      findMany: vi.fn(),
       findUnique: vi.fn()
     },
     inventoryItem: {
@@ -70,9 +76,11 @@ function createService() {
   };
   const projectionService = {
     collectDocumentsByListingIds: vi.fn().mockResolvedValue([]),
+    removeProjectionRecords: vi.fn().mockResolvedValue(undefined),
     syncProjectionRecords: vi.fn().mockResolvedValue(undefined)
   };
   const openSearchService = {
+    removeDocuments: vi.fn().mockResolvedValue(true),
     syncDocuments: vi.fn().mockResolvedValue(true)
   };
   const cacheService = {
@@ -80,6 +88,7 @@ function createService() {
   };
 
   return {
+    tx,
     prisma,
     auditService,
     projectionService,
@@ -311,5 +320,163 @@ describe("SellerService", () => {
     expect(result.price?.amount).toBe(429900);
     expect(result.isActive).toBe(false);
     expect(prisma.$transaction).toHaveBeenCalled();
+  });
+
+  it("creates a seller-owned offer against the shared catalog", async () => {
+    const { prisma, service, tx } = createService();
+    prisma.seller.findUnique.mockResolvedValue({
+      id: "seller-1",
+      slug: "north-star-electronics",
+      displayName: "North Star Electronics",
+      status: "ACTIVE"
+    });
+    prisma.sellerProductListing.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null);
+    prisma.product.findUnique.mockResolvedValue({
+      id: "cproduct0001",
+      slug: "astra-x1-pro",
+      title: "Astra X1 Pro",
+      status: "ACTIVE",
+      brand: {
+        name: "Astra"
+      },
+      category: {
+        name: "Phones"
+      },
+      media: [],
+      variants: [
+        {
+          id: "cvariant0001",
+          title: "256 GB / Midnight",
+          isDefault: true
+        }
+      ],
+      listings: []
+    });
+    tx.sellerProductListing.create.mockResolvedValue({
+      id: "listing-3",
+      isActive: true
+    });
+    prisma.sellerProductListing.findUniqueOrThrow.mockResolvedValue({
+      id: "listing-3",
+      sellerId: "seller-1",
+      productId: "cproduct0001",
+      status: "ACTIVE",
+      isActive: true,
+      leadTimeDays: 2,
+      sellerSku: "NST-AX1P-NEW",
+      updatedAt: new Date("2026-03-17T09:00:00.000Z"),
+      prices: [
+        {
+          amount: 399900,
+          compareAtAmount: 429900,
+          currency: "RON",
+          startsAt: null,
+          endsAt: null,
+          createdAt: new Date("2026-03-17T09:00:00.000Z")
+        }
+      ],
+      product: {
+        id: "cproduct0001",
+        status: "ACTIVE",
+        slug: "astra-x1-pro",
+        title: "Astra X1 Pro",
+        media: []
+      },
+      variant: {
+        title: "256 GB / Midnight"
+      },
+      inventoryItem: {
+        id: "inventory-3",
+        onHand: 8,
+        reserved: 0,
+        safetyStock: 1
+      }
+    });
+
+    const result = await service.createListing(viewer, {
+      productId: "cproduct0001",
+      variantId: "cvariant0001",
+      sellerSku: "NST-AX1P-NEW",
+      leadTimeDays: 2,
+      priceAmount: 399900,
+      compareAtAmount: 429900,
+      onHand: 8,
+      safetyStock: 1,
+      isActive: true
+    });
+
+    expect(result.listingId).toBe("listing-3");
+    expect(result.sellerSku).toBe("NST-AX1P-NEW");
+    expect(tx.sellerProductListing.create).toHaveBeenCalled();
+  });
+
+  it("archives seller-owned offers and removes them from search", async () => {
+    const { openSearchService, prisma, projectionService, service } = createService();
+    prisma.seller.findUnique.mockResolvedValue({
+      id: "seller-1",
+      slug: "north-star-electronics",
+      displayName: "North Star Electronics",
+      status: "ACTIVE"
+    });
+    prisma.sellerProductListing.findFirst.mockResolvedValue({
+      id: "listing-1",
+      sellerId: "seller-1",
+      productId: "product-1",
+      status: "ACTIVE",
+      isActive: true,
+      leadTimeDays: 2,
+      sellerSku: "NST-AX1P-256",
+      updatedAt: new Date("2026-03-17T08:00:00.000Z"),
+      prices: [],
+      product: {
+        id: "product-1",
+        status: "ACTIVE",
+        slug: "astra-x1-pro",
+        title: "Astra X1 Pro",
+        media: []
+      },
+      variant: null,
+      inventoryItem: {
+        id: "inventory-1",
+        onHand: 12,
+        reserved: 0,
+        safetyStock: 1
+      }
+    });
+    prisma.sellerProductListing.findUniqueOrThrow.mockResolvedValue({
+      id: "listing-1",
+      sellerId: "seller-1",
+      productId: "product-1",
+      status: "ARCHIVED",
+      isActive: false,
+      leadTimeDays: 2,
+      sellerSku: "NST-AX1P-256",
+      updatedAt: new Date("2026-03-17T08:15:00.000Z"),
+      prices: [],
+      product: {
+        id: "product-1",
+        status: "ACTIVE",
+        slug: "astra-x1-pro",
+        title: "Astra X1 Pro",
+        media: []
+      },
+      variant: null,
+      inventoryItem: {
+        id: "inventory-1",
+        onHand: 12,
+        reserved: 0,
+        safetyStock: 1
+      }
+    });
+
+    const result = await service.archiveListing(viewer, "listing-1");
+
+    expect(result.status).toBe("ARCHIVED");
+    expect(projectionService.removeProjectionRecords).toHaveBeenCalledWith([
+      "listing-1"
+    ]);
+    expect(openSearchService.removeDocuments).toHaveBeenCalledWith(["listing-1"]);
   });
 });

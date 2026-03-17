@@ -5,6 +5,7 @@ import {
 } from "@nestjs/common";
 import type { AuthenticatedUser } from "@velora/contracts";
 import {
+  createSellerListingRequestSchema,
   sellerDashboardSchema,
   updateSellerInventoryRequestSchema,
   updateSellerListingCommercialRequestSchema
@@ -17,10 +18,12 @@ import { calculateAvailableQuantity } from "../search/search.helpers";
 import { OpenSearchService } from "../search/opensearch.service";
 import { SearchProjectionService } from "../search/search.service";
 import {
+  mapSellerListingCatalogOption,
   mapSellerListingSummary,
   mapSellerOrderDetail,
   mapSellerOrderSummary,
   resolveActivePrice,
+  sellerCatalogOptionInclude,
   sellerListingInclude,
   sellerOrderInclude
 } from "./seller.helpers";
@@ -149,6 +152,140 @@ export class SellerService {
     });
 
     return listings.map((listing) => mapSellerListingSummary(listing));
+  }
+
+  async listCatalogOptions(viewer: AuthenticatedUser) {
+    const seller = await this.getSellerScope(viewer.id);
+    const products = await this.prisma.product.findMany({
+      where: {
+        status: "ACTIVE"
+      },
+      include: sellerCatalogOptionInclude.include,
+      orderBy: {
+        updatedAt: "desc"
+      }
+    });
+
+    return products.map((product) =>
+      mapSellerListingCatalogOption(product, seller.id)
+    );
+  }
+
+  async createListing(viewer: AuthenticatedUser, rawInput: unknown) {
+    const seller = await this.getSellerScope(viewer.id);
+    const input = createSellerListingRequestSchema.parse(rawInput);
+    await this.ensureSellerSkuAvailable(input.sellerSku);
+
+    const product = await this.prisma.product.findUnique({
+      where: {
+        id: input.productId
+      },
+      include: sellerCatalogOptionInclude.include
+    });
+
+    if (!product || product.status !== "ACTIVE") {
+      throw new NotFoundException(
+        `Product ${input.productId} is not available for seller offers.`
+      );
+    }
+
+    const selectedVariant =
+      (input.variantId
+        ? product.variants.find((variant) => variant.id === input.variantId)
+        : product.variants.find((variant) => variant.isDefault) ?? product.variants[0]) ??
+      null;
+
+    if (input.variantId && !selectedVariant) {
+      throw new NotFoundException(
+        `Variant ${input.variantId} was not found on product ${product.title}.`
+      );
+    }
+
+    const existingListing = await this.prisma.sellerProductListing.findFirst({
+      where: {
+        sellerId: seller.id,
+        productId: product.id,
+        variantId: selectedVariant?.id ?? null,
+        status: {
+          not: "ARCHIVED"
+        }
+      }
+    });
+
+    if (existingListing) {
+      throw new ConflictException(
+        "An active seller offer already exists for this product variant."
+      );
+    }
+
+    const createdListing = await this.prisma.$transaction(async (tx) => {
+      const listing = await tx.sellerProductListing.create({
+        data: {
+          sellerId: seller.id,
+          productId: product.id,
+          variantId: selectedVariant?.id ?? null,
+          sellerSku: input.sellerSku.trim(),
+          status: "ACTIVE",
+          isActive: input.isActive && seller.status === "ACTIVE",
+          leadTimeDays: input.leadTimeDays
+        }
+      });
+
+      await tx.price.create({
+        data: {
+          listingId: listing.id,
+          amount: input.priceAmount,
+          compareAtAmount: input.compareAtAmount ?? null,
+          currency: "RON"
+        }
+      });
+
+      await tx.inventoryItem.create({
+        data: {
+          listingId: listing.id,
+          onHand: input.onHand,
+          safetyStock: input.safetyStock
+        }
+      });
+
+      await tx.auditLog.create({
+        data: {
+          actorUserId: viewer.id,
+          entityType: "SELLER_PRODUCT_LISTING",
+          entityId: listing.id,
+          action: "SELLER_LISTING_CREATED",
+          details: {
+            productId: product.id,
+            variantId: selectedVariant?.id ?? null,
+            sellerSku: input.sellerSku.trim(),
+            note:
+              input.note?.trim() ||
+              `Seller offer created by ${viewer.email}.`
+          }
+        }
+      });
+
+      return listing;
+    });
+
+    if (createdListing.isActive) {
+      await this.syncListings(
+        [createdListing.id],
+        viewer.id,
+        "Seller offer created."
+      );
+    }
+
+    await this.invalidateStorefrontReadCaches();
+
+    const listing = await this.prisma.sellerProductListing.findUniqueOrThrow({
+      where: {
+        id: createdListing.id
+      },
+      include: sellerListingInclude.include
+    });
+
+    return mapSellerListingSummary(listing);
   }
 
   async updateInventory(
@@ -325,11 +462,19 @@ export class SellerService {
       });
     });
 
-    await this.syncListings(
-      [listingId],
-      viewer.id,
-      "Seller commercial terms updated."
-    );
+    if (input.isActive) {
+      await this.syncListings(
+        [listingId],
+        viewer.id,
+        "Seller commercial terms updated."
+      );
+    } else {
+      await this.removeListingsFromSearch(
+        [listingId],
+        viewer.id,
+        "Seller offer hidden from storefront."
+      );
+    }
     await this.invalidateStorefrontReadCaches();
 
     const updatedListing = await this.prisma.sellerProductListing.findUniqueOrThrow(
@@ -342,6 +487,72 @@ export class SellerService {
     );
 
     return mapSellerListingSummary(updatedListing);
+  }
+
+  async archiveListing(viewer: AuthenticatedUser, listingId: string) {
+    const seller = await this.getSellerScope(viewer.id);
+    const listing = await this.prisma.sellerProductListing.findFirst({
+      where: {
+        id: listingId,
+        sellerId: seller.id
+      },
+      include: sellerListingInclude.include
+    });
+
+    if (!listing) {
+      throw new NotFoundException(
+        `Listing ${listingId} was not found for seller ${seller.displayName}.`
+      );
+    }
+
+    if ((listing.inventoryItem?.reserved ?? 0) > 0) {
+      throw new ConflictException(
+        "Offers with reserved units cannot be archived until active reservations are released."
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.sellerProductListing.update({
+        where: {
+          id: listingId
+        },
+        data: {
+          status: "ARCHIVED",
+          isActive: false
+        }
+      });
+
+      await tx.auditLog.create({
+        data: {
+          actorUserId: viewer.id,
+          entityType: "SELLER_PRODUCT_LISTING",
+          entityId: listingId,
+          action: "SELLER_LISTING_ARCHIVED",
+          details: {
+            sellerSku: listing.sellerSku,
+            note: `Seller archived offer ${listing.sellerSku}.`
+          }
+        }
+      });
+    });
+
+    await this.removeListingsFromSearch(
+      [listingId],
+      viewer.id,
+      "Seller offer archived."
+    );
+    await this.invalidateStorefrontReadCaches();
+
+    const archivedListing = await this.prisma.sellerProductListing.findUniqueOrThrow(
+      {
+        where: {
+          id: listingId
+        },
+        include: sellerListingInclude.include
+      }
+    );
+
+    return mapSellerListingSummary(archivedListing);
   }
 
   async listOrders(viewer: AuthenticatedUser) {
@@ -403,6 +614,23 @@ export class SellerService {
     return seller;
   }
 
+  private async ensureSellerSkuAvailable(sellerSku: string) {
+    const existingListing = await this.prisma.sellerProductListing.findFirst({
+      where: {
+        sellerSku: sellerSku.trim()
+      },
+      select: {
+        id: true
+      }
+    });
+
+    if (existingListing) {
+      throw new ConflictException(
+        `Seller SKU ${sellerSku.trim()} is already assigned to another offer.`
+      );
+    }
+  }
+
   private async syncListings(
     listingIds: string[],
     actorUserId: string,
@@ -434,6 +662,43 @@ export class SellerService {
       actorUserId,
       "SEARCH_DOCUMENT",
       documents[0]?.listingId ?? listingIds[0] ?? "seller-sync",
+      "SEARCH_SYNC_UPDATED",
+      {
+        listings: listingIds,
+        message
+      }
+    );
+  }
+
+  private async removeListingsFromSearch(
+    listingIds: string[],
+    actorUserId: string,
+    message: string
+  ) {
+    if (listingIds.length === 0) {
+      return;
+    }
+
+    const [firstListingId] = listingIds;
+
+    if (!firstListingId) {
+      return;
+    }
+
+    await this.projectionService.removeProjectionRecords(listingIds);
+    await this.openSearchService.removeDocuments(listingIds);
+    await this.prisma.searchSyncLog.createMany({
+      data: listingIds.map((listingId) => ({
+        listingId,
+        documentId: `listing-${listingId}`,
+        status: "INDEXED",
+        message
+      }))
+    });
+    await this.auditService.record(
+      actorUserId,
+      "SEARCH_DOCUMENT",
+      firstListingId,
       "SEARCH_SYNC_UPDATED",
       {
         listings: listingIds,

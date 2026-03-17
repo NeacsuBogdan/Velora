@@ -14,6 +14,7 @@ import type {
   OrderSummary,
   ProductDetail,
   SellerDashboard,
+  SellerListingCatalogOption,
   SellerListingSummary,
   SellerOrderDetail,
   SellerOrderSummary,
@@ -157,6 +158,16 @@ export async function getSellerListings(): Promise<SellerListingSummary[]> {
   return (
     (await getAuthenticatedJson<SellerListingSummary[]>("/seller/listings")) ??
     []
+  );
+}
+
+export async function getSellerListingCatalogOptions(): Promise<
+  SellerListingCatalogOption[]
+> {
+  return (
+    (await getAuthenticatedJson<SellerListingCatalogOption[]>(
+      "/seller/catalog-options",
+    )) ?? []
   );
 }
 

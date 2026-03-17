@@ -1,12 +1,18 @@
 import { Badge, Panel } from "@velora/ui";
 
 import { SellerInventoryManager } from "../../../components/seller-inventory-manager";
-import { getSellerListings } from "../../../lib/storefront-api";
+import {
+  getSellerListingCatalogOptions,
+  getSellerListings
+} from "../../../lib/storefront-api";
 
 export const dynamic = "force-dynamic";
 
 export default async function SellerListingsPage(): Promise<React.JSX.Element> {
-  const listings = await getSellerListings();
+  const [catalogOptions, listings] = await Promise.all([
+    getSellerListingCatalogOptions(),
+    getSellerListings()
+  ]);
 
   return (
     <div className="grid gap-6">
@@ -15,13 +21,12 @@ export default async function SellerListingsPage(): Promise<React.JSX.Element> {
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
             <h1 className="font-[var(--font-heading)] text-4xl font-bold tracking-tight">
-              Manage pricing, visibility, stock, and lead times for your offers.
+              Create, price, archive, and replenish your seller offers from one workspace.
             </h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--muted)]">
-              Seller-owned offer updates write into transactional pricing or
-              inventory, record audit context, and refresh the search
-              projection so storefront availability and pricing stay aligned
-              with merchant operations.
+              Seller-owned offer changes write into transactional pricing,
+              inventory, audit logs, and the search projection so storefront
+              availability stays aligned with merchant operations.
             </p>
           </div>
           <div className="rounded-[24px] bg-black/3 px-5 py-4 text-sm text-[var(--muted)]">
@@ -43,18 +48,28 @@ export default async function SellerListingsPage(): Promise<React.JSX.Element> {
       </Panel>
 
       {listings.length ? (
-        <SellerInventoryManager listings={listings} />
+        <SellerInventoryManager
+          catalogOptions={catalogOptions}
+          listings={listings}
+        />
       ) : (
+        <SellerInventoryManager
+          catalogOptions={catalogOptions}
+          listings={listings}
+        />
+      )}
+
+      {!listings.length ? (
         <Panel>
           <h2 className="font-[var(--font-heading)] text-3xl font-bold tracking-tight">
             No seller listings are available.
           </h2>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--muted)]">
-            Seed the API data or assign listings to the active merchant profile
-            to populate this inventory workspace.
+            Use the create-offer panel above to attach your first sellable offer
+            to the shared marketplace catalog.
           </p>
         </Panel>
-      )}
+      ) : null}
     </div>
   );
 }

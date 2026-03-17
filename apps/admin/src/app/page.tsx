@@ -18,6 +18,8 @@ import {
 } from "../lib/admin-api";
 
 export const dynamic = "force-dynamic";
+const marketplaceUrl =
+  process.env.NEXT_PUBLIC_STOREFRONT_URL ?? "http://localhost:3000";
 
 export default async function AdminHomePage(): Promise<React.JSX.Element> {
   const session = await getSession();
@@ -73,16 +75,26 @@ export default async function AdminHomePage(): Promise<React.JSX.Element> {
             </div>
 
             <div className="rounded-[28px] border border-[var(--stroke)] bg-white/80 px-5 py-4 text-sm text-[var(--muted)] shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
-              {session ? (
-                <>
-                  Signed in as{" "}
-                  <span className="font-semibold text-[var(--foreground)]">
-                    {session.user.email}
-                  </span>
-                </>
-              ) : (
-                "Admin session not established yet."
-              )}
+              <div className="flex flex-col gap-3">
+                <div>
+                  {session ? (
+                    <>
+                      Signed in as{" "}
+                      <span className="font-semibold text-[var(--foreground)]">
+                        {session.user.email}
+                      </span>
+                    </>
+                  ) : (
+                    "Admin session not established yet."
+                  )}
+                </div>
+                <a
+                  className="inline-flex items-center justify-center rounded-full border border-[var(--stroke)] bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--foreground)] transition-colors hover:border-[var(--accent)]"
+                  href={marketplaceUrl}
+                >
+                  Open marketplace
+                </a>
+              </div>
             </div>
           </div>
         </header>

@@ -119,11 +119,13 @@ export function SellerApplicationForm(): React.JSX.Element {
             <Field
               error={form.formState.errors.displayName?.message}
               id="seller-display-name"
-              label="Storefront name"
+              label="Store or seller name"
+              hint="Use the trading name merchants will recognize. This does not need to be a standalone website."
             >
               <input
                 className={inputClassName}
                 id="seller-display-name"
+                placeholder="Peak Labs"
                 type="text"
                 {...form.register("displayName")}
               />
@@ -136,6 +138,7 @@ export function SellerApplicationForm(): React.JSX.Element {
               <input
                 className={inputClassName}
                 id="seller-legal-name"
+                placeholder="Peak Labs SRL"
                 type="text"
                 {...form.register("legalName")}
               />
@@ -199,11 +202,13 @@ export function SellerApplicationForm(): React.JSX.Element {
           <Field
             error={form.formState.errors.websiteUrl?.message}
             id="seller-website-url"
-            label="Website or catalog URL"
+            label="Website or reference link"
+            hint="Optional. Leave this empty if you do not have a website, online shop, or product sheet yet."
           >
             <input
               className={inputClassName}
               id="seller-website-url"
+              placeholder="https://yourshop.example"
               type="url"
               {...form.register("websiteUrl")}
             />
@@ -212,11 +217,13 @@ export function SellerApplicationForm(): React.JSX.Element {
           <Field
             error={form.formState.errors.catalogSummary?.message}
             id="seller-catalog-summary"
-            label="What will you sell?"
+            label="Products or categories you plan to sell"
+            hint="Describe the assortment you want to bring to Velora, even if you do not have a website yet."
           >
             <textarea
               className={textAreaClassName}
               id="seller-catalog-summary"
+              placeholder="Books, stationery bundles, educational toys, and gift-ready accessories for school and home."
               {...form.register("catalogSummary")}
             />
           </Field>
@@ -225,10 +232,12 @@ export function SellerApplicationForm(): React.JSX.Element {
             error={form.formState.errors.notes?.message}
             id="seller-notes"
             label="Operational notes"
+            hint="Optional. Share courier coverage, invoicing details, or anything useful for review."
           >
             <textarea
               className={textAreaClassName}
               id="seller-notes"
+              placeholder="We can ship nationally within 24 to 48 hours and already operate with invoice-ready stock."
               {...form.register("notes")}
             />
           </Field>
@@ -241,8 +250,9 @@ export function SellerApplicationForm(): React.JSX.Element {
 
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm leading-6 text-[var(--muted)]">
-              Admin approval issues a seller activation link. Public self-signup
-              for merchant accounts is intentionally disabled.
+              A website is not required. Admin approval issues a seller
+              activation link after the marketplace team reviews the business
+              profile and planned assortment.
             </p>
             <Button disabled={isPending} type="submit">
               {isPending ? "Submitting..." : "Submit application"}
@@ -276,11 +286,13 @@ const textAreaClassName = `${inputClassName} min-h-28 resize-y`;
 function Field({
   children,
   error,
+  hint,
   id,
   label
 }: {
   children: React.ReactNode;
   error?: string;
+  hint?: string;
   id: string;
   label: string;
 }) {
@@ -292,6 +304,9 @@ function Field({
       >
         {label}
       </label>
+      {hint ? (
+        <p className="text-sm leading-6 text-[var(--muted)]">{hint}</p>
+      ) : null}
       {children}
       {error ? <p className="text-sm text-[var(--accent)]">{error}</p> : null}
     </div>

@@ -164,6 +164,12 @@
 - Added notification service coverage plus kept the existing API, storefront, and workspace builds green after the new persistence and UI changes.
 - Verified `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm db:migrate`, and `pnpm db:seed` successfully after the notification changes.
 
+### Post Stage 11 follow-up: seller onboarding UX polish
+
+- Clarified that the seller onboarding reference-link field is optional, so merchants without a standalone website or product sheet can still apply cleanly.
+- Tightened the storefront seller application schema to treat whitespace-only reference links as empty input instead of a validation failure.
+- Reworded the onboarding form copy around seller name, reference link, assortment summary, and review messaging so the flow reads like a marketplace application rather than a requirement to already run an external storefront.
+
 ## Important implementation notes
 
 - Internal packages are designed to build independently so the apps can consume stable outputs.

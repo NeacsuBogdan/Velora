@@ -24,7 +24,7 @@ export default function BecomeSellerPage(): React.JSX.Element {
           </p>
           <ul className="mt-4 grid gap-3 text-sm leading-7 text-[var(--muted)]">
             <li>1. Submit the merchant application with business details.</li>
-            <li>2. Admin reviews the company and catalog fit.</li>
+            <li>2. Admin reviews the business profile and planned product fit.</li>
             <li>3. Approval generates a secure seller activation link.</li>
             <li>4. The seller activates the account and enters the portal.</li>
           </ul>

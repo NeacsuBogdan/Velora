@@ -13,6 +13,7 @@ import type {
   AdminSellerApplicationSummary,
   AdminSellerSummary,
   DomainOverview,
+  NotificationFeed,
   PromotionSummary,
   SessionResponse
 } from "@velora/contracts";
@@ -117,4 +118,12 @@ export async function getAdminSellerApplications(): Promise<
 
 export async function getAdminOperations(): Promise<AdminOperationsOverview | null> {
   return getAuthenticatedJson<AdminOperationsOverview>("/admin/operations");
+}
+
+export async function getNotificationFeed(
+  limit = 12
+): Promise<NotificationFeed | null> {
+  return getAuthenticatedJson<NotificationFeed>(
+    `/notifications?limit=${encodeURIComponent(String(limit))}`
+  );
 }

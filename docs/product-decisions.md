@@ -73,6 +73,12 @@ This keeps the marketplace closer to how real operator-led platforms behave. It 
 
 The current MVP deliberately stops short of full contract and email automation. Admins review the application and can hand off the activation link directly in local development, while the data model is already shaped to evolve toward invite emails and richer onboarding states later.
 
+## Why notifications are persisted in-app instead of only shown as UI banners
+
+Marketplace workflows span multiple surfaces and time windows. A seller may sign in hours after an order is paid, and an admin may review seller onboarding later than the original submission moment. Temporary UI banners are not enough for that.
+
+Velora stores notifications as durable records tied to a user, with unread state and deep links back into the relevant workspace. That keeps cross-role communication practical without pretending the MVP already has email, SMS, or push delivery infrastructure.
+
 ## Why browser E2E uses a mock API harness
 
 The Stage 11 browser suite is meant to guard user-facing flows in CI, not to duplicate all real API integration coverage. The mock API harness keeps those tests:

@@ -13,5 +13,10 @@ export const sellerNavigation = [
     href: "/seller/orders",
     label: "Orders",
     description: "Track seller-scoped order demand and fulfillment state."
+  },
+  {
+    href: "/notifications",
+    label: "Notifications",
+    description: "Seller alerts for new orders, refunds, and onboarding events."
   }
 ] as const;

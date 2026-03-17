@@ -1,4 +1,6 @@
 import {
+  notificationKinds,
+  notificationLevels,
   productStatuses,
   sellerApplicationStatuses,
   sellerStatuses,
@@ -175,6 +177,51 @@ export const sellerActivationResponseSchema = z.object({
 
 export type SellerActivationResponse = z.infer<
   typeof sellerActivationResponseSchema
+>;
+
+export const notificationKindSchema = z.enum(notificationKinds);
+export type NotificationKind = z.infer<typeof notificationKindSchema>;
+
+export const notificationLevelSchema = z.enum(notificationLevels);
+export type NotificationLevel = z.infer<typeof notificationLevelSchema>;
+
+export const notificationSummarySchema = z.object({
+  notificationId: z.string(),
+  title: z.string(),
+  message: z.string(),
+  kind: notificationKindSchema,
+  level: notificationLevelSchema,
+  linkUrl: z.string().nullable(),
+  isRead: z.boolean(),
+  createdAt: z.string().datetime(),
+  readAt: z.string().datetime().nullable()
+});
+
+export type NotificationSummary = z.infer<typeof notificationSummarySchema>;
+
+export const notificationFeedSchema = z.object({
+  unreadCount: z.number().int().nonnegative(),
+  items: z.array(notificationSummarySchema)
+});
+
+export type NotificationFeed = z.infer<typeof notificationFeedSchema>;
+
+export const markNotificationReadResponseSchema = z.object({
+  notificationId: z.string(),
+  unreadCount: z.number().int().nonnegative()
+});
+
+export type MarkNotificationReadResponse = z.infer<
+  typeof markNotificationReadResponseSchema
+>;
+
+export const markAllNotificationsReadResponseSchema = z.object({
+  markedCount: z.number().int().nonnegative(),
+  unreadCount: z.number().int().nonnegative()
+});
+
+export type MarkAllNotificationsReadResponse = z.infer<
+  typeof markAllNotificationsReadResponseSchema
 >;
 
 export const upsertAddressRequestSchema = z.object({

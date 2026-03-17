@@ -19,6 +19,7 @@ import bcrypt from "bcryptjs";
 import { createHash, randomBytes } from "node:crypto";
 
 import { PrismaService } from "../database/prisma.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import { SESSION_DURATION_DAYS } from "./auth.constants";
 
 interface LoginContext {
@@ -43,7 +44,10 @@ type UserWithRoles = Prisma.UserGetPayload<{
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService
+  ) {}
 
   async login(
     rawInput: LoginRequest,
@@ -139,6 +143,16 @@ export class AuthService {
           ipAddress: context.ipAddress ?? null
         }
       }
+    });
+
+    await this.notificationsService.notifyUser(user.id, {
+      kind: "ACCOUNT",
+      level: "SUCCESS",
+      title: "Account ready",
+      message:
+        "Your Velora customer account is active. You can now manage addresses, place orders, and track payment updates.",
+      linkUrl: "/account",
+      actorUserId: user.id
     });
 
     return this.createSessionForUser(user, context, "AUTH_REGISTER");

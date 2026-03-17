@@ -73,6 +73,24 @@ export const sellerApplicationStatuses = [
 export type SellerApplicationStatus =
   (typeof sellerApplicationStatuses)[number];
 
+export const notificationKinds = [
+  "ACCOUNT",
+  "ORDER",
+  "PAYMENT",
+  "REFUND",
+  "SELLER_APPLICATION",
+  "OPERATIONS"
+] as const;
+export type NotificationKind = (typeof notificationKinds)[number];
+
+export const notificationLevels = [
+  "INFO",
+  "SUCCESS",
+  "WARNING",
+  "ACTION_REQUIRED"
+] as const;
+export type NotificationLevel = (typeof notificationLevels)[number];
+
 export interface Money {
   amount: number;
   currency: "RON" | "EUR";

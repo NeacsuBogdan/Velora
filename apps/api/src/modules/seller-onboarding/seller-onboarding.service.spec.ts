@@ -71,6 +71,10 @@ describe("SellerOnboardingService", () => {
   const authService = {
     issueSessionForUserId: vi.fn()
   };
+  const notificationsService = {
+    notifyAdmins: vi.fn(),
+    notifyUser: vi.fn()
+  };
 
   let service: SellerOnboardingService;
 
@@ -79,7 +83,8 @@ describe("SellerOnboardingService", () => {
     service = new SellerOnboardingService(
       prisma as never,
       auditService as never,
-      authService as never
+      authService as never,
+      notificationsService as never
     );
 
     tx.sellerApplication.update.mockResolvedValue(undefined);
@@ -124,6 +129,7 @@ describe("SellerOnboardingService", () => {
         contactEmail: "merchant@example.com"
       })
     );
+    expect(notificationsService.notifyAdmins).toHaveBeenCalled();
     expect(result.status).toBe("SUBMITTED");
   });
 
@@ -267,6 +273,8 @@ describe("SellerOnboardingService", () => {
       },
       "SELLER_ACTIVATED"
     );
+    expect(notificationsService.notifyUser).toHaveBeenCalled();
+    expect(notificationsService.notifyAdmins).toHaveBeenCalled();
     expect(result.token).toBe("seller-session-token");
     expect(result.response.sellerSlug).toBe("peak-labs");
   });

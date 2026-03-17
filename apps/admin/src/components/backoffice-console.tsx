@@ -12,10 +12,12 @@ import type {
   AdminProductSummary,
   AdminSellerApplicationSummary,
   AdminSellerSummary,
+  NotificationFeed,
   PromotionSummary,
 } from "@velora/contracts";
 import { Badge, Panel, StatTile } from "@velora/ui";
 
+import { AdminNotificationCenter } from "./admin-notification-center";
 import { SectionShell } from "./admin-primitives";
 import { CategoryManager } from "./category-manager";
 import { CustomerLookup } from "./customer-lookup";
@@ -38,6 +40,7 @@ export function BackofficeConsole({
   customers,
   sellerApplications,
   sellers,
+  notificationFeed,
   operations,
   promotions,
 }: {
@@ -51,16 +54,23 @@ export function BackofficeConsole({
   customers: AdminCustomerSummary[];
   sellerApplications: AdminSellerApplicationSummary[];
   sellers: AdminSellerSummary[];
+  notificationFeed: NotificationFeed;
   operations: AdminOperationsOverview;
   promotions: PromotionSummary[];
 }) {
+  const pendingSellerApplications = sellerApplications.filter((application) =>
+    ["SUBMITTED", "REVIEWING", "ACTIVATION_PENDING"].includes(
+      application.status
+    )
+  ).length;
   const quickLinks = [
+    ["notifications", "Notifications"],
     ["categories", "Categories"],
     ["products", "Products"],
     ["inventory", "Inventory"],
     ["orders", "Orders"],
     ["customers", "Customers"],
-    ["seller-applications", "Onboarding"],
+    ["seller-applications", "Seller apps"],
     ["sellers", "Sellers"],
     ["operations", "Operations"],
     ["promotions", "Promotions"],
@@ -68,7 +78,12 @@ export function BackofficeConsole({
 
   return (
     <div className="space-y-10">
-      <section className="grid gap-5 md:grid-cols-3 xl:grid-cols-6">
+      <section className="grid gap-5 md:grid-cols-4 xl:grid-cols-8">
+        <StatTile
+          detail="Unread cross-role alerts for operator action or verification."
+          label="Unread alerts"
+          value={String(notificationFeed.unreadCount)}
+        />
         <StatTile
           detail="Taxonomy and navigation nodes currently managed in the source-of-truth catalog."
           label="Categories"
@@ -88,6 +103,11 @@ export function BackofficeConsole({
           detail="Orders still requiring fulfilment or settlement attention."
           label="Pending orders"
           value={String(dashboard.metrics.pendingOrders)}
+        />
+        <StatTile
+          detail="Merchant applications still moving through review or activation."
+          label="Seller applications"
+          value={String(pendingSellerApplications)}
         />
         <StatTile
           detail="Customer accounts available for support and lookup workflows."
@@ -132,6 +152,16 @@ export function BackofficeConsole({
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">
+          <a
+            className="rounded-[24px] border border-[rgba(15,118,110,0.14)] bg-[rgba(15,118,110,0.06)] px-5 py-4 text-sm leading-7 text-[var(--muted)] transition-colors hover:border-[var(--accent)]"
+            href="#seller-applications"
+          >
+            <span className="font-semibold text-[var(--foreground)]">
+              {pendingSellerApplications} seller application
+              {pendingSellerApplications === 1 ? "" : "s"}{" "}
+            </span>
+            still need review or activation follow-through.
+          </a>
           {dashboard.notes.map((note) => (
             <div
               className="rounded-[24px] border border-[var(--stroke)] bg-[rgba(255,255,255,0.86)] px-5 py-4 text-sm leading-7 text-[var(--muted)]"
@@ -143,12 +173,13 @@ export function BackofficeConsole({
         </div>
       </Panel>
 
+      <AdminNotificationCenter initialFeed={notificationFeed} />
       <CategoryManager initialCategories={categories} />
       <ProductManager initialProducts={products} options={catalogOptions} />
       <InventoryManager initialInventory={inventory} />
       <OrderManager initialOrderDetail={orderDetail} initialOrders={orders} />
-      <CustomerLookup initialCustomers={customers} />
       <SellerApplicationManager initialApplications={sellerApplications} />
+      <CustomerLookup initialCustomers={customers} />
       <SellerManager initialSellers={sellers} />
       <OperationsConsole initialOperations={operations} />
 

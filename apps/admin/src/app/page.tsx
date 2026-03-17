@@ -14,6 +14,7 @@ import {
   getAdminProducts,
   getAdminSellerApplications,
   getAdminSellers,
+  getNotificationFeed,
   getPromotions,
   getSession,
 } from "../lib/admin-api";
@@ -36,6 +37,7 @@ export default async function AdminHomePage(): Promise<React.JSX.Element> {
     customers,
     sellerApplications,
     sellers,
+    notificationFeed,
     operations,
     promotions,
   ] = isAdmin
@@ -49,10 +51,11 @@ export default async function AdminHomePage(): Promise<React.JSX.Element> {
         getAdminCustomers(),
         getAdminSellerApplications(),
         getAdminSellers(),
+        getNotificationFeed(8),
         getAdminOperations(),
         getPromotions(),
       ])
-    : [null, null, null, null, null, null, null, null, null, null];
+    : [null, null, null, null, null, null, null, null, null, null, null, null];
   const orderDetail =
     isAdmin && orders?.[0] ? await getAdminOrderDetail(orders[0].number) : null;
 
@@ -142,6 +145,7 @@ export default async function AdminHomePage(): Promise<React.JSX.Element> {
                 operations={operations}
                 orderDetail={orderDetail}
                 orders={orders}
+                notificationFeed={notificationFeed ?? { unreadCount: 0, items: [] }}
                 products={products}
                 promotions={promotions}
                 sellerApplications={sellerApplications}

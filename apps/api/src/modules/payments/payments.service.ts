@@ -22,6 +22,7 @@ import { AuditService } from "../audit/audit.service";
 import { CheckoutService } from "../checkout/checkout.service";
 import { PrismaService } from "../database/prisma.service";
 import { InventoryService } from "../inventory/inventory.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import {
   mapOrderDetail,
   orderDetailInclude
@@ -45,6 +46,15 @@ interface ProviderIntentResult {
 
 interface ConfirmIntentResult extends ProviderIntentResult {
   event: NormalizedProviderEvent;
+}
+
+interface NotificationPlan {
+  userId: string;
+  kind: "ORDER" | "REFUND";
+  level: "SUCCESS" | "INFO";
+  title: string;
+  message: string;
+  linkUrl: string;
 }
 
 const PAYMENT_PROVIDER = "stripe";
@@ -112,7 +122,8 @@ export class PaymentsService {
     private readonly prisma: PrismaService,
     private readonly checkoutService: CheckoutService,
     private readonly inventoryService: InventoryService,
-    private readonly auditService: AuditService
+    private readonly auditService: AuditService,
+    private readonly notificationsService: NotificationsService
   ) {}
 
   async getOverview() {
@@ -473,6 +484,10 @@ export class PaymentsService {
       throw new NotFoundException(`Order ${orderId} was not found.`);
     }
 
+    await this.dispatchNotificationPlans(
+      this.buildRefundNotificationPlans(refreshedOrder, amount)
+    );
+
     return mapOrderDetail(refreshedOrder);
   }
 
@@ -521,7 +536,8 @@ export class PaymentsService {
     event: NormalizedProviderEvent,
     signature: string | null
   ) {
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
+      let notificationPlans: NotificationPlan[] = [];
       const existingDelivery = await tx.webhookDeliveryRecord.findUnique({
         where: {
           provider_externalEventId: {
@@ -532,12 +548,15 @@ export class PaymentsService {
       });
 
       if (existingDelivery) {
-        return webhookAckSchema.parse({
-          provider: PAYMENT_PROVIDER,
-          eventId: event.eventId,
-          duplicate: true,
-          processed: true
-        });
+        return {
+          ack: webhookAckSchema.parse({
+            provider: PAYMENT_PROVIDER,
+            eventId: event.eventId,
+            duplicate: true,
+            processed: true
+          }),
+          notificationPlans: []
+        };
       }
 
       const deliveryRecord = await tx.webhookDeliveryRecord.create({
@@ -569,12 +588,15 @@ export class PaymentsService {
           }
         });
 
-        return webhookAckSchema.parse({
-          provider: PAYMENT_PROVIDER,
-          eventId: event.eventId,
-          duplicate: false,
-          processed: false
-        });
+        return {
+          ack: webhookAckSchema.parse({
+            provider: PAYMENT_PROVIDER,
+            eventId: event.eventId,
+            duplicate: false,
+            processed: false
+          }),
+          notificationPlans: []
+        };
       }
 
       const paymentEvent = await tx.paymentEvent.create({
@@ -597,7 +619,10 @@ export class PaymentsService {
       });
 
       if (event.type === "payment_intent.succeeded") {
-        await this.settleSuccessfulPayment(tx, paymentAttempt.id);
+        notificationPlans = await this.settleSuccessfulPayment(
+          tx,
+          paymentAttempt.id
+        );
       } else if (event.type === "payment_intent.payment_failed") {
         await this.markPaymentFailed(tx, paymentAttempt.id, event.payload);
       } else if (event.type === "payment_intent.requires_action") {
@@ -632,19 +657,25 @@ export class PaymentsService {
         }
       });
 
-      return webhookAckSchema.parse({
-        provider: PAYMENT_PROVIDER,
-        eventId: event.eventId,
-        duplicate: false,
-        processed: true
-      });
+      return {
+        ack: webhookAckSchema.parse({
+          provider: PAYMENT_PROVIDER,
+          eventId: event.eventId,
+          duplicate: false,
+          processed: true
+        }),
+        notificationPlans
+      };
     });
+
+    await this.dispatchNotificationPlans(result.notificationPlans ?? []);
+    return result.ack;
   }
 
   private async settleSuccessfulPayment(
     tx: PrismaTransactionClient,
     paymentAttemptId: string
-  ) {
+  ): Promise<NotificationPlan[]> {
     const paymentAttempt = await tx.paymentAttempt.findUnique({
       where: {
         id: paymentAttemptId
@@ -834,6 +865,47 @@ export class PaymentsService {
         }
       }
     });
+
+    const notificationPlans: NotificationPlan[] = [];
+
+    if (paymentAttempt.checkoutSession.userId) {
+      notificationPlans.push({
+        userId: paymentAttempt.checkoutSession.userId,
+        kind: "ORDER",
+        level: "SUCCESS",
+        title: "Order placed successfully",
+        message: `Order ${order.number} has been paid and is now ready for fulfilment tracking.`,
+        linkUrl: `/account/orders/${encodeURIComponent(order.number)}`
+      });
+    }
+
+    const sellerOwners = new Map<string, number>();
+
+    for (const item of paymentAttempt.checkoutSession.cart.items) {
+      const ownerUserId = item.listing.seller.ownerUserId;
+
+      if (!ownerUserId) {
+        continue;
+      }
+
+      sellerOwners.set(
+        ownerUserId,
+        (sellerOwners.get(ownerUserId) ?? 0) + item.quantity
+      );
+    }
+
+    for (const [userId, quantity] of sellerOwners.entries()) {
+      notificationPlans.push({
+        userId,
+        kind: "ORDER",
+        level: "SUCCESS",
+        title: "New marketplace order",
+        message: `Order ${order.number} includes ${quantity} item${quantity === 1 ? "" : "s"} from your catalog and is ready for operational review.`,
+        linkUrl: `/seller/orders/${encodeURIComponent(order.number)}`
+      });
+    }
+
+    return notificationPlans;
   }
 
   private async markPaymentFailed(
@@ -924,6 +996,56 @@ export class PaymentsService {
         ...(isFullRefund ? { status: "REFUNDED" } : {})
       }
     });
+  }
+
+  private buildRefundNotificationPlans(
+    order: Prisma.OrderGetPayload<typeof orderDetailInclude>,
+    amount: number
+  ): NotificationPlan[] {
+    const plans: NotificationPlan[] = [];
+    const refundAmount = (amount / 100).toFixed(2);
+
+    if (order.userId) {
+      plans.push({
+        userId: order.userId,
+        kind: "REFUND",
+        level: "INFO",
+        title: "Refund recorded",
+        message: `${refundAmount} ${order.currency} was recorded against order ${order.number}.`,
+        linkUrl: `/account/orders/${encodeURIComponent(order.number)}`
+      });
+    }
+
+    const sellerOwners = new Set(
+      order.items
+        .map((item) => item.listing.seller.ownerUserId)
+        .filter((userId): userId is string => Boolean(userId))
+    );
+
+    for (const userId of sellerOwners) {
+      plans.push({
+        userId,
+        kind: "REFUND",
+        level: "INFO",
+        title: "Refund issued on an order",
+        message: `${refundAmount} ${order.currency} was issued on order ${order.number}. Review the order timeline for the updated payment posture.`,
+        linkUrl: `/seller/orders/${encodeURIComponent(order.number)}`
+      });
+    }
+
+    return plans;
+  }
+
+  private async dispatchNotificationPlans(plans: NotificationPlan[]) {
+    for (const plan of plans) {
+      await this.notificationsService.notifyUser(plan.userId, {
+        kind: plan.kind,
+        level: plan.level,
+        title: plan.title,
+        message: plan.message,
+        linkUrl: plan.linkUrl
+      });
+    }
   }
 
   private async createProviderIntent(

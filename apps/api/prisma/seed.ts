@@ -7,6 +7,8 @@ import {
   InventoryMovementType,
   InventoryReservationStatus,
   JobStatus,
+  NotificationKind,
+  NotificationLevel,
   OrderStatus,
   PaymentStatus,
   ProductStatus,
@@ -1908,12 +1910,118 @@ async function seedSellerOnboarding(): Promise<void> {
   });
 }
 
+async function seedNotifications(): Promise<void> {
+  const admin = await prisma.user.findUniqueOrThrow({
+    where: { email: "admin@velora.local" }
+  });
+  const seller = await prisma.user.findUniqueOrThrow({
+    where: { email: "seller@velora.local" }
+  });
+  const customer = await prisma.user.findUniqueOrThrow({
+    where: { email: "customer@velora.local" }
+  });
+
+  const notifications = [
+    {
+      id: "seed-notification-admin-onboarding",
+      userId: admin.id,
+      kind: NotificationKind.SELLER_APPLICATION,
+      level: NotificationLevel.ACTION_REQUIRED,
+      title: "New seller application",
+      message:
+        "Peak Trail Outdoor Gear submitted a merchant onboarding request and is waiting for review.",
+      linkUrl: "http://localhost:3001#seller-applications"
+    },
+    {
+      id: "seed-notification-admin-operations",
+      userId: admin.id,
+      kind: NotificationKind.OPERATIONS,
+      level: NotificationLevel.INFO,
+      title: "Reservation cleanup remains available",
+      message:
+        "Operational controls can still release expired reservations and reindex catalog projections from the backoffice.",
+      linkUrl: "http://localhost:3001#operations",
+      readAt: new Date()
+    },
+    {
+      id: "seed-notification-seller-order",
+      userId: seller.id,
+      kind: NotificationKind.ORDER,
+      level: NotificationLevel.SUCCESS,
+      title: "New seller order ready",
+      message:
+        "A seeded paid order is available in the seller workspace for operational follow-up.",
+      linkUrl: "/seller/orders"
+    },
+    {
+      id: "seed-notification-seller-account",
+      userId: seller.id,
+      kind: NotificationKind.ACCOUNT,
+      level: NotificationLevel.INFO,
+      title: "Seller workspace active",
+      message:
+        "Your demo seller account can manage listings, stock posture, and marketplace order visibility.",
+      linkUrl: "/seller",
+      readAt: new Date()
+    },
+    {
+      id: "seed-notification-customer-order",
+      userId: customer.id,
+      kind: NotificationKind.ORDER,
+      level: NotificationLevel.SUCCESS,
+      title: "Recent order paid",
+      message:
+        "Your seeded paid order is available in the account order history with payment and refund details.",
+      linkUrl: "/account/orders"
+    },
+    {
+      id: "seed-notification-customer-account",
+      userId: customer.id,
+      kind: NotificationKind.ACCOUNT,
+      level: NotificationLevel.INFO,
+      title: "Account ready",
+      message:
+        "Your customer account can manage addresses, checkout sessions, and order tracking from one place.",
+      linkUrl: "/account",
+      readAt: new Date()
+    }
+  ];
+
+  for (const notification of notifications) {
+    await prisma.notification.upsert({
+      where: {
+        id: notification.id
+      },
+      update: {
+        userId: notification.userId,
+        kind: notification.kind,
+        level: notification.level,
+        title: notification.title,
+        message: notification.message,
+        linkUrl: notification.linkUrl,
+        readAt: notification.readAt ?? null
+      },
+      create: {
+        id: notification.id,
+        userId: notification.userId,
+        kind: notification.kind,
+        level: notification.level,
+        title: notification.title,
+        message: notification.message,
+        linkUrl: notification.linkUrl,
+        readAt: notification.readAt ?? null
+      }
+    });
+  }
+}
+
 async function main(): Promise<void> {
   await seedRoles();
   await seedUsers();
   await seedCatalogAndCommerce();
   await seedExpandedCatalog();
   await seedSellerOnboarding();
+  await seedNotifications();
 }
 
 main()

@@ -12,6 +12,7 @@ import { CheckoutModule } from "./checkout/checkout.module";
 import { DatabaseModule } from "./database/database.module";
 import { HealthModule } from "./health/health.module";
 import { InventoryModule } from "./inventory/inventory.module";
+import { NotificationsModule } from "./notifications/notifications.module";
 import { OrdersModule } from "./orders/orders.module";
 import { PaymentsModule } from "./payments/payments.module";
 import { PlatformCacheModule } from "./platform-cache/platform-cache.module";
@@ -37,6 +38,7 @@ import { UsersModule } from "./users/users.module";
     UsersModule,
     CatalogModule,
     InventoryModule,
+    NotificationsModule,
     CartModule,
     CheckoutModule,
     PaymentsModule,

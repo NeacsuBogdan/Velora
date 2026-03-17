@@ -24,12 +24,18 @@ describe("AuthService", () => {
       create: vi.fn()
     }
   };
+  const notificationsService = {
+    notifyUser: vi.fn()
+  };
 
   let authService: AuthService;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    authService = new AuthService(prisma as never);
+    authService = new AuthService(
+      prisma as never,
+      notificationsService as never
+    );
   });
 
   it("creates a session for valid credentials", async () => {
@@ -138,6 +144,7 @@ describe("AuthService", () => {
       }
     });
     expect(prisma.session.create).toHaveBeenCalled();
+    expect(notificationsService.notifyUser).toHaveBeenCalled();
     expect(result.session.user.email).toBe("new.customer@velora.local");
     expect(result.session.user.roles[0]?.code).toBe("CUSTOMER");
   });

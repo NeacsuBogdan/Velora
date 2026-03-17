@@ -23,6 +23,7 @@ import { z } from "zod";
 import { AuditService } from "../audit/audit.service";
 import { AuthService } from "../auth/auth.service";
 import { PrismaService } from "../database/prisma.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import {
   mapAdminSellerApplicationSummary,
   mapSellerActivationPreview,
@@ -55,11 +56,14 @@ type LoginContext = {
 export class SellerOnboardingService {
   private readonly storefrontUrl =
     process.env.NEXT_PUBLIC_STOREFRONT_URL ?? "http://localhost:3000";
+  private readonly adminUrl =
+    process.env.NEXT_PUBLIC_ADMIN_URL ?? "http://localhost:3001";
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
-    private readonly authService: AuthService
+    private readonly authService: AuthService,
+    private readonly notificationsService: NotificationsService
   ) {}
 
   async createApplication(rawInput: unknown) {
@@ -92,6 +96,14 @@ export class SellerOnboardingService {
         displayName: application.displayName
       }
     );
+
+    await this.notificationsService.notifyAdmins({
+      kind: "SELLER_APPLICATION",
+      level: "ACTION_REQUIRED",
+      title: "New seller application",
+      message: `${application.displayName} submitted a merchant onboarding request and is awaiting review.`,
+      linkUrl: `${this.adminUrl}#seller-applications`
+    });
 
     return sellerApplicationReceiptSchema.parse({
       applicationId: application.id,
@@ -413,6 +425,26 @@ export class SellerOnboardingService {
       context,
       "SELLER_ACTIVATED"
     );
+
+    await Promise.all([
+      this.notificationsService.notifyUser(result.userId, {
+        kind: "ACCOUNT",
+        level: "SUCCESS",
+        title: "Seller workspace activated",
+        message:
+          "Your merchant account is active. You can now manage listings, stock, and seller orders.",
+        linkUrl: `${this.storefrontUrl}/seller`,
+        actorUserId: result.userId
+      }),
+      this.notificationsService.notifyAdmins({
+        kind: "SELLER_APPLICATION",
+        level: "SUCCESS",
+        title: "Seller activated",
+        message: `${activation.sellerApplication.displayName} completed activation and can now operate in the seller workspace.`,
+        linkUrl: `${this.adminUrl}#sellers`,
+        actorUserId: result.userId
+      })
+    ]);
 
     return {
       token: session.token,

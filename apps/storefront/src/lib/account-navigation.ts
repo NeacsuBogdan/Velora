@@ -13,5 +13,10 @@ export const accountNavigation = [
     href: "/account/orders",
     label: "Orders",
     description: "Order history, payment states, and refunds."
+  },
+  {
+    href: "/notifications",
+    label: "Notifications",
+    description: "Important account, order, and marketplace updates."
   }
 ];

@@ -97,6 +97,22 @@ enum SellerApplicationStatus {
   REJECTED
 }
 
+enum NotificationKind {
+  ACCOUNT
+  ORDER
+  PAYMENT
+  REFUND
+  SELLER_APPLICATION
+  OPERATIONS
+}
+
+enum NotificationLevel {
+  INFO
+  SUCCESS
+  WARNING
+  ACTION_REQUIRED
+}
+
 enum CouponStatus {
   ACTIVE
   DISABLED
@@ -159,6 +175,7 @@ model User {
   auditLogs            AuditLog[]
   carts                Cart[]
   checkoutSessions     CheckoutSession[]
+  notifications        Notification[]       @relation("UserNotifications")
   orders               Order[]
   reindexJobs          ReindexJob[]
   roleAssignments      UserRoleAssignment[]
@@ -166,6 +183,7 @@ model User {
   sellerProfile        Seller?              @relation("SellerOwner")
   sessions             Session[]
   statusHistoryEntries OrderStatusHistory[]
+  triggeredNotifications Notification[]     @relation("NotificationActor")
 }
 
 model UserRoleAssignment {
@@ -194,6 +212,26 @@ model Session {
 
   @@index([userId, status])
   @@index([expiresAt])
+}
+
+model Notification {
+  id          String            @id @default(cuid())
+  userId      String
+  actorUserId String?
+  kind        NotificationKind
+  level       NotificationLevel @default(INFO)
+  title       String
+  message     String
+  linkUrl     String?
+  metadata    Json?
+  createdAt   DateTime          @default(now())
+  readAt      DateTime?
+  actorUser   User?             @relation("NotificationActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  user        User              @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, readAt])
+  @@index([actorUserId])
 }
 
 model Address {

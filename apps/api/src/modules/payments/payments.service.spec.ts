@@ -137,6 +137,9 @@ describe("PaymentsService", () => {
   const auditService = {
     record: vi.fn(),
   };
+  const notificationsService = {
+    notifyUser: vi.fn(),
+  };
 
   let paymentsService: PaymentsService;
 
@@ -150,6 +153,7 @@ describe("PaymentsService", () => {
       checkoutService as never,
       inventoryService as never,
       auditService as never,
+      notificationsService as never,
     );
 
     tx.checkoutSession.update.mockResolvedValue(undefined);
@@ -299,6 +303,7 @@ describe("PaymentsService", () => {
                       variantId: "variant-1",
                       seller: {
                         id: "seller-1",
+                        ownerUserId: "seller-user-1",
                       },
                       product: {
                         id: "product-1",
@@ -348,6 +353,7 @@ describe("PaymentsService", () => {
     });
     expect(result.order?.number).toBe("VLR-20260312-ABCD1234");
     expect(result.attempt.status).toBe("SUCCEEDED");
+    expect(notificationsService.notifyUser).toHaveBeenCalled();
   });
 
   it("treats a repeated confirmation of a succeeded attempt as idempotent", async () => {

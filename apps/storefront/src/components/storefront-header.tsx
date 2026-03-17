@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Badge } from "@velora/ui";
 
 import { logoutAction } from "../app/account/actions";
-import { getSession } from "../lib/storefront-api";
+import { getNotificationFeed, getSession } from "../lib/storefront-api";
 
 const navLinkClass = "transition-colors hover:text-[var(--foreground)]";
 const actionLinkClass =
@@ -15,6 +15,8 @@ const adminWorkspaceUrl =
 
 export async function StorefrontHeader(): Promise<React.JSX.Element> {
   const session = await getSession();
+  const notificationFeed = session ? await getNotificationFeed(6) : null;
+  const unreadNotificationCount = notificationFeed?.unreadCount ?? 0;
   const isSeller = session?.user.roles.some((role) => role.code === "SELLER");
   const isAdmin = session?.user.roles.some((role) => role.code === "ADMIN");
 
@@ -65,6 +67,16 @@ export async function StorefrontHeader(): Promise<React.JSX.Element> {
                 {!isSeller ? (
                   <Link className={navLinkClass} href="/become-a-seller">
                     Sell on Velora
+                  </Link>
+                ) : null}
+                {session ? (
+                  <Link className={navLinkClass} href="/notifications">
+                    Notifications
+                    {unreadNotificationCount > 0 ? (
+                      <span className="ml-2 rounded-full bg-[var(--foreground)] px-2 py-0.5 text-[11px] font-semibold text-white">
+                        {unreadNotificationCount}
+                      </span>
+                    ) : null}
                   </Link>
                 ) : null}
                 {session ? (

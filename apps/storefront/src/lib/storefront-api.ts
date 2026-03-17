@@ -10,6 +10,7 @@ import type {
   CheckoutSessionDetail,
   CustomerProfile,
   DomainOverview,
+  NotificationFeed,
   OrderDetail,
   OrderSummary,
   ProductDetail,
@@ -28,9 +29,10 @@ import {
 import { cookies } from "next/headers";
 
 import { type CatalogQueryInput, toUrlSearchParams } from "./catalog-query";
+import { apiUrl } from "./api-url";
 
 export const STOREFRONT_API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+  apiUrl;
 
 export function buildSessionCookieHeader(
   sessionToken?: string,
@@ -194,6 +196,14 @@ export async function getSellerActivationPreview(
     {
       cache: "no-store"
     }
+  );
+}
+
+export async function getNotificationFeed(
+  limit = 12
+): Promise<NotificationFeed | null> {
+  return getAuthenticatedJson<NotificationFeed>(
+    `/notifications?limit=${encodeURIComponent(String(limit))}`
   );
 }
 

@@ -155,6 +155,15 @@
 - Added seller onboarding coverage in both API and storefront tests, including submission, approval, activation, and validation-schema checks.
 - Verified `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm db:migrate`, and `pnpm db:seed` successfully after the seller onboarding changes.
 
+### Post Stage 11 follow-up: notifications and admin visibility
+
+- Added a persistent in-app notification model plus authenticated notification feed endpoints for listing alerts, marking one alert read, and clearing the unread queue.
+- Added notification fan-out for customer registration, seller onboarding submission and activation, paid-order settlement, and refund creation so customer, seller, and admin roles now receive role-appropriate activity signals.
+- Added a customer and seller notification inbox in the storefront, unread-count visibility in the shared storefront header, and an admin notification center in the backoffice.
+- Surfaced seller applications more prominently in the admin workspace with a dedicated stat tile, a clearer quick-link label, and a control-plane callout for pending merchant review work.
+- Added notification service coverage plus kept the existing API, storefront, and workspace builds green after the new persistence and UI changes.
+- Verified `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm db:migrate`, and `pnpm db:seed` successfully after the notification changes.
+
 ## Important implementation notes
 
 - Internal packages are designed to build independently so the apps can consume stable outputs.
@@ -199,6 +208,7 @@
 - The admin order queue now truncates long preview fields and hides horizontal overflow inside the selector pane, which removes the stray bottom scrollbar and keeps queue cards compact on narrower layouts.
 - The storefront auth surface now includes public customer self-registration, a same-origin register proxy, a signed-out `Register` entry in the header, and explicit return-to-marketplace links on the login and register screens while keeping admin and seller roles seed-managed.
 - Seller access now follows an approval and activation flow instead of public self-registration, which keeps merchant onboarding aligned with a marketplace review model while still being testable locally without an email service.
+- Notifications are now durable in-app records with unread state and deep links, which makes cross-role activity tracking workable even before outbound email or push infrastructure exists.
 
 ## Known follow-up items
 
@@ -208,3 +218,4 @@
 - Extend the seller portal with listing content edits, seller-facing promotion visibility, and shipment handling once fulfillment and performance stages are completed.
 - Run the new Stage 10 migration and `pnpm perf:smoke` once local infrastructure is available again so the EXPLAIN output can be captured alongside the committed query-review notes.
 - Replace manual activation-link handoff with email delivery and expirable admin-issued invites once outbound notification infrastructure is introduced.
+- Extend the new in-app notification system with digest preferences, outbound delivery channels, and real-time transport once notification infrastructure moves beyond the MVP phase.

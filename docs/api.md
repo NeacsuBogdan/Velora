@@ -13,6 +13,7 @@ Authentication uses the `velora_session` HTTP-only cookie.
 ## Auth rules
 
 - Public routes: health, catalog, search, login, logout, customer register, seller application, seller activation preview, seller activation completion.
+- Authenticated inbox routes: notifications feed, mark-read, mark-all-read.
 - Customer routes: session, profile, addresses, cart, checkout, payments, orders.
 - Seller routes: seller dashboard, seller catalog options, listing create/update/archive, inventory update, seller orders.
 - Admin routes: admin dashboard and management routes, promotions, refunds, audit overview, reindex, reservation cleanup, and seller application review.
@@ -57,6 +58,12 @@ Access control is enforced by `SessionAuthGuard` and `RolesGuard`.
 - `POST /payments/attempts/:attemptId/confirm`
 - `GET /orders`
 - `GET /orders/:number`
+
+### Authenticated inbox
+
+- `GET /notifications`
+- `PATCH /notifications/:notificationId/read`
+- `POST /notifications/read-all`
 
 ### Seller
 
@@ -260,6 +267,36 @@ Content-Type: application/json
   "firstName": "Mihai",
   "lastName": "Popescu",
   "password": "Demo123!"
+}
+```
+
+### List notifications
+
+Request:
+
+```http
+GET /api/notifications?limit=8
+Cookie: velora_session=...
+```
+
+Response shape:
+
+```json
+{
+  "unreadCount": 2,
+  "items": [
+    {
+      "notificationId": "cm8notification123",
+      "title": "Order placed successfully",
+      "message": "Order VLR-20260317-ABCD1234 has been paid and is now ready for fulfilment tracking.",
+      "kind": "ORDER",
+      "level": "SUCCESS",
+      "linkUrl": "/account/orders/VLR-20260317-ABCD1234",
+      "isRead": false,
+      "createdAt": "2026-03-17T18:45:00.000Z",
+      "readAt": null
+    }
+  ]
 }
 ```
 

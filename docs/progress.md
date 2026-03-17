@@ -175,7 +175,7 @@
 - Restricted seller offer attachment so products created by one merchant cannot be relisted by another merchant through the shared-catalog flow.
 - Added seller-side catalog-content editing for owned products, including title, description, category, brand, and hero-image maintenance with audit logging, admin notification, cache invalidation, and search refresh.
 - Moved seller portal mutations behind a same-origin storefront proxy, which removes fragile browser-to-API CORS dependence for seller product creation, offer updates, stock changes, and archive actions.
-- Added live RON previews to seller price and compare-at inputs, which makes minor-unit pricing readable before merchants create or update offers.
+- Added major-currency seller price entry with live RON previews, so merchants now type normal amounts like `20.00` while the platform still persists minor units internally.
 
 ## Important implementation notes
 
@@ -224,7 +224,7 @@
 - Notifications are now durable in-app records with unread state and deep links, which makes cross-role activity tracking workable even before outbound email or push infrastructure exists.
 - Seller-created catalog products now carry explicit merchant ownership, which lets the platform distinguish between shared catalog supply and merchant-owned catalog records without introducing a separate product table.
 - Seller portal writes now flow through a storefront-side proxy route before hitting the API, which keeps seller operations aligned with the same-origin session model already used for login and registration.
-- Seller price entry now shows a live currency preview in the workspace UI, which reduces operator mistakes while the underlying commerce engine continues to store pricing in minor units.
+- Seller price entry now accepts normal RON values and shows a live currency preview in the workspace UI, while the underlying commerce engine continues to store pricing in minor units.
 
 ## Known follow-up items
 

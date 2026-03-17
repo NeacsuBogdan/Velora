@@ -48,13 +48,39 @@ export function SellerInventoryManager({
 
     const formData = new FormData(event.currentTarget);
     const compareAtRaw = String(formData.get("compareAtAmount") ?? "").trim();
+    const priceAmount = parseMajorUnitInputToMinor(
+      String(formData.get("priceAmount") ?? "").trim()
+    );
+    const compareAtAmount = compareAtRaw
+      ? parseMajorUnitInputToMinor(compareAtRaw)
+      : null;
+
+    if (priceAmount === null) {
+      setFeedback((current) => ({
+        ...current,
+        [feedbackKey]: "Enter a valid current price in RON, for example 20 or 20.00."
+      }));
+      setPendingKey(null);
+      return;
+    }
+
+    if (compareAtRaw && compareAtAmount === null) {
+      setFeedback((current) => ({
+        ...current,
+        [feedbackKey]:
+          "Enter a valid compare-at price in RON, for example 30 or 30.00."
+      }));
+      setPendingKey(null);
+      return;
+    }
+
     const payload = {
       productId: selectedProductId,
       variantId: selectedVariantId || null,
       sellerSku: String(formData.get("sellerSku") ?? "").trim(),
       leadTimeDays: Number(formData.get("leadTimeDays")),
-      priceAmount: Number(formData.get("priceAmount")),
-      compareAtAmount: compareAtRaw ? Number(compareAtRaw) : null,
+      priceAmount,
+      compareAtAmount,
       onHand: Number(formData.get("onHand")),
       safetyStock: Number(formData.get("safetyStock")),
       isActive: String(formData.get("isActive")) === "true",
@@ -111,10 +137,36 @@ export function SellerInventoryManager({
 
     const formData = new FormData(event.currentTarget);
     const compareAtRaw = String(formData.get("compareAtAmount") ?? "").trim();
+    const priceAmount = parseMajorUnitInputToMinor(
+      String(formData.get("priceAmount") ?? "").trim()
+    );
+    const compareAtAmount = compareAtRaw
+      ? parseMajorUnitInputToMinor(compareAtRaw)
+      : null;
     const brandNameRaw = String(formData.get("brandName") ?? "").trim();
     const variantTitleRaw = String(formData.get("variantTitle") ?? "").trim();
     const imageUrlRaw = String(formData.get("imageUrl") ?? "").trim();
     const imageAltRaw = String(formData.get("imageAlt") ?? "").trim();
+
+    if (priceAmount === null) {
+      setFeedback((current) => ({
+        ...current,
+        [feedbackKey]: "Enter a valid current price in RON, for example 20 or 20.00."
+      }));
+      setPendingKey(null);
+      return;
+    }
+
+    if (compareAtRaw && compareAtAmount === null) {
+      setFeedback((current) => ({
+        ...current,
+        [feedbackKey]:
+          "Enter a valid compare-at price in RON, for example 30 or 30.00."
+      }));
+      setPendingKey(null);
+      return;
+    }
+
     const payload = {
       title: String(formData.get("title") ?? "").trim(),
       description: String(formData.get("description") ?? "").trim(),
@@ -123,8 +175,8 @@ export function SellerInventoryManager({
       variantTitle: variantTitleRaw || null,
       sellerSku: String(formData.get("sellerSku") ?? "").trim(),
       leadTimeDays: Number(formData.get("leadTimeDays")),
-      priceAmount: Number(formData.get("priceAmount")),
-      compareAtAmount: compareAtRaw ? Number(compareAtRaw) : null,
+      priceAmount,
+      compareAtAmount,
       onHand: Number(formData.get("onHand")),
       safetyStock: Number(formData.get("safetyStock")),
       isActive: String(formData.get("isActive")) === "true",
@@ -314,9 +366,35 @@ export function SellerInventoryManager({
 
     const formData = new FormData(event.currentTarget);
     const compareAtRaw = String(formData.get("compareAtAmount") ?? "").trim();
+    const priceAmount = parseMajorUnitInputToMinor(
+      String(formData.get("priceAmount") ?? "").trim()
+    );
+    const compareAtAmount = compareAtRaw
+      ? parseMajorUnitInputToMinor(compareAtRaw)
+      : null;
+
+    if (priceAmount === null) {
+      setFeedback((current) => ({
+        ...current,
+        [feedbackKey]: "Enter a valid current price in RON, for example 20 or 20.00."
+      }));
+      setPendingKey(null);
+      return;
+    }
+
+    if (compareAtRaw && compareAtAmount === null) {
+      setFeedback((current) => ({
+        ...current,
+        [feedbackKey]:
+          "Enter a valid compare-at price in RON, for example 30 or 30.00."
+      }));
+      setPendingKey(null);
+      return;
+    }
+
     const payload = {
-      priceAmount: Number(formData.get("priceAmount")),
-      compareAtAmount: compareAtRaw ? Number(compareAtRaw) : null,
+      priceAmount,
+      compareAtAmount,
       isActive: String(formData.get("isActive")) === "true",
       note: String(formData.get("priceNote") ?? "").trim() || undefined
     };
@@ -1323,32 +1401,33 @@ function MoneyField({
   placeholder?: string;
   previewLabel: string;
 }): React.JSX.Element {
-  const initialValue = String(defaultValue ?? "");
+  const initialValue = formatMajorUnitInput(defaultValue);
   const [rawValue, setRawValue] = useState(initialValue);
 
   useEffect(() => {
     setRawValue(initialValue);
   }, [initialValue]);
 
-  const preview = formatMinorUnitPreview(rawValue);
+  const preview = formatMajorUnitPreview(rawValue);
 
   return (
     <label className="grid gap-2 text-sm">
       <span className="font-semibold text-[var(--foreground)]">{label}</span>
       <input
         className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
-        min={1}
+        inputMode="decimal"
+        min={0.01}
         name={name}
         onChange={(event) => setRawValue(event.target.value)}
         placeholder={placeholder}
-        step={1}
+        step={0.01}
         type="number"
         value={rawValue}
       />
       <p className="text-xs leading-6 text-[var(--muted)]">
         {preview
           ? `${previewLabel}: ${preview}`
-          : "Enter the amount in minor units to preview the displayed RON price."}
+          : "Enter the amount in RON, for example 20 or 20.00."}
       </p>
     </label>
   );
@@ -1382,7 +1461,32 @@ function resolveDefaultVariantId(
   );
 }
 
-function formatMinorUnitPreview(rawValue: string): string | null {
+function formatMajorUnitPreview(rawValue: string): string | null {
+  const parsed = parseMajorUnitInputToMinor(rawValue);
+
+  if (parsed === null) {
+    return null;
+  }
+
+  return formatMoney({
+    amount: parsed,
+    currency: "RON"
+  });
+}
+
+function formatMajorUnitInput(value: number | string): string {
+  if (value === "" || value === null || value === undefined) {
+    return "";
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  return (value / 100).toFixed(2);
+}
+
+function parseMajorUnitInputToMinor(rawValue: string): number | null {
   const normalized = rawValue.trim();
 
   if (!normalized) {
@@ -1395,10 +1499,7 @@ function formatMinorUnitPreview(rawValue: string): string | null {
     return null;
   }
 
-  return formatMoney({
-    amount: Math.round(parsed),
-    currency: "RON"
-  });
+  return Math.round(parsed * 100);
 }
 
 async function readResponseMessage(response: Response): Promise<string | null> {

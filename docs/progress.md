@@ -173,6 +173,7 @@
 - Category detail pages now bypass stale fetch caching and can fall back to search-projection metadata when only the category-detail endpoint misses, which prevents valid category listings from degrading into a dead-end not-found panel.
 - Storefront login now completes through a same-origin auth proxy and then performs a full-page redirect, which makes the session cookie visible to subsequent account and cart requests immediately instead of depending on a fragile cross-port client navigation race.
 - The public storefront header now resolves the active session server-side and only shows seller navigation for seller accounts, which keeps customer sessions from seeing stale `Login` links or merchant-only entry points.
+- The API build now clears stale output and runs `dist/apps/api/src/main.js`, which fixes a broken compile-output mismatch that had left newer modules like cart, seller, and admin unavailable at runtime even though their source code existed.
 
 ## Known follow-up items
 

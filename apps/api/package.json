@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "prisma generate && tsc-watch --project tsconfig.build.json --onSuccess \"node dist/main.js\"",
+    "dev": "node ../../scripts/assert-port-free.mjs && prisma generate && tsc-watch --project tsconfig.build.json --onSuccess \"node dist/main.js\"",
     "build": "prisma generate && tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "lint": "eslint src prisma --ext .ts",

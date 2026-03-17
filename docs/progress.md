@@ -168,6 +168,7 @@
 - The storefront now renders explicit API-unavailable states for login, catalog, category, and product pages, which avoids raw fetch exceptions or misleading empty-result messaging when the backend is down locally.
 - Storefront and admin typecheck now normalize `next-env.d.ts` before `tsc`, which prevents malformed `.next/dev` route references from breaking verification after local Next dev sessions.
 - The API development runner now compiles with `tsc-watch` and restarts `dist/main.js`, which avoids the missing decorator-metadata crash that `tsx watch` caused in Nest during local development.
+- The API dev script now checks whether the configured port is already occupied before starting, which prevents duplicate `pnpm dev:api` runs from failing with a raw `EADDRINUSE` stack trace.
 
 ## Known follow-up items
 

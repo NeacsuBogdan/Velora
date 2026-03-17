@@ -336,22 +336,22 @@ export function OrderManager({
                   key={order.number}
                   onClick={() => void handleSelectOrder(order.number)}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-[var(--foreground)]">
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-[var(--foreground)]">
                         {order.number}
                       </p>
-                      <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+                      <p className="mt-1 truncate text-[11px] uppercase tracking-[0.14em] text-[var(--muted)]">
                         {order.customer?.label ?? "Guest checkout"}
                       </p>
                     </div>
                     <StatusPill value={order.status} />
                   </div>
-                  <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+                  <p className="mt-3 truncate text-sm leading-6 text-[var(--muted)]">
                     {(order.total.amount / 100).toFixed(2)} {order.total.currency} -{" "}
                     {order.itemCount} items
                   </p>
-                  <p className="mt-3 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+                  <p className="mt-3 truncate text-[11px] uppercase tracking-[0.14em] text-[var(--muted)]">
                     Payment {order.paymentStatus.toLowerCase().replace(/_/g, " ")}
                   </p>
                 </ListCardButton>

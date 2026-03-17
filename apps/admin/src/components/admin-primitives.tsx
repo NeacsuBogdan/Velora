@@ -82,7 +82,7 @@ export function TextAreaClassName() {
 }
 
 export function ListScrollClassName() {
-  return "grid gap-3 max-h-[34rem] overflow-y-auto pr-1";
+  return "grid gap-3 max-h-[34rem] overflow-y-auto overflow-x-hidden pr-1";
 }
 
 export function ListCardButton({
@@ -96,7 +96,7 @@ export function ListCardButton({
 }) {
   return (
     <button
-      className={`w-full rounded-[24px] border px-4 py-4 text-left transition-colors ${
+      className={`min-w-0 w-full overflow-hidden rounded-[24px] border px-4 py-4 text-left transition-colors ${
         active
           ? "border-[var(--accent)] bg-[rgba(15,118,110,0.08)]"
           : "border-[var(--stroke)] bg-white hover:border-[rgba(15,23,42,0.18)]"

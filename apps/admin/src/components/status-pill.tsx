@@ -52,7 +52,7 @@ export function StatusPill({
 
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${
+      className={`inline-flex shrink-0 items-center whitespace-nowrap rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${
         toneMap[value] ??
         "border-[rgba(15,23,42,0.1)] bg-[rgba(15,23,42,0.05)] text-[var(--foreground)]"
       }`}

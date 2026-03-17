@@ -38,6 +38,40 @@ const orderTransitions: Record<string, string[]> = {
   REFUNDED: []
 };
 
+function formatMoney(amount: number, currency: string) {
+  return new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(amount / 100);
+}
+
+async function readApiErrorMessage(response: Response, fallback: string) {
+  try {
+    const payload = (await response.json()) as {
+      error?: string;
+      message?: string | string[];
+    };
+
+    if (Array.isArray(payload.message) && payload.message.length > 0) {
+      return payload.message.join(" ");
+    }
+
+    if (typeof payload.message === "string" && payload.message.trim()) {
+      return payload.message;
+    }
+
+    if (typeof payload.error === "string" && payload.error.trim()) {
+      return payload.error;
+    }
+  } catch {
+    return fallback;
+  }
+
+  return fallback;
+}
+
 function toStatusFormValues(
   order: AdminOrderDetail | null
 ): UpdateAdminOrderStatusRequest {
@@ -167,7 +201,9 @@ export function OrderManager({
       );
 
       if (!response.ok) {
-        setErrorMessage("Order status update failed.");
+        setErrorMessage(
+          await readApiErrorMessage(response, "Order status update failed.")
+        );
         setIsPending(false);
         return;
       }
@@ -212,12 +248,14 @@ export function OrderManager({
       });
 
       if (!response.ok) {
-        setErrorMessage("Refund creation failed.");
+        setErrorMessage(
+          await readApiErrorMessage(response, "Refund creation failed.")
+        );
         setIsPending(false);
         return;
       }
 
-      await fetchOrderDetail(orderDetail.number);
+      setOrderDetail((await response.json()) as AdminOrderDetail);
       await refreshOrders();
       setStatusMessage("Refund recorded.");
       setIsPending(false);
@@ -228,9 +266,20 @@ export function OrderManager({
   const nextStatuses = orderDetail
     ? [orderDetail.status, ...(orderTransitions[orderDetail.status] ?? [])]
     : ["CREATED"];
+  const refundedAmount =
+    orderDetail?.refunds.reduce(
+      (sum, refund) => (refund.status === "FAILED" ? sum : sum + refund.amount.amount),
+      0
+    ) ?? 0;
+  const remainingRefundableAmount = orderDetail
+    ? Math.max(orderDetail.total.amount - refundedAmount, 0)
+    : 0;
   const refundEligible =
-    orderDetail?.paymentStatus === "SUCCEEDED" ||
-    orderDetail?.paymentStatus === "PARTIALLY_REFUNDED";
+    (orderDetail?.paymentStatus === "SUCCEEDED" ||
+      orderDetail?.paymentStatus === "PARTIALLY_REFUNDED") &&
+    remainingRefundableAmount > 0;
+  const refundCurrency = orderDetail?.total.currency ?? "RON";
+  const refundAmountError = refundForm.formState.errors.amount?.message;
 
   return (
     <SectionShell
@@ -372,12 +421,41 @@ export function OrderManager({
                 </form>
 
                 <form className="grid gap-4 rounded-[24px] border border-[var(--stroke)] bg-white px-5 py-5" onSubmit={onRefund}>
-                  <FieldShell label="Refund amount (minor units)">
+                  <FieldShell
+                    error={refundAmountError}
+                    hint={`Remaining refundable total: ${formatMoney(
+                      remainingRefundableAmount,
+                      refundCurrency
+                    )}. Leave blank to refund the full remaining balance.`}
+                    label={`Refund amount (${refundCurrency})`}
+                  >
                     <input
                       className={InputClassName()}
+                      inputMode="decimal"
+                      max={
+                        remainingRefundableAmount > 0
+                          ? (remainingRefundableAmount / 100).toFixed(2)
+                          : undefined
+                      }
+                      min="0.01"
+                      placeholder={(remainingRefundableAmount / 100).toFixed(2)}
+                      step="0.01"
                       type="number"
                       {...refundForm.register("amount", {
-                        setValueAs: (value) => (value === "" ? undefined : Number(value))
+                        setValueAs: (value) => {
+                          if (value === "") {
+                            return undefined;
+                          }
+
+                          const parsed = Number(String(value).replace(",", "."));
+                          return Number.isFinite(parsed)
+                            ? Math.round(parsed * 100)
+                            : Number.NaN;
+                        },
+                        validate: (value) =>
+                          value === undefined ||
+                          value <= remainingRefundableAmount ||
+                          "Refund amount exceeds the remaining refundable total."
                       })}
                     />
                   </FieldShell>
@@ -390,7 +468,7 @@ export function OrderManager({
                     />
                   </FieldShell>
                   <Button disabled={!refundEligible || isPending} type="submit" variant="secondary">
-                    Create refund
+                    {remainingRefundableAmount === 0 ? "Fully refunded" : "Create refund"}
                   </Button>
                 </form>
               </div>

@@ -186,6 +186,7 @@
 - The seller listing editors now keep both commercial and stock fields in a single column, which removes the remaining `Offer visibility` and `Pricing note` compression on narrower seller workspace widths.
 - The admin split panels now keep the left control pane sticky on larger screens, while selector lists and admin tables scroll inside capped containers, which keeps filters visible even when catalog and order volumes grow.
 - The admin order summary card now wraps long customer and seller identifiers and holds a two-column layout until extra-wide screens, which prevents identity fields from colliding inside the order detail header.
+- The admin refund form now accepts major-currency amounts, shows the remaining refundable balance, validates against over-refunding before submission, and surfaces the backend validation message instead of a generic failure state.
 
 ## Known follow-up items
 

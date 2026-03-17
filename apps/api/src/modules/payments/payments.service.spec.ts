@@ -107,6 +107,10 @@ describe("PaymentsService", () => {
     $transaction: vi.fn((callback: (client: typeof tx) => Promise<unknown>) =>
       callback(tx),
     ),
+    order: {
+      findFirst: vi.fn(),
+      findUnique: vi.fn(),
+    },
     paymentAttempt: {
       count: vi.fn(),
       findUnique: vi.fn(),
@@ -424,5 +428,30 @@ describe("PaymentsService", () => {
       processed: true,
     });
     expect(tx.paymentEvent.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects refund requests that exceed the remaining refundable total", async () => {
+    prisma.order.findFirst.mockResolvedValue({
+      id: "order-1",
+      total: 1_514_660,
+      currency: "RON",
+      paymentAttemptId: "attempt-1",
+      paymentAttempt: {
+        providerPaymentIntentId: "pi_local_checkout1",
+        refunds: [
+          {
+            amount: 20_000,
+            status: "SUCCEEDED",
+          },
+        ],
+      },
+    });
+
+    await expect(
+      paymentsService.createRefund(viewer, "order-1", {
+        amount: 1_600_000,
+        reason: "Operator error test",
+      }),
+    ).rejects.toThrow("Refund amount exceeds the remaining refundable total.");
   });
 });

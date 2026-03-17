@@ -184,7 +184,7 @@ export async function getCategoryDetail(
   slug: string,
 ): Promise<CategoryDetail | null> {
   return requestJson<CategoryDetail>(`/catalog/categories/${slug}`, {
-    next: { revalidate: 60 },
+    cache: "no-store",
   });
 }
 

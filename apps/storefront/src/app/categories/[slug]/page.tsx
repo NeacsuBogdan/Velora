@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import type { CatalogSearchResponse, CategoryDetail } from "@velora/contracts";
 import { Panel } from "@velora/ui";
 
 import { ApiUnavailablePanel } from "../../../components/api-unavailable-panel";
@@ -25,8 +26,10 @@ export default async function CategoryDetailPage({
       category: slug,
     }),
   ]);
+  const resolvedCategory =
+    category ?? inferCategoryDetailFromResults(slug, results);
 
-  if (!category && !results) {
+  if (!resolvedCategory && !results) {
     return (
       <StorefrontChrome>
         <ApiUnavailablePanel
@@ -39,11 +42,12 @@ export default async function CategoryDetailPage({
     );
   }
 
-  if (!category) {
+  if (!resolvedCategory) {
     return (
       <StorefrontChrome>
         <ApiUnavailablePanel
-          message="This category could not be resolved from the current catalog projection."
+          eyebrow="Category unavailable"
+          message="This category could not be resolved from the current catalog."
           retryHref="/categories"
           retryLabel="Back to categories"
           title="Category not found"
@@ -57,45 +61,45 @@ export default async function CategoryDetailPage({
       <section className="space-y-4">
         <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--muted)]">
           <Link href="/categories">Categories</Link>
-          {category.breadcrumbs.map((crumb) => (
+          {resolvedCategory.breadcrumbs.map((crumb) => (
             <span key={crumb.slug}>/ {crumb.name}</span>
           ))}
         </div>
         <Panel className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_280px]">
           <div>
             <h1 className="font-[var(--font-heading)] text-5xl font-bold tracking-tight">
-              {category.name}
+              {resolvedCategory.name}
             </h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--muted)]">
-              {category.description}
+              {resolvedCategory.description}
             </p>
           </div>
           <div className="grid gap-3 rounded-[24px] bg-black/4 p-4 text-sm">
             <div>
               <p className="text-[var(--muted)]">Products</p>
               <p className="font-[var(--font-heading)] text-3xl font-bold tracking-tight">
-                {category.metrics.products}
+                {resolvedCategory.metrics.products}
               </p>
             </div>
             <div>
               <p className="text-[var(--muted)]">Brands</p>
               <p className="font-[var(--font-heading)] text-3xl font-bold tracking-tight">
-                {category.metrics.brands}
+                {resolvedCategory.metrics.brands}
               </p>
             </div>
             <div>
               <p className="text-[var(--muted)]">Sellers</p>
               <p className="font-[var(--font-heading)] text-3xl font-bold tracking-tight">
-                {category.metrics.sellers}
+                {resolvedCategory.metrics.sellers}
               </p>
             </div>
           </div>
         </Panel>
       </section>
 
-      {category.childCategories.length ? (
+      {resolvedCategory.childCategories.length ? (
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {category.childCategories.map((child) => (
+          {resolvedCategory.childCategories.map((child) => (
             <Link key={child.slug} href={`/categories/${child.slug}`}>
               <Panel className="h-full transition-transform duration-200 hover:-translate-y-1">
                 <p className="font-[var(--font-heading)] text-2xl font-bold tracking-tight">
@@ -120,8 +124,51 @@ export default async function CategoryDetailPage({
         lockCategory
         results={results}
         searchParams={{ ...resolvedSearchParams, category: slug }}
-        title={`Products in ${category.name}`}
+        title={`Products in ${resolvedCategory.name}`}
       />
     </StorefrontChrome>
   );
+}
+
+function inferCategoryDetailFromResults(
+  slug: string,
+  results: CatalogSearchResponse | null,
+): CategoryDetail | null {
+  if (!results) {
+    return null;
+  }
+
+  const matchingFacet = results.facets.categories.find(
+    (category) => category.value === slug,
+  );
+  const firstMatchingItem = results.items.find(
+    (item) =>
+      item.category?.slug === slug ||
+      item.category?.path.some((crumb) => crumb.slug === slug),
+  );
+  const matchingPath = firstMatchingItem?.category?.path ?? [];
+  const pathIndex = matchingPath.findIndex((crumb) => crumb.slug === slug);
+  const inferredName =
+    matchingPath[pathIndex]?.name ?? matchingFacet?.label ?? null;
+
+  if (!inferredName) {
+    return null;
+  }
+
+  return {
+    slug,
+    name: inferredName,
+    description:
+      "Live search results are available while category metadata refreshes.",
+    breadcrumbs:
+      pathIndex >= 0
+        ? matchingPath.slice(0, pathIndex + 1)
+        : [{ slug, name: inferredName }],
+    childCategories: [],
+    metrics: {
+      products: matchingFacet?.count ?? results.pagination.totalItems,
+      brands: results.facets.brands.length,
+      sellers: new Set(results.items.map((item) => item.seller.slug)).size,
+    },
+  };
 }

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Panel } from "@velora/ui";
 
 interface ApiUnavailablePanelProps {
+  eyebrow?: string;
   title: string;
   message: string;
   retryHref?: string;
@@ -15,6 +16,7 @@ const actionClassName =
   "inline-flex items-center justify-center rounded-full border border-[var(--stroke)] bg-white px-5 py-3 text-sm font-semibold text-[var(--foreground)] transition-colors hover:border-[var(--foreground)]";
 
 export function ApiUnavailablePanel({
+  eyebrow = "API unavailable",
   title,
   message,
   retryHref = "/",
@@ -23,7 +25,7 @@ export function ApiUnavailablePanel({
   return (
     <Panel className="text-center">
       <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
-        API unavailable
+        {eyebrow}
       </p>
       <h2 className="mt-4 font-[var(--font-heading)] text-3xl font-bold tracking-tight">
         {title}

@@ -39,6 +39,26 @@ export function SellerInventoryManager({
   const createDisabled = !selectedProduct;
   const catalogCreationDisabled = !creationOptions?.categories.length;
   const ownedProducts = dedupeOwnedProducts(listings);
+  const [selectedOwnedProductId, setSelectedOwnedProductId] = useState(
+    ownedProducts[0]?.productId ?? ""
+  );
+  const selectedOwnedProduct =
+    ownedProducts.find((listing) => listing.productId === selectedOwnedProductId) ??
+    null;
+
+  useEffect(() => {
+    if (!ownedProducts.length) {
+      if (selectedOwnedProductId) {
+        setSelectedOwnedProductId("");
+      }
+
+      return;
+    }
+
+    if (!ownedProducts.some((listing) => listing.productId === selectedOwnedProductId)) {
+      setSelectedOwnedProductId(ownedProducts[0]?.productId ?? "");
+    }
+  }, [ownedProducts, selectedOwnedProductId]);
 
   async function handleCreateSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -632,6 +652,9 @@ export function SellerInventoryManager({
                 placeholder="LUM-ATLAS-BLK"
                 type="text"
               />
+              <span className="text-xs leading-6 text-[var(--muted)]">
+                Your internal stock code for this offer or variant.
+              </span>
             </label>
 
             <label className="grid gap-2 text-sm">
@@ -767,156 +790,191 @@ export function SellerInventoryManager({
           </div>
         </div>
 
-        {ownedProducts.length ? (
-          <div className="grid gap-5">
-            {ownedProducts.map((listing) => (
-              <form
-                key={`product-${listing.productId}`}
-                className="grid gap-5 rounded-[28px] border border-[var(--stroke)] bg-white/80 p-6"
-                onSubmit={(event) => void handleProductContentSubmit(event, listing)}
-              >
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <h3 className="font-[var(--font-heading)] text-2xl font-bold tracking-tight">
-                      {listing.title}
-                    </h3>
-                    <p className="mt-2 text-sm leading-7 text-[var(--muted)]">
+        {ownedProducts.length && selectedOwnedProduct ? (
+          <div className="grid gap-5 xl:grid-cols-[300px_minmax(0,1fr)]">
+            <div className="grid gap-3 rounded-[28px] border border-[var(--stroke)] bg-white/70 p-4">
+              {ownedProducts.map((listing) => {
+                const isSelected = listing.productId === selectedOwnedProduct.productId;
+
+                return (
+                  <button
+                    key={`owned-${listing.productId}`}
+                    className={`grid gap-2 rounded-[22px] border px-4 py-4 text-left transition-colors ${
+                      isSelected
+                        ? "border-[var(--accent)] bg-[rgba(190,24,52,0.08)]"
+                        : "border-[var(--stroke)] bg-white/80 hover:border-[var(--accent)]/50"
+                    }`}
+                    onClick={() => setSelectedOwnedProductId(listing.productId)}
+                    type="button"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <p className="font-semibold text-[var(--foreground)]">
+                        {listing.title}
+                      </p>
+                      <StatusBadge value={listing.status} />
+                    </div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
                       {listing.categoryName ?? "Uncategorized"}
                       {listing.brandName ? ` / ${listing.brandName}` : ""}
-                      {listing.variantTitle ? ` / ${listing.variantTitle}` : ""}
                     </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <StatusBadge value={listing.status} />
-                    <StatusBadge value="SELLER" />
-                  </div>
+                    <p className="text-sm text-[var(--muted)]">
+                      Internal SKU {listing.sellerSku}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+
+            <form
+              className="grid gap-5 rounded-[28px] border border-[var(--stroke)] bg-white/80 p-6"
+              onSubmit={(event) =>
+                void handleProductContentSubmit(event, selectedOwnedProduct)
+              }
+            >
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <h3 className="font-[var(--font-heading)] text-2xl font-bold tracking-tight">
+                    {selectedOwnedProduct.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-7 text-[var(--muted)]">
+                    {selectedOwnedProduct.categoryName ?? "Uncategorized"}
+                    {selectedOwnedProduct.brandName
+                      ? ` / ${selectedOwnedProduct.brandName}`
+                      : ""}
+                    {selectedOwnedProduct.variantTitle
+                      ? ` / ${selectedOwnedProduct.variantTitle}`
+                      : ""}
+                  </p>
                 </div>
-
-                <div className="grid gap-4 xl:grid-cols-2">
-                  <label className="grid gap-2 text-sm">
-                    <span className="font-semibold text-[var(--foreground)]">
-                      Product title
-                    </span>
-                    <input
-                      className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
-                      defaultValue={listing.title}
-                      name="title"
-                      type="text"
-                    />
-                  </label>
-
-                  <label className="grid gap-2 text-sm">
-                    <span className="font-semibold text-[var(--foreground)]">
-                      Category
-                    </span>
-                    <select
-                      className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
-                      defaultValue={listing.categoryId ?? ""}
-                      disabled={catalogCreationDisabled}
-                      name="categoryId"
-                    >
-                      {(creationOptions?.categories ?? []).map((category) => (
-                        <option
-                          key={category.categoryId}
-                          value={category.categoryId}
-                        >
-                          {category.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                <div className="flex flex-wrap gap-2">
+                  <StatusBadge value={selectedOwnedProduct.status} />
+                  <StatusBadge value="SELLER" />
                 </div>
+              </div>
 
-                <div className="grid gap-4 xl:grid-cols-2">
-                  <label className="grid gap-2 text-sm">
-                    <span className="font-semibold text-[var(--foreground)]">
-                      Brand
-                    </span>
-                    <input
-                      className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
-                      defaultValue={listing.brandName ?? ""}
-                      name="brandName"
-                      placeholder="Lumio"
-                      type="text"
-                    />
-                  </label>
-
-                  <label className="grid gap-2 text-sm">
-                    <span className="font-semibold text-[var(--foreground)]">
-                      Audit note
-                    </span>
-                    <input
-                      className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
-                      defaultValue=""
-                      name="note"
-                      placeholder="Why this product content changed"
-                      type="text"
-                    />
-                  </label>
-                </div>
-
-                <div className="grid gap-4 xl:grid-cols-2">
-                  <label className="grid gap-2 text-sm">
-                    <span className="font-semibold text-[var(--foreground)]">
-                      Hero image URL
-                    </span>
-                    <input
-                      className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
-                      defaultValue={listing.image?.url ?? ""}
-                      name="imageUrl"
-                      placeholder="https://images.example.com/product-hero.jpg"
-                      type="url"
-                    />
-                  </label>
-
-                  <label className="grid gap-2 text-sm">
-                    <span className="font-semibold text-[var(--foreground)]">
-                      Image alt text
-                    </span>
-                    <input
-                      className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
-                      defaultValue={listing.image?.altText ?? listing.title}
-                      name="imageAlt"
-                      placeholder="Describe the hero image for accessibility"
-                      type="text"
-                    />
-                  </label>
-                </div>
-
+              <div className="grid gap-4 xl:grid-cols-2">
                 <label className="grid gap-2 text-sm">
                   <span className="font-semibold text-[var(--foreground)]">
-                    Product description
+                    Product title
                   </span>
-                  <textarea
-                    className="min-h-32 rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
-                    defaultValue={listing.productDescription}
-                    name="description"
+                  <input
+                    className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                    defaultValue={selectedOwnedProduct.title}
+                    name="title"
+                    type="text"
                   />
                 </label>
 
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-sm leading-7 text-[var(--muted)]">
-                    Content changes propagate to this seller-owned product
-                    across search and storefront detail pages.
-                  </p>
-                  <Button
-                    disabled={pendingKey === `product:${listing.productId}`}
-                    type="submit"
-                    variant="secondary"
+                <label className="grid gap-2 text-sm">
+                  <span className="font-semibold text-[var(--foreground)]">
+                    Category
+                  </span>
+                  <select
+                    className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                    defaultValue={selectedOwnedProduct.categoryId ?? ""}
+                    disabled={catalogCreationDisabled}
+                    name="categoryId"
                   >
-                    {pendingKey === `product:${listing.productId}`
-                      ? "Saving..."
-                      : "Update product content"}
-                  </Button>
-                </div>
+                    {(creationOptions?.categories ?? []).map((category) => (
+                      <option key={category.categoryId} value={category.categoryId}>
+                        {category.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
 
-                {feedback[`product:${listing.productId}`] ? (
-                  <p className="text-sm text-[var(--muted)]">
-                    {feedback[`product:${listing.productId}`]}
-                  </p>
-                ) : null}
-              </form>
-            ))}
+              <div className="grid gap-4 xl:grid-cols-2">
+                <label className="grid gap-2 text-sm">
+                  <span className="font-semibold text-[var(--foreground)]">
+                    Brand
+                  </span>
+                  <input
+                    className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                    defaultValue={selectedOwnedProduct.brandName ?? ""}
+                    name="brandName"
+                    placeholder="Lumio"
+                    type="text"
+                  />
+                </label>
+
+                <label className="grid gap-2 text-sm">
+                  <span className="font-semibold text-[var(--foreground)]">
+                    Audit note
+                  </span>
+                  <input
+                    className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                    defaultValue=""
+                    name="note"
+                    placeholder="Why this product content changed"
+                    type="text"
+                  />
+                </label>
+              </div>
+
+              <div className="grid gap-4 xl:grid-cols-2">
+                <label className="grid gap-2 text-sm">
+                  <span className="font-semibold text-[var(--foreground)]">
+                    Hero image URL
+                  </span>
+                  <input
+                    className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                    defaultValue={selectedOwnedProduct.image?.url ?? ""}
+                    name="imageUrl"
+                    placeholder="https://images.example.com/product-hero.jpg"
+                    type="url"
+                  />
+                </label>
+
+                <label className="grid gap-2 text-sm">
+                  <span className="font-semibold text-[var(--foreground)]">
+                    Image alt text
+                  </span>
+                  <input
+                    className="rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                    defaultValue={
+                      selectedOwnedProduct.image?.altText ?? selectedOwnedProduct.title
+                    }
+                    name="imageAlt"
+                    placeholder="Describe the hero image for accessibility"
+                    type="text"
+                  />
+                </label>
+              </div>
+
+              <label className="grid gap-2 text-sm">
+                <span className="font-semibold text-[var(--foreground)]">
+                  Product description
+                </span>
+                <textarea
+                  className="min-h-32 rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                  defaultValue={selectedOwnedProduct.productDescription}
+                  name="description"
+                />
+              </label>
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm leading-7 text-[var(--muted)]">
+                  Content changes propagate to this seller-owned product across
+                  search and storefront detail pages.
+                </p>
+                <Button
+                  disabled={pendingKey === `product:${selectedOwnedProduct.productId}`}
+                  type="submit"
+                  variant="secondary"
+                >
+                  {pendingKey === `product:${selectedOwnedProduct.productId}`
+                    ? "Saving..."
+                    : "Update product content"}
+                </Button>
+              </div>
+
+              {feedback[`product:${selectedOwnedProduct.productId}`] ? (
+                <p className="text-sm text-[var(--muted)]">
+                  {feedback[`product:${selectedOwnedProduct.productId}`]}
+                </p>
+              ) : null}
+            </form>
           </div>
         ) : (
           <div className="rounded-[28px] border border-dashed border-[var(--stroke)] bg-white/60 px-6 py-5 text-sm leading-7 text-[var(--muted)]">
@@ -1034,6 +1092,9 @@ export function SellerInventoryManager({
                 placeholder="NST-AX1P-NEW"
                 type="text"
               />
+              <span className="text-xs leading-6 text-[var(--muted)]">
+                Your internal stock code for this catalog offer.
+              </span>
             </label>
 
             <label className="grid gap-2 text-sm">
@@ -1143,7 +1204,7 @@ export function SellerInventoryManager({
                 {listing.title}
               </h2>
               <p className="mt-2 text-sm text-[var(--muted)]">
-                SKU {listing.sellerSku}
+                Internal SKU {listing.sellerSku}
                 {listing.variantTitle ? ` - ${listing.variantTitle}` : ""}
               </p>
             </div>

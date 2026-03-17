@@ -225,6 +225,8 @@
 - Seller-created catalog products now carry explicit merchant ownership, which lets the platform distinguish between shared catalog supply and merchant-owned catalog records without introducing a separate product table.
 - Seller portal writes now flow through a storefront-side proxy route before hitting the API, which keeps seller operations aligned with the same-origin session model already used for login and registration.
 - Seller price entry now accepts normal RON values and shows a live currency preview in the workspace UI, while the underlying commerce engine continues to store pricing in minor units.
+- The owned-catalog editor now uses a selector/detail layout with a product list on the left and a focused edit form on the right, which keeps seller-owned product maintenance consistent with operational backoffice patterns.
+- Seller SKU labels now explicitly describe the field as the merchant's internal stock code, which removes the ambiguity around that identifier in seller create and listing views.
 
 ## Known follow-up items
 

@@ -146,6 +146,15 @@
 - Verified `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`, and `pnpm build` on the final Stage 11 state.
 - Attempted `pnpm db:migrate` and `pnpm db:seed`, but local PostgreSQL on `localhost:5433` was unavailable because the Docker engine was not running during this session.
 
+### Post Stage 11 follow-up: seller onboarding
+
+- Added a dedicated seller onboarding path that separates public customer registration from merchant access by introducing `SellerApplication` and `SellerActivationToken` models plus a committed Prisma migration.
+- Added public seller-application submission and seller-activation endpoints, with separate rate-limit presets for application creation and activation completion.
+- Added an admin-only seller application queue so operators can review applications, move them into review, approve or reject them, and copy a generated activation link for the approved merchant.
+- Added a storefront `Become a seller` flow, a seller activation page, and same-origin proxy routes so onboarding works cleanly with the existing cookie-session architecture.
+- Added seller onboarding coverage in both API and storefront tests, including submission, approval, activation, and validation-schema checks.
+- Verified `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm db:migrate`, and `pnpm db:seed` successfully after the seller onboarding changes.
+
 ## Important implementation notes
 
 - Internal packages are designed to build independently so the apps can consume stable outputs.
@@ -189,6 +198,7 @@
 - The admin refund form now accepts major-currency amounts, shows the remaining refundable balance, validates against over-refunding before submission, and surfaces the backend validation message instead of a generic failure state.
 - The admin order queue now truncates long preview fields and hides horizontal overflow inside the selector pane, which removes the stray bottom scrollbar and keeps queue cards compact on narrower layouts.
 - The storefront auth surface now includes public customer self-registration, a same-origin register proxy, a signed-out `Register` entry in the header, and explicit return-to-marketplace links on the login and register screens while keeping admin and seller roles seed-managed.
+- Seller access now follows an approval and activation flow instead of public self-registration, which keeps merchant onboarding aligned with a marketplace review model while still being testable locally without an email service.
 
 ## Known follow-up items
 
@@ -197,3 +207,4 @@
 - Add richer customer-visible shipment and return-request details once the fulfillment and seller workflow stages are in place.
 - Extend the seller portal with listing content edits, seller-facing promotion visibility, and shipment handling once fulfillment and performance stages are completed.
 - Run the new Stage 10 migration and `pnpm perf:smoke` once local infrastructure is available again so the EXPLAIN output can be captured alongside the committed query-review notes.
+- Replace manual activation-link handoff with email delivery and expirable admin-issued invites once outbound notification infrastructure is introduced.

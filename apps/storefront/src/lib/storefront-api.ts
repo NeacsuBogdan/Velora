@@ -13,6 +13,7 @@ import type {
   OrderDetail,
   OrderSummary,
   ProductDetail,
+  SellerActivationPreview,
   SellerDashboard,
   SellerListingCatalogOption,
   SellerListingSummary,
@@ -182,6 +183,17 @@ export async function getSellerOrderDetail(
 ): Promise<SellerOrderDetail | null> {
   return getAuthenticatedJson<SellerOrderDetail>(
     `/seller/orders/${encodeURIComponent(number)}`,
+  );
+}
+
+export async function getSellerActivationPreview(
+  token: string
+): Promise<SellerActivationPreview | null> {
+  return requestJson<SellerActivationPreview>(
+    `/seller-onboarding/activation/${encodeURIComponent(token)}`,
+    {
+      cache: "no-store"
+    }
   );
 }
 

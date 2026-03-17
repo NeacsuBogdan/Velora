@@ -76,6 +76,32 @@ export class RateLimitService {
       };
     }
 
+    if (preset === "SELLER_APPLICATION_CREATE") {
+      return {
+        identity: "ip",
+        limit:
+          this.configService.get<number>("RATE_LIMIT_SELLER_APPLICATION_MAX") ??
+          5,
+        windowSeconds:
+          this.configService.get<number>(
+            "RATE_LIMIT_SELLER_APPLICATION_WINDOW_SECONDS"
+          ) ?? 3600
+      };
+    }
+
+    if (preset === "SELLER_ACTIVATION") {
+      return {
+        identity: "ip",
+        limit:
+          this.configService.get<number>("RATE_LIMIT_SELLER_ACTIVATION_MAX") ??
+          10,
+        windowSeconds:
+          this.configService.get<number>(
+            "RATE_LIMIT_SELLER_ACTIVATION_WINDOW_SECONDS"
+          ) ?? 600
+      };
+    }
+
     if (preset === "CART_COUPON") {
       return {
         identity: "viewer_or_ip",

@@ -21,7 +21,7 @@ Velora exists as a portfolio-grade marketplace platform that feels credible in a
 - Public storefront with home, navigation, category pages, search, filters, sorting, product detail, cart, checkout, and confirmation.
 - Customer account area with profile management, addresses, order history, order detail, payment timeline, and refund visibility basics.
 - Admin backoffice with dashboard metrics, category CRUD, product CRUD, inventory management, order operations, promotion management, customer lookup, seller controls, reindex, and reservation cleanup.
-- Seller workspace with scoped dashboard, listing visibility, inventory updates, and seller-order visibility.
+- Seller workspace with scoped dashboard, listing visibility, inventory updates, seller-order visibility, and approval-based merchant activation.
 - NestJS commerce API with cookie session auth, role guards, catalog/search, cart, checkout, payments, promotions, orders, audit logging, and operational endpoints.
 - PostgreSQL transactional model, Redis-backed cache and rate limiting, OpenSearch-backed search projection with persisted fallback documents, and Stripe sandbox support.
 - Deterministic seed data for demo accounts, sellers, catalog, promotions, inventory, orders, and operational edge cases.

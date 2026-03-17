@@ -62,6 +62,11 @@ export async function StorefrontHeader(): Promise<React.JSX.Element> {
                 <Link className={navLinkClass} href="/cart">
                   Cart
                 </Link>
+                {!isSeller ? (
+                  <Link className={navLinkClass} href="/become-a-seller">
+                    Sell on Velora
+                  </Link>
+                ) : null}
                 {session ? (
                   <Link className={navLinkClass} href="/account">
                     Account

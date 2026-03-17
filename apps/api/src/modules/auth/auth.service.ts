@@ -26,6 +26,11 @@ interface LoginContext {
   userAgent?: string;
 }
 
+type SessionAuditAction =
+  | "AUTH_LOGIN"
+  | "AUTH_REGISTER"
+  | "SELLER_ACTIVATED";
+
 type UserWithRoles = Prisma.UserGetPayload<{
   include: {
     roleAssignments: {
@@ -139,10 +144,35 @@ export class AuthService {
     return this.createSessionForUser(user, context, "AUTH_REGISTER");
   }
 
+  async issueSessionForUserId(
+    userId: string,
+    context: LoginContext,
+    action: SessionAuditAction
+  ): Promise<{ token: string; session: SessionResponse }> {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: userId
+      },
+      include: {
+        roleAssignments: {
+          include: {
+            role: true
+          }
+        }
+      }
+    });
+
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException("Cannot create a session for this user.");
+    }
+
+    return this.createSessionForUser(user, context, action);
+  }
+
   private async createSessionForUser(
     user: UserWithRoles,
     context: LoginContext,
-    action: "AUTH_LOGIN" | "AUTH_REGISTER"
+    action: SessionAuditAction
   ): Promise<{ token: string; session: SessionResponse }> {
     const token = randomBytes(32).toString("hex");
     const expiresAt = new Date(

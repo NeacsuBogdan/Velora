@@ -3,6 +3,8 @@
 const toneMap: Record<string, string> = {
   ACTIVE:
     "border-[rgba(15,118,110,0.14)] bg-[rgba(15,118,110,0.08)] text-[var(--accent)]",
+  ACTIVATED:
+    "border-[rgba(15,118,110,0.14)] bg-[rgba(15,118,110,0.08)] text-[var(--accent)]",
   SUCCEEDED:
     "border-[rgba(15,118,110,0.14)] bg-[rgba(15,118,110,0.08)] text-[var(--accent)]",
   COMPLETED:
@@ -19,6 +21,8 @@ const toneMap: Record<string, string> = {
     "border-[rgba(79,70,229,0.12)] bg-[rgba(99,102,241,0.08)] text-[rgb(79,70,229)]",
   PAYMENT_PENDING:
     "border-[rgba(180,83,9,0.12)] bg-[rgba(245,158,11,0.1)] text-[rgb(146,64,14)]",
+  ACTIVATION_PENDING:
+    "border-[rgba(180,83,9,0.12)] bg-[rgba(245,158,11,0.1)] text-[rgb(146,64,14)]",
   PENDING:
     "border-[rgba(180,83,9,0.12)] bg-[rgba(245,158,11,0.1)] text-[rgb(146,64,14)]",
   CREATED:
@@ -27,6 +31,8 @@ const toneMap: Record<string, string> = {
     "border-[rgba(71,85,105,0.12)] bg-[rgba(148,163,184,0.12)] text-[rgb(71,85,105)]",
   STARTED:
     "border-[rgba(71,85,105,0.12)] bg-[rgba(148,163,184,0.12)] text-[rgb(71,85,105)]",
+  REVIEWING:
+    "border-[rgba(30,64,175,0.12)] bg-[rgba(59,130,246,0.08)] text-[rgb(29,78,216)]",
   FAILED:
     "border-[rgba(185,28,28,0.14)] bg-[rgba(185,28,28,0.08)] text-[rgb(185,28,28)]",
   CANCELED:

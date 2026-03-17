@@ -12,6 +12,7 @@ import {
   getAdminOrderDetail,
   getAdminOrders,
   getAdminProducts,
+  getAdminSellerApplications,
   getAdminSellers,
   getPromotions,
   getSession,
@@ -33,6 +34,7 @@ export default async function AdminHomePage(): Promise<React.JSX.Element> {
     inventory,
     orders,
     customers,
+    sellerApplications,
     sellers,
     operations,
     promotions,
@@ -45,6 +47,7 @@ export default async function AdminHomePage(): Promise<React.JSX.Element> {
         getAdminInventory(),
         getAdminOrders(),
         getAdminCustomers(),
+        getAdminSellerApplications(),
         getAdminSellers(),
         getAdminOperations(),
         getPromotions(),
@@ -126,6 +129,7 @@ export default async function AdminHomePage(): Promise<React.JSX.Element> {
             inventory &&
             orders &&
             customers &&
+            sellerApplications &&
             sellers &&
             operations &&
             promotions ? (
@@ -140,6 +144,7 @@ export default async function AdminHomePage(): Promise<React.JSX.Element> {
                 orders={orders}
                 products={products}
                 promotions={promotions}
+                sellerApplications={sellerApplications}
                 sellers={sellers}
               />
             ) : null}

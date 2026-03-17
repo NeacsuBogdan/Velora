@@ -12,10 +12,10 @@ Authentication uses the `velora_session` HTTP-only cookie.
 
 ## Auth rules
 
-- Public routes: health, catalog, search, login, logout.
+- Public routes: health, catalog, search, login, logout, customer register, seller application, seller activation preview, seller activation completion.
 - Customer routes: session, profile, addresses, cart, checkout, payments, orders.
-- Seller routes: seller dashboard, listings, inventory update, seller orders.
-- Admin routes: admin dashboard and management routes, promotions, refunds, audit overview, reindex, reservation cleanup.
+- Seller routes: seller dashboard, seller catalog options, listing create/update/archive, inventory update, seller orders.
+- Admin routes: admin dashboard and management routes, promotions, refunds, audit overview, reindex, reservation cleanup, and seller application review.
 
 Access control is enforced by `SessionAuthGuard` and `RolesGuard`.
 
@@ -26,11 +26,15 @@ Access control is enforced by `SessionAuthGuard` and `RolesGuard`.
 - `GET /health`
 - `POST /auth/login`
 - `POST /auth/logout`
+- `POST /auth/register`
 - `GET /catalog/overview`
 - `GET /catalog/navigation`
 - `GET /catalog/categories/:slug`
 - `GET /catalog/products/:slug`
 - `GET /search/products`
+- `POST /seller-onboarding/applications`
+- `GET /seller-onboarding/activation/:token`
+- `POST /seller-onboarding/activation/:token`
 
 ### Customer
 
@@ -58,6 +62,10 @@ Access control is enforced by `SessionAuthGuard` and `RolesGuard`.
 
 - `GET /seller/dashboard`
 - `GET /seller/listings`
+- `GET /seller/catalog-options`
+- `POST /seller/listings`
+- `PATCH /seller/listings/:listingId`
+- `DELETE /seller/listings/:listingId`
 - `PATCH /seller/inventory/:inventoryItemId`
 - `GET /seller/orders`
 - `GET /seller/orders/:number`
@@ -80,6 +88,8 @@ Access control is enforced by `SessionAuthGuard` and `RolesGuard`.
 - `GET /admin/orders/:number`
 - `PATCH /admin/orders/:number/status`
 - `GET /admin/customers`
+- `GET /admin/seller-applications`
+- `PATCH /admin/seller-applications/:applicationId/review`
 - `GET /admin/sellers`
 - `PATCH /admin/sellers/:sellerId`
 - `GET /admin/operations`
@@ -172,6 +182,103 @@ Response shape:
     "priceRange": {
       "min": 219900,
       "max": 219900
+    }
+  }
+}
+```
+
+### Submit seller application
+
+Request:
+
+```http
+POST /api/seller-onboarding/applications
+Content-Type: application/json
+
+{
+  "displayName": "North Star Gadgets",
+  "legalName": "North Star Gadgets SRL",
+  "contactFirstName": "Mihai",
+  "contactLastName": "Popescu",
+  "contactEmail": "partners@northstar.example",
+  "contactPhone": "+40 721 000 111",
+  "websiteUrl": "https://northstar.example",
+  "catalogSummary": "Consumer electronics, accessories, and small devices already stocked locally.",
+  "notes": "Can onboard with same-week catalog imports."
+}
+```
+
+Response:
+
+```json
+{
+  "applicationId": "seed-seller-application-pending",
+  "status": "SUBMITTED",
+  "submittedAt": "2026-03-17T18:30:00.000Z",
+  "message": "Application received. The marketplace team can now review and approve your merchant onboarding."
+}
+```
+
+### Review seller application
+
+Request:
+
+```http
+PATCH /api/admin/seller-applications/seed-seller-application-pending/review
+Content-Type: application/json
+Cookie: velora_session=...
+
+{
+  "decision": "APPROVE",
+  "note": "Commercial review completed. Activation can be issued."
+}
+```
+
+Response shape:
+
+```json
+{
+  "application": {
+    "applicationId": "seed-seller-application-pending",
+    "status": "ACTIVATION_PENDING",
+    "displayName": "North Star Gadgets",
+    "contactEmail": "partners@northstar.example"
+  },
+  "activationLink": "http://localhost:3000/seller/activate?token=..."
+}
+```
+
+### Activate seller account
+
+Request:
+
+```http
+POST /api/seller-onboarding/activation/<token>
+Content-Type: application/json
+
+{
+  "firstName": "Mihai",
+  "lastName": "Popescu",
+  "password": "Demo123!"
+}
+```
+
+Response shape:
+
+```json
+{
+  "sellerSlug": "north-star-gadgets",
+  "session": {
+    "sessionId": "cm8session456",
+    "expiresAt": "2026-03-20T10:00:00.000Z",
+    "user": {
+      "email": "partners@northstar.example",
+      "roles": [
+        {
+          "code": "SELLER",
+          "name": "Seller"
+        }
+      ]
     }
   }
 }
@@ -344,3 +451,4 @@ Confirmation response shape:
 - Missing resources return `404`.
 - Business-rule violations such as insufficient stock, invalid coupons, or invalid order transitions return `400`.
 - Replay-safe flows may return an already-settled view instead of failing when the same action is repeated with the same business identity.
+- Seller onboarding activation fails closed: unknown, expired, or already-consumed tokens return safe errors without exposing internal review notes or operator metadata.

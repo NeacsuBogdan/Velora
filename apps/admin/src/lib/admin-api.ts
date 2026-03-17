@@ -10,6 +10,7 @@ import type {
   AdminOrderDetail,
   AdminOrderSummary,
   AdminProductSummary,
+  AdminSellerApplicationSummary,
   AdminSellerSummary,
   DomainOverview,
   PromotionSummary,
@@ -104,6 +105,14 @@ export async function getAdminCustomers(): Promise<AdminCustomerSummary[] | null
 
 export async function getAdminSellers(): Promise<AdminSellerSummary[] | null> {
   return getAuthenticatedJson<AdminSellerSummary[]>("/admin/sellers");
+}
+
+export async function getAdminSellerApplications(): Promise<
+  AdminSellerApplicationSummary[] | null
+> {
+  return getAuthenticatedJson<AdminSellerApplicationSummary[]>(
+    "/admin/seller-applications"
+  );
 }
 
 export async function getAdminOperations(): Promise<AdminOperationsOverview | null> {

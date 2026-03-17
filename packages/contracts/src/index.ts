@@ -1,4 +1,9 @@
-import { productStatuses, sellerStatuses, userRoles } from "@velora/domain";
+import {
+  productStatuses,
+  sellerApplicationStatuses,
+  sellerStatuses,
+  userRoles
+} from "@velora/domain";
 import { z } from "zod";
 
 export const healthResponseSchema = z.object({
@@ -105,6 +110,72 @@ export const updateProfileRequestSchema = z.object({
 });
 
 export type UpdateProfileRequest = z.infer<typeof updateProfileRequestSchema>;
+
+export const sellerApplicationStatusSchema = z.enum(sellerApplicationStatuses);
+export type SellerApplicationStatus = z.infer<
+  typeof sellerApplicationStatusSchema
+>;
+
+export const createSellerApplicationRequestSchema = z.object({
+  displayName: z.string().trim().min(3).max(120),
+  legalName: z.string().trim().min(3).max(160),
+  contactFirstName: z.string().trim().min(1).max(80),
+  contactLastName: z.string().trim().min(1).max(80),
+  contactEmail: z.string().trim().email(),
+  contactPhone: z.string().trim().min(6).max(32).optional(),
+  websiteUrl: z.string().trim().url().optional(),
+  catalogSummary: z.string().trim().min(24).max(600),
+  notes: z.string().trim().max(400).optional()
+});
+
+export type CreateSellerApplicationRequest = z.infer<
+  typeof createSellerApplicationRequestSchema
+>;
+
+export const sellerApplicationReceiptSchema = z.object({
+  applicationId: z.string(),
+  status: sellerApplicationStatusSchema,
+  submittedAt: z.string().datetime(),
+  message: z.string()
+});
+
+export type SellerApplicationReceipt = z.infer<
+  typeof sellerApplicationReceiptSchema
+>;
+
+export const sellerActivationPreviewSchema = z.object({
+  applicationId: z.string(),
+  displayName: z.string(),
+  legalName: z.string(),
+  contactEmail: z.string().email(),
+  contactName: z.string(),
+  status: sellerApplicationStatusSchema,
+  expiresAt: z.string().datetime(),
+  catalogSummary: z.string()
+});
+
+export type SellerActivationPreview = z.infer<
+  typeof sellerActivationPreviewSchema
+>;
+
+export const completeSellerActivationRequestSchema = z.object({
+  firstName: z.string().trim().min(1).max(80),
+  lastName: z.string().trim().min(1).max(80),
+  password: z.string().min(8)
+});
+
+export type CompleteSellerActivationRequest = z.infer<
+  typeof completeSellerActivationRequestSchema
+>;
+
+export const sellerActivationResponseSchema = z.object({
+  sellerSlug: z.string(),
+  session: sessionResponseSchema
+});
+
+export type SellerActivationResponse = z.infer<
+  typeof sellerActivationResponseSchema
+>;
 
 export const upsertAddressRequestSchema = z.object({
   type: addressTypeSchema,
@@ -1102,6 +1173,51 @@ export const adminSellerSummarySchema = z.object({
 
 export type AdminSellerSummary = z.infer<
   typeof adminSellerSummarySchema
+>;
+
+export const adminSellerApplicationSummarySchema = z.object({
+  applicationId: z.string(),
+  displayName: z.string(),
+  legalName: z.string(),
+  contactName: z.string(),
+  contactEmail: z.string().email(),
+  contactPhone: z.string().nullable(),
+  websiteUrl: z.string().url().nullable(),
+  catalogSummary: z.string(),
+  notes: z.string().nullable(),
+  status: sellerApplicationStatusSchema,
+  reviewNote: z.string().nullable(),
+  reviewedByEmail: z.string().email().nullable(),
+  reviewedAt: z.string().datetime().nullable(),
+  activationExpiresAt: z.string().datetime().nullable(),
+  activatedAt: z.string().datetime().nullable(),
+  sellerId: z.string().nullable(),
+  sellerDisplayName: z.string().nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime()
+});
+
+export type AdminSellerApplicationSummary = z.infer<
+  typeof adminSellerApplicationSummarySchema
+>;
+
+export const reviewAdminSellerApplicationRequestSchema = z.object({
+  decision: z.enum(["REVIEWING", "APPROVE", "REJECT"]),
+  note: z.string().trim().max(240).optional(),
+  activationWindowDays: z.number().int().min(1).max(14).optional()
+});
+
+export type ReviewAdminSellerApplicationRequest = z.infer<
+  typeof reviewAdminSellerApplicationRequestSchema
+>;
+
+export const reviewAdminSellerApplicationResponseSchema =
+  adminSellerApplicationSummarySchema.extend({
+    activationLink: z.string().url().nullable()
+  });
+
+export type ReviewAdminSellerApplicationResponse = z.infer<
+  typeof reviewAdminSellerApplicationResponseSchema
 >;
 
 export const updateAdminSellerRequestSchema = z.object({

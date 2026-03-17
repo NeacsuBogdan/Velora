@@ -20,6 +20,7 @@ import { RateLimitModule } from "./rate-limit/rate-limit.module";
 import { SearchModule } from "./search/search.module";
 import { SearchSyncModule } from "./search-sync/search-sync.module";
 import { SellerModule } from "./seller/seller.module";
+import { SellerOnboardingModule } from "./seller-onboarding/seller-onboarding.module";
 import { UsersModule } from "./users/users.module";
 
 @Module({
@@ -45,7 +46,8 @@ import { UsersModule } from "./users/users.module";
     SearchSyncModule,
     AuditModule,
     AdminModule,
-    SellerModule
+    SellerModule,
+    SellerOnboardingModule
   ]
 })
 export class AppModule {}

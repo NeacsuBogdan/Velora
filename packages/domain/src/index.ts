@@ -63,6 +63,16 @@ export type PromotionStackingMode =
 export const sellerStatuses = ["PENDING", "ACTIVE", "SUSPENDED"] as const;
 export type SellerStatus = (typeof sellerStatuses)[number];
 
+export const sellerApplicationStatuses = [
+  "SUBMITTED",
+  "REVIEWING",
+  "ACTIVATION_PENDING",
+  "ACTIVATED",
+  "REJECTED"
+] as const;
+export type SellerApplicationStatus =
+  (typeof sellerApplicationStatuses)[number];
+
 export interface Money {
   amount: number;
   currency: "RON" | "EUR";

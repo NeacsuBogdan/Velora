@@ -59,6 +59,20 @@ The design uses:
 
 Without this, duplicate events could create duplicate orders, double-consume stock, or corrupt payment state.
 
+## Why seller onboarding is approval-based instead of public seller signup
+
+Customers can self-register immediately because their access is low-risk and bounded to customer workflows. Sellers are different: they affect catalog quality, marketplace trust, inventory correctness, and operational support load.
+
+Velora therefore uses a two-step merchant onboarding flow:
+
+- a public application form
+- admin review and approval
+- a one-time activation link for the seller owner account
+
+This keeps the marketplace closer to how real operator-led platforms behave. It also avoids a common anti-pattern where seller access is granted before legal, commercial, or catalog checks happen.
+
+The current MVP deliberately stops short of full contract and email automation. Admins review the application and can hand off the activation link directly in local development, while the data model is already shaped to evolve toward invite emails and richer onboarding states later.
+
 ## Why browser E2E uses a mock API harness
 
 The Stage 11 browser suite is meant to guard user-facing flows in CI, not to duplicate all real API integration coverage. The mock API harness keeps those tests:

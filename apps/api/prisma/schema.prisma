@@ -89,6 +89,14 @@ enum SellerStatus {
   SUSPENDED
 }
 
+enum SellerApplicationStatus {
+  SUBMITTED
+  REVIEWING
+  ACTIVATION_PENDING
+  ACTIVATED
+  REJECTED
+}
+
 enum CouponStatus {
   ACTIVE
   DISABLED
@@ -154,6 +162,7 @@ model User {
   orders               Order[]
   reindexJobs          ReindexJob[]
   roleAssignments      UserRoleAssignment[]
+  reviewedSellerApplications SellerApplication[] @relation("SellerApplicationReviewer")
   sellerProfile        Seller?              @relation("SellerOwner")
   sessions             Session[]
   statusHistoryEntries OrderStatusHistory[]
@@ -320,9 +329,50 @@ model Seller {
   ownerUserId  String?                @unique
   createdAt    DateTime               @default(now())
   updatedAt    DateTime               @updatedAt
+  application  SellerApplication?
   listings     SellerProductListing[]
   orders       Order[]
   ownerUser    User?                  @relation("SellerOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+}
+
+model SellerApplication {
+  id                String                  @id @default(cuid())
+  displayName       String
+  legalName         String
+  contactFirstName  String
+  contactLastName   String
+  contactEmail      String
+  contactPhone      String?
+  websiteUrl        String?
+  catalogSummary    String
+  notes             String?
+  status            SellerApplicationStatus @default(SUBMITTED)
+  reviewedByUserId  String?
+  reviewedAt        DateTime?
+  reviewNote        String?
+  sellerId          String?                 @unique
+  activationExpiresAt DateTime?
+  activatedAt       DateTime?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  activationToken   SellerActivationToken?
+  reviewedByUser    User?                   @relation("SellerApplicationReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  seller            Seller?                 @relation(fields: [sellerId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([contactEmail])
+}
+
+model SellerActivationToken {
+  id                  String            @id @default(cuid())
+  sellerApplicationId String            @unique
+  tokenHash           String            @unique
+  expiresAt           DateTime
+  consumedAt          DateTime?
+  createdAt           DateTime          @default(now())
+  sellerApplication   SellerApplication @relation(fields: [sellerApplicationId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
 }
 
 model SellerProductListing {

@@ -13,6 +13,7 @@ import {
   PromotionStackingMode,
   PromotionType,
   SearchSyncStatus,
+  SellerApplicationStatus,
   SellerStatus,
   UserRoleCode,
   WebhookDeliveryStatus
@@ -1864,11 +1865,55 @@ async function seedExpandedCatalog(): Promise<void> {
   });
 }
 
+async function seedSellerOnboarding(): Promise<void> {
+  await prisma.sellerApplication.upsert({
+    where: {
+      id: "seed-seller-application-pending"
+    },
+    update: {
+      displayName: "Peak Trail Outdoor Gear",
+      legalName: "Peak Trail Outdoor Gear SRL",
+      contactFirstName: "Andrei",
+      contactLastName: "Marin",
+      contactEmail: "merchant.onboarding@velora.local",
+      contactPhone: "+40 722 333 444",
+      websiteUrl: "https://peaktrail.example",
+      catalogSummary:
+        "Premium running accessories, recovery gear, hydration products, and compact training electronics for urban fitness buyers.",
+      notes:
+        "Already shipping nationwide with same-day handoff in Bucharest.",
+      status: SellerApplicationStatus.SUBMITTED,
+      reviewedByUserId: null,
+      reviewedAt: null,
+      reviewNote: null,
+      sellerId: null,
+      activationExpiresAt: null,
+      activatedAt: null
+    },
+    create: {
+      id: "seed-seller-application-pending",
+      displayName: "Peak Trail Outdoor Gear",
+      legalName: "Peak Trail Outdoor Gear SRL",
+      contactFirstName: "Andrei",
+      contactLastName: "Marin",
+      contactEmail: "merchant.onboarding@velora.local",
+      contactPhone: "+40 722 333 444",
+      websiteUrl: "https://peaktrail.example",
+      catalogSummary:
+        "Premium running accessories, recovery gear, hydration products, and compact training electronics for urban fitness buyers.",
+      notes:
+        "Already shipping nationwide with same-day handoff in Bucharest.",
+      status: SellerApplicationStatus.SUBMITTED
+    }
+  });
+}
+
 async function main(): Promise<void> {
   await seedRoles();
   await seedUsers();
   await seedCatalogAndCommerce();
   await seedExpandedCatalog();
+  await seedSellerOnboarding();
 }
 
 main()

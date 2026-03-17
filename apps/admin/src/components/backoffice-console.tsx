@@ -10,6 +10,7 @@ import type {
   AdminOrderDetail,
   AdminOrderSummary,
   AdminProductSummary,
+  AdminSellerApplicationSummary,
   AdminSellerSummary,
   PromotionSummary,
 } from "@velora/contracts";
@@ -24,6 +25,7 @@ import { OrderManager } from "./order-manager";
 import { ProductManager } from "./product-manager";
 import { PromotionConsole } from "./promotion-console";
 import { SellerManager } from "./seller-manager";
+import { SellerApplicationManager } from "./seller-application-manager";
 
 export function BackofficeConsole({
   dashboard,
@@ -34,6 +36,7 @@ export function BackofficeConsole({
   orders,
   orderDetail,
   customers,
+  sellerApplications,
   sellers,
   operations,
   promotions,
@@ -46,6 +49,7 @@ export function BackofficeConsole({
   orders: AdminOrderSummary[];
   orderDetail: AdminOrderDetail | null;
   customers: AdminCustomerSummary[];
+  sellerApplications: AdminSellerApplicationSummary[];
   sellers: AdminSellerSummary[];
   operations: AdminOperationsOverview;
   promotions: PromotionSummary[];
@@ -56,6 +60,7 @@ export function BackofficeConsole({
     ["inventory", "Inventory"],
     ["orders", "Orders"],
     ["customers", "Customers"],
+    ["seller-applications", "Onboarding"],
     ["sellers", "Sellers"],
     ["operations", "Operations"],
     ["promotions", "Promotions"],
@@ -143,6 +148,7 @@ export function BackofficeConsole({
       <InventoryManager initialInventory={inventory} />
       <OrderManager initialOrderDetail={orderDetail} initialOrders={orders} />
       <CustomerLookup initialCustomers={customers} />
+      <SellerApplicationManager initialApplications={sellerApplications} />
       <SellerManager initialSellers={sellers} />
       <OperationsConsole initialOperations={operations} />
 

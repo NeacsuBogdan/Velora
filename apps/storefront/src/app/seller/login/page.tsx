@@ -28,7 +28,10 @@ export default function SellerLoginPage(): React.JSX.Element {
           <p className="text-sm leading-7 text-[var(--muted)]">
             <code>seller@velora.local / Demo123!</code>
           </p>
-          <div>
+          <div className="flex flex-wrap gap-3">
+            <Link className={secondaryLinkClass} href="/become-a-seller">
+              Apply to sell
+            </Link>
             <Link className={secondaryLinkClass} href="/login">
               Customer login
             </Link>

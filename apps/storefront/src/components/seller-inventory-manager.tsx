@@ -1452,7 +1452,7 @@ export function SellerInventoryManager({
                   </div>
                 </div>
 
-                <div className="mt-6 grid gap-4 lg:grid-cols-4">
+                <div className="mt-6 grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
                   <MetricCard
                     label="Price"
                     value={
@@ -1711,11 +1711,11 @@ function MetricCard({
   value: string;
 }): React.JSX.Element {
   return (
-    <div className="rounded-[24px] bg-black/3 px-4 py-4">
+    <div className="min-w-0 rounded-[24px] bg-black/3 px-4 py-4">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
         {label}
       </p>
-      <p className="mt-3 text-2xl font-semibold text-[var(--foreground)]">
+      <p className="mt-3 min-w-0 break-words text-2xl font-semibold leading-tight text-[var(--foreground)]">
         {value}
       </p>
     </div>

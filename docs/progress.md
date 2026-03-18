@@ -178,6 +178,7 @@
 - Added major-currency seller price entry with live RON previews, so merchants now type normal amounts like `20.00` while the platform still persists minor units internally.
 - Reworked the owned-catalog seller editor into a selector/detail workspace with lifecycle controls, so sellers can archive, reactivate, and delete their own archived products from a single operational pane instead of managing separate per-product forms.
 - Reworked the broader seller listings workspace into a selector/detail offer console, so all offers now share one left-hand picker and one right-hand management pane instead of rendering a full edit panel for every listing on the page.
+- Tightened the selected-offer summary cards so price and stock metrics collapse more gracefully on narrower seller workspace widths instead of overflowing across adjacent cards.
 
 ## Important implementation notes
 

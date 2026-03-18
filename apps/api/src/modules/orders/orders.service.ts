@@ -4,6 +4,10 @@ import {
 } from "@nestjs/common";
 import { domainOverviewSchema, type AuthenticatedUser } from "@velora/contracts";
 
+import {
+  hashGuestCartToken,
+  type CommerceContext
+} from "../../common/commerce-context";
 import { PrismaService } from "../database/prisma.service";
 import {
   mapOrderDetail,
@@ -96,6 +100,26 @@ export class OrdersService {
     return mapOrderDetail(order);
   }
 
+  async getCheckoutConfirmationDetail(
+    context: CommerceContext,
+    number: string
+  ) {
+    const where = this.buildCheckoutConfirmationWhere(context);
+    const order = await this.prisma.order.findFirst({
+      where: {
+        ...where,
+        number
+      },
+      include: orderDetailInclude.include
+    });
+
+    if (!order) {
+      throw new NotFoundException(`Order ${number} was not found.`);
+    }
+
+    return mapOrderDetail(order);
+  }
+
   private async buildScopeWhere(viewer: AuthenticatedUser) {
     if (viewer.roles.some((role) => role.code === "ADMIN")) {
       return {};
@@ -127,6 +151,29 @@ export class OrdersService {
 
     return {
       userId: viewer.id
+    };
+  }
+
+  private buildCheckoutConfirmationWhere(context: CommerceContext) {
+    if (context.user) {
+      return {
+        userId: context.user.id
+      };
+    }
+
+    if (context.guestCartToken) {
+      return {
+        checkoutSession: {
+          cart: {
+            guestTokenHash: hashGuestCartToken(context.guestCartToken),
+            userId: null
+          }
+        }
+      };
+    }
+
+    return {
+      id: "__missing_checkout_confirmation_scope__"
     };
   }
 }

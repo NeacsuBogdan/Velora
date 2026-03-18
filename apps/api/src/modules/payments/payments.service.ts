@@ -18,6 +18,10 @@ import {
   type AuthenticatedUser
 } from "@velora/contracts";
 
+import {
+  hashGuestCartToken,
+  type CommerceContext
+} from "../../common/commerce-context";
 import { AuditService } from "../audit/audit.service";
 import { CheckoutService } from "../checkout/checkout.service";
 import { PrismaService } from "../database/prisma.service";
@@ -152,7 +156,7 @@ export class PaymentsService {
   }
 
   async createPaymentAttempt(
-    viewer: AuthenticatedUser,
+    context: CommerceContext,
     checkoutSessionId: string,
     rawInput: unknown
   ) {
@@ -161,10 +165,7 @@ export class PaymentsService {
 
     return this.prisma.$transaction(async (tx) => {
       const checkoutSession = await tx.checkoutSession.findFirst({
-        where: {
-          id: checkoutSessionId,
-          userId: viewer.id
-        },
+        where: this.buildCheckoutOwnershipWhere(context, checkoutSessionId),
         include: {
           order: true,
           reservations: {
@@ -198,7 +199,7 @@ export class PaymentsService {
         await this.inventoryService.releaseReservationsForCheckoutSessionWithinTransaction(
           tx,
           checkoutSession.id,
-          viewer.id,
+          context.user?.id ?? null,
           "Reservation expired before payment attempt creation."
         );
         await tx.checkoutSession.update({
@@ -276,7 +277,7 @@ export class PaymentsService {
       });
 
       await this.auditService.record(
-        viewer.id,
+        context.user?.id ?? null,
         "PAYMENT_ATTEMPT",
         paymentAttempt.id,
         "PAYMENT_ATTEMPT_CREATED",
@@ -305,7 +306,7 @@ export class PaymentsService {
   }
 
   async confirmPaymentAttempt(
-    viewer: AuthenticatedUser,
+    context: CommerceContext,
     attemptId: string,
     rawInput: unknown
   ) {
@@ -318,13 +319,21 @@ export class PaymentsService {
         checkoutSession: {
           select: {
             id: true,
-            userId: true
+            userId: true,
+            cart: {
+              select: {
+                guestTokenHash: true
+              }
+            }
           }
         }
       }
     });
 
-    if (!paymentAttempt || paymentAttempt.checkoutSession.userId !== viewer.id) {
+    if (
+      !paymentAttempt ||
+      !this.isPaymentAttemptOwnedByContext(paymentAttempt, context)
+    ) {
       throw new NotFoundException(`Payment attempt ${attemptId} was not found.`);
     }
 
@@ -532,6 +541,58 @@ export class PaymentsService {
     });
   }
 
+  private buildCheckoutOwnershipWhere(
+    context: CommerceContext,
+    checkoutSessionId: string
+  ) {
+    if (context.user) {
+      return {
+        id: checkoutSessionId,
+        userId: context.user.id
+      };
+    }
+
+    if (context.guestCartToken) {
+      return {
+        id: checkoutSessionId,
+        cart: {
+          guestTokenHash: hashGuestCartToken(context.guestCartToken),
+          userId: null
+        }
+      };
+    }
+
+    return {
+      id: "__missing_checkout_scope__"
+    };
+  }
+
+  private isPaymentAttemptOwnedByContext(
+    paymentAttempt: {
+      checkoutSession: {
+        userId: string | null;
+        cart: {
+          guestTokenHash: string | null;
+        };
+      };
+    },
+    context: CommerceContext
+  ): boolean {
+    if (context.user) {
+      return paymentAttempt.checkoutSession.userId === context.user.id;
+    }
+
+    if (!context.guestCartToken) {
+      return false;
+    }
+
+    return (
+      paymentAttempt.checkoutSession.userId === null &&
+      paymentAttempt.checkoutSession.cart.guestTokenHash ===
+        hashGuestCartToken(context.guestCartToken)
+    );
+  }
+
   private async processProviderEvent(
     event: NormalizedProviderEvent,
     signature: string | null
@@ -722,6 +783,13 @@ export class PaymentsService {
           status: "PAID",
           paymentStatus: "SUCCEEDED",
           currency: paymentAttempt.currency,
+          customerSnapshot: paymentAttempt.checkoutSession.customerSnapshot as
+            | Prisma.InputJsonValue
+            | undefined,
+          deliveryAddressSnapshot:
+            paymentAttempt.checkoutSession.deliveryAddressSnapshot as
+              | Prisma.InputJsonValue
+              | undefined,
           subtotal: pricingSnapshot.subtotal,
           discountTotal: pricingSnapshot.discountTotal,
           total: pricingSnapshot.total,
@@ -784,6 +852,13 @@ export class PaymentsService {
           status: "PAID",
           placedAt: order.placedAt ?? new Date(),
           paymentAttemptId: paymentAttempt.id,
+          customerSnapshot: paymentAttempt.checkoutSession.customerSnapshot as
+            | Prisma.InputJsonValue
+            | undefined,
+          deliveryAddressSnapshot:
+            paymentAttempt.checkoutSession.deliveryAddressSnapshot as
+              | Prisma.InputJsonValue
+              | undefined,
           subtotal: pricingSnapshot.subtotal,
           discountTotal: pricingSnapshot.discountTotal,
           total: pricingSnapshot.total

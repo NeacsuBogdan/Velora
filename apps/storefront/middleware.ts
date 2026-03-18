@@ -6,10 +6,7 @@ export function middleware(request: NextRequest): NextResponse {
     pathname === "/seller/login" || pathname === "/seller/activate";
   const needsSellerSession =
     pathname.startsWith("/seller") && !isPublicSellerRoute;
-  const needsCustomerSession =
-    pathname.startsWith("/account") ||
-    pathname === "/cart" ||
-    pathname.startsWith("/checkout");
+  const needsCustomerSession = pathname.startsWith("/account");
 
   if ((needsSellerSession || needsCustomerSession) && !request.cookies.get("velora_session")?.value) {
     const loginUrl = new URL(needsSellerSession ? "/seller/login" : "/login", request.url);
@@ -22,5 +19,5 @@ export function middleware(request: NextRequest): NextResponse {
 }
 
 export const config = {
-  matcher: ["/account/:path*", "/cart", "/checkout/:path*", "/seller/:path*"]
+  matcher: ["/account/:path*", "/seller/:path*"]
 };

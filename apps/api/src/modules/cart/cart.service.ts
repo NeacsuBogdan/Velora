@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException
@@ -15,6 +16,11 @@ import {
   type CartDetail
 } from "@velora/contracts";
 
+import {
+  createGuestCartToken,
+  hashGuestCartToken,
+  type CommerceContext
+} from "../../common/commerce-context";
 import { PrismaService } from "../database/prisma.service";
 import { InventoryService } from "../inventory/inventory.service";
 import type { PricingSnapshot } from "../promotions/pricing.helpers";
@@ -25,6 +31,7 @@ import {
 } from "../search/search.helpers";
 
 type DatabaseClient = PrismaService | Prisma.TransactionClient;
+type CartResult = CartDetail & { guestCartToken?: string };
 
 const cartRecordInclude = Prisma.validator<Prisma.CartDefaultArgs>()({
   include: {
@@ -85,40 +92,61 @@ export class CartService {
     });
   }
 
-  async getCart(viewer: AuthenticatedUser): Promise<CartDetail> {
+  async getCart(context: CommerceContext): Promise<CartResult> {
+    if (!context.user && !context.guestCartToken) {
+      return this.buildEmptyCartResponse(true);
+    }
+
     return this.prisma.$transaction(async (tx) => {
       await this.inventoryService.releaseExpiredReservationsWithinTransaction(
         tx,
         new Date(),
-        viewer.id
+        context.user?.id ?? null
       );
 
-      const cart = await this.getOrCreateActiveCartRecord(tx, viewer.id);
+      const cartOwnership = await this.getOrCreateActiveCartRecord(tx, context, {
+        createGuestCart: false
+      });
+
+      if (!cartOwnership) {
+        return this.buildEmptyCartResponse(true);
+      }
+
+      const { cart, guestCartToken } = cartOwnership;
       await this.refreshCartItemSnapshots(tx, cart.id);
       const pricing = await this.promotionsService.repriceCartWithinTransaction(
         tx,
         cart.id
       );
 
-      return this.buildCartResponse(tx, cart.id, pricing);
+      return this.buildCartResult(
+        await this.buildCartResponse(tx, cart.id, pricing),
+        guestCartToken
+      );
     });
   }
 
-  async addItem(viewer: AuthenticatedUser, rawInput: unknown) {
+  async addItem(context: CommerceContext, rawInput: unknown) {
     const input = addCartItemRequestSchema.parse(rawInput);
 
     return this.prisma.$transaction(async (tx) => {
       await this.inventoryService.releaseExpiredReservationsWithinTransaction(
         tx,
         new Date(),
-        viewer.id
+        context.user?.id ?? null
       );
 
-      const cart = await this.getOrCreateActiveCartRecord(tx, viewer.id);
+      const cartOwnership = await this.getOrCreateActiveCartRecord(tx, context, {
+        createGuestCart: true
+      });
+      if (!cartOwnership) {
+        throw new BadRequestException("A guest cart could not be created.");
+      }
+      const { cart, guestCartToken } = cartOwnership;
       await this.invalidateActiveCheckoutSessions(
         tx,
         cart.id,
-        viewer.id,
+        context.user?.id ?? null,
         "Cart contents changed before payment."
       );
 
@@ -179,7 +207,7 @@ export class CartService {
 
       await tx.auditLog.create({
         data: {
-          actorUserId: viewer.id,
+          actorUserId: context.user?.id ?? undefined,
           entityType: "CART",
           entityId: cart.id,
           action: "CART_ITEM_UPSERTED",
@@ -196,20 +224,29 @@ export class CartService {
         cart.id
       );
 
-      return this.buildCartResponse(tx, cart.id, pricing);
+      return this.buildCartResult(
+        await this.buildCartResponse(tx, cart.id, pricing),
+        guestCartToken
+      );
     });
   }
 
-  async applyCoupon(viewer: AuthenticatedUser, rawInput: unknown) {
+  async applyCoupon(context: CommerceContext, rawInput: unknown) {
     const input = applyCouponRequestSchema.parse(rawInput);
     const normalizedCouponCode = input.couponCode.trim().toUpperCase();
 
     return this.prisma.$transaction(async (tx) => {
-      const cart = await this.getOrCreateActiveCartRecord(tx, viewer.id);
+      const cartOwnership = await this.getOrCreateActiveCartRecord(tx, context, {
+        createGuestCart: true
+      });
+      if (!cartOwnership) {
+        throw new BadRequestException("A guest cart could not be created.");
+      }
+      const { cart, guestCartToken } = cartOwnership;
       await this.invalidateActiveCheckoutSessions(
         tx,
         cart.id,
-        viewer.id,
+        context.user?.id ?? null,
         "Coupon state changed before payment."
       );
 
@@ -249,7 +286,7 @@ export class CartService {
 
       await tx.auditLog.create({
         data: {
-          actorUserId: viewer.id,
+          actorUserId: context.user?.id ?? undefined,
           entityType: "CART",
           entityId: cart.id,
           action: "CART_COUPON_APPLIED",
@@ -259,25 +296,21 @@ export class CartService {
         }
       });
 
-      return this.buildCartResponse(tx, cart.id, pricing);
+      return this.buildCartResult(
+        await this.buildCartResponse(tx, cart.id, pricing),
+        guestCartToken
+      );
     });
   }
 
-  async updateItem(
-    viewer: AuthenticatedUser,
-    itemId: string,
-    rawInput: unknown
-  ) {
+  async updateItem(context: CommerceContext, itemId: string, rawInput: unknown) {
     const input = updateCartItemRequestSchema.parse(rawInput);
 
     return this.prisma.$transaction(async (tx) => {
       const cartItem = await tx.cartItem.findFirst({
         where: {
           id: itemId,
-          cart: {
-            userId: viewer.id,
-            status: "ACTIVE"
-          }
+          cart: this.buildCartScopeWhere(context)
         },
         select: {
           id: true,
@@ -293,7 +326,7 @@ export class CartService {
       await this.invalidateActiveCheckoutSessions(
         tx,
         cartItem.cartId,
-        viewer.id,
+        context.user?.id ?? null,
         "Cart quantities changed before payment."
       );
 
@@ -336,7 +369,7 @@ export class CartService {
 
       await tx.auditLog.create({
         data: {
-          actorUserId: viewer.id,
+          actorUserId: context.user?.id ?? undefined,
           entityType: "CART",
           entityId: cartItem.cartId,
           action: "CART_ITEM_UPDATED",
@@ -353,19 +386,18 @@ export class CartService {
         cartItem.cartId
       );
 
-      return this.buildCartResponse(tx, cartItem.cartId, pricing);
+      return this.buildCartResult(
+        await this.buildCartResponse(tx, cartItem.cartId, pricing)
+      );
     });
   }
 
-  async removeItem(viewer: AuthenticatedUser, itemId: string) {
+  async removeItem(context: CommerceContext, itemId: string) {
     return this.prisma.$transaction(async (tx) => {
       const cartItem = await tx.cartItem.findFirst({
         where: {
           id: itemId,
-          cart: {
-            userId: viewer.id,
-            status: "ACTIVE"
-          }
+          cart: this.buildCartScopeWhere(context)
         },
         select: {
           id: true,
@@ -380,7 +412,7 @@ export class CartService {
       await this.invalidateActiveCheckoutSessions(
         tx,
         cartItem.cartId,
-        viewer.id,
+        context.user?.id ?? null,
         "Cart contents changed before payment."
       );
 
@@ -392,7 +424,7 @@ export class CartService {
 
       await tx.auditLog.create({
         data: {
-          actorUserId: viewer.id,
+          actorUserId: context.user?.id ?? undefined,
           entityType: "CART",
           entityId: cartItem.cartId,
           action: "CART_ITEM_REMOVED",
@@ -408,17 +440,27 @@ export class CartService {
         cartItem.cartId
       );
 
-      return this.buildCartResponse(tx, cartItem.cartId, pricing);
+      return this.buildCartResult(
+        await this.buildCartResponse(tx, cartItem.cartId, pricing)
+      );
     });
   }
 
-  async removeCoupon(viewer: AuthenticatedUser) {
+  async removeCoupon(context: CommerceContext) {
     return this.prisma.$transaction(async (tx) => {
-      const cart = await this.getOrCreateActiveCartRecord(tx, viewer.id);
+      const cartOwnership = await this.getOrCreateActiveCartRecord(tx, context, {
+        createGuestCart: false
+      });
+
+      if (!cartOwnership) {
+        throw new BadRequestException("No active cart exists for coupon removal.");
+      }
+
+      const { cart } = cartOwnership;
       await this.invalidateActiveCheckoutSessions(
         tx,
         cart.id,
-        viewer.id,
+        context.user?.id ?? null,
         "Coupon state changed before payment."
       );
 
@@ -439,22 +481,30 @@ export class CartService {
 
       await tx.auditLog.create({
         data: {
-          actorUserId: viewer.id,
+          actorUserId: context.user?.id ?? undefined,
           entityType: "CART",
           entityId: cart.id,
           action: "CART_COUPON_REMOVED"
         }
       });
 
-      return this.buildCartResponse(tx, cart.id, pricing);
+      return this.buildCartResult(await this.buildCartResponse(tx, cart.id, pricing));
     });
   }
 
   async prepareCartForCheckout(
     tx: DatabaseClient,
-    userId: string
+    context: CommerceContext
   ): Promise<{ cart: CartRecord; pricing: PricingSnapshot }> {
-    const cart = await this.getOrCreateActiveCartRecord(tx, userId);
+    const cartOwnership = await this.getOrCreateActiveCartRecord(tx, context, {
+      createGuestCart: false
+    });
+
+    if (!cartOwnership) {
+      throw new BadRequestException("An active cart is required before checkout can start.");
+    }
+
+    const { cart } = cartOwnership;
     await this.refreshCartItemSnapshots(tx, cart.id);
     const pricing = await this.promotionsService.repriceCartWithinTransaction(
       tx as Prisma.TransactionClient,
@@ -682,29 +732,74 @@ export class CartService {
 
   private async getOrCreateActiveCartRecord(
     tx: DatabaseClient,
-    userId: string
-  ) {
-    const existingCart = await tx.cart.findFirst({
-      where: {
-        userId,
-        status: "ACTIVE"
-      },
-      orderBy: {
-        updatedAt: "desc"
-      }
-    });
+    context: CommerceContext,
+    options: {
+      createGuestCart: boolean;
+    }
+  ): Promise<{ cart: { id: string }; guestCartToken?: string } | null> {
+    if (context.user) {
+      const existingCart = await tx.cart.findFirst({
+        where: {
+          userId: context.user.id,
+          status: "ACTIVE"
+        },
+        orderBy: {
+          updatedAt: "desc"
+        }
+      });
 
-    if (existingCart) {
-      return existingCart;
+      if (existingCart) {
+        return { cart: existingCart };
+      }
+
+      return {
+        cart: await tx.cart.create({
+          data: {
+            userId: context.user.id,
+            status: "ACTIVE",
+            currency: "RON"
+          }
+        })
+      };
     }
 
-    return tx.cart.create({
+    const guestTokenHash = context.guestCartToken
+      ? hashGuestCartToken(context.guestCartToken)
+      : null;
+    const existingGuestCart = guestTokenHash
+      ? await tx.cart.findFirst({
+          where: {
+            guestTokenHash,
+            userId: null,
+            status: "ACTIVE"
+          },
+          orderBy: {
+            updatedAt: "desc"
+          }
+        })
+      : null;
+
+    if (existingGuestCart) {
+      return { cart: existingGuestCart };
+    }
+
+    if (!options.createGuestCart && !guestTokenHash) {
+      return null;
+    }
+
+    const guestCartToken = context.guestCartToken ?? createGuestCartToken();
+    const cart = await tx.cart.create({
       data: {
-        userId,
+        guestTokenHash: hashGuestCartToken(guestCartToken),
         status: "ACTIVE",
         currency: "RON"
       }
     });
+
+    return {
+      cart,
+      guestCartToken: context.guestCartToken ? undefined : guestCartToken
+    };
   }
 
   private async requirePurchasableListing(
@@ -746,7 +841,7 @@ export class CartService {
   private async invalidateActiveCheckoutSessions(
     tx: DatabaseClient,
     cartId: string,
-    actorUserId: string,
+    actorUserId: string | null,
     note: string
   ) {
     const checkoutSessions = await tx.checkoutSession.findMany({
@@ -782,7 +877,7 @@ export class CartService {
 
       await tx.auditLog.create({
         data: {
-          actorUserId,
+          actorUserId: actorUserId ?? undefined,
           entityType: "CHECKOUT_SESSION",
           entityId: checkoutSession.id,
           action: "CHECKOUT_SESSION_INVALIDATED",
@@ -793,5 +888,73 @@ export class CartService {
         }
       });
     }
+  }
+
+  private buildCartScopeWhere(context: CommerceContext): Prisma.CartWhereInput {
+    if (context.user) {
+      return {
+        userId: context.user.id,
+        status: "ACTIVE" as const
+      };
+    }
+
+    if (context.guestCartToken) {
+      return {
+        guestTokenHash: hashGuestCartToken(context.guestCartToken),
+        userId: null,
+        status: "ACTIVE" as const
+      };
+    }
+
+    return {
+      id: "__missing_cart_scope__"
+    };
+  }
+
+  private buildCartResult(
+    cart: CartDetail,
+    guestCartToken?: string
+  ): CartResult {
+    if (!guestCartToken) {
+      return cart;
+    }
+
+    return {
+      ...cart,
+      guestCartToken
+    };
+  }
+
+  private buildEmptyCartResponse(isGuest: boolean): CartResult {
+    return cartDetailSchema.parse({
+      cartId: isGuest ? "guest-cart-preview" : "cart-preview",
+      status: "ACTIVE",
+      currency: "RON",
+      couponCode: null,
+      itemCount: 0,
+      totals: {
+        subtotal: {
+          amount: 0,
+          currency: "RON"
+        },
+        discountTotal: {
+          amount: 0,
+          currency: "RON"
+        },
+        total: {
+          amount: 0,
+          currency: "RON"
+        }
+      },
+      items: [],
+      discounts: [],
+      activeCheckout: null,
+      notes: isGuest
+        ? [
+            "Add an item to start a guest cart.",
+            "You can continue to checkout without creating an account."
+          ]
+        : ["Your cart is empty. Add an item from a product detail page."]
+    });
   }
 }

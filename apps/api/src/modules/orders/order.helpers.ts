@@ -1,6 +1,11 @@
 import { Prisma } from "@prisma/client";
 import { orderDetailSchema, orderSummarySchema } from "@velora/contracts";
 
+import {
+  parseCheckoutAddressSnapshot,
+  parseCheckoutContactSnapshot
+} from "../checkout/checkout.helpers";
+
 export const orderSummaryInclude =
   Prisma.validator<Prisma.OrderDefaultArgs>()({
     include: {
@@ -84,6 +89,10 @@ export function mapOrderDetail(order: OrderDetailRecord) {
 
   return orderDetailSchema.parse({
     ...summary,
+    customer: parseCheckoutContactSnapshot(order.customerSnapshot),
+    deliveryAddress: parseCheckoutAddressSnapshot(
+      order.deliveryAddressSnapshot
+    ),
     items: order.items.map((item) => ({
       orderItemId: item.id,
       listingId: item.listingId,

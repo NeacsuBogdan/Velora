@@ -15,6 +15,18 @@ export default async function AccountOrderDetailPage({
 }): Promise<React.JSX.Element> {
   const { number } = await params;
   const order = await getOrderDetail(number);
+  const deliveryLines = order?.deliveryAddress
+    ? [
+        order.deliveryAddress.fullName,
+        order.deliveryAddress.line1,
+        order.deliveryAddress.line2,
+        [order.deliveryAddress.city, order.deliveryAddress.state]
+          .filter(Boolean)
+          .join(", "),
+        `${order.deliveryAddress.postalCode} ${order.deliveryAddress.countryCode}`,
+        order.deliveryAddress.phone
+      ].filter(Boolean)
+    : [];
 
   if (!order) {
     return (
@@ -163,6 +175,33 @@ export default async function AccountOrderDetailPage({
         </section>
 
         <aside className="space-y-5">
+          <Panel className="space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
+              Delivery snapshot
+            </p>
+            {order.customer ? (
+              <div className="grid gap-2 text-sm text-[var(--muted)]">
+                <p className="font-semibold text-[var(--foreground)]">
+                  {order.customer.firstName} {order.customer.lastName}
+                </p>
+                <p>{order.customer.email}</p>
+                {order.customer.phone ? <p>{order.customer.phone}</p> : null}
+              </div>
+            ) : (
+              <p className="text-sm leading-7 text-[var(--muted)]">
+                This older order does not include a persisted delivery snapshot.
+              </p>
+            )}
+
+            {deliveryLines.length ? (
+              <div className="grid gap-2 border-t border-[var(--stroke)] pt-3 text-sm text-[var(--muted)]">
+                {deliveryLines.map((line) => (
+                  <p key={line}>{line}</p>
+                ))}
+              </div>
+            ) : null}
+          </Panel>
+
           <Panel className="space-y-3">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
               Status timeline

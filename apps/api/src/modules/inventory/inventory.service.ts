@@ -25,7 +25,7 @@ interface ReleaseReservationParams {
 }
 
 interface ReserveInventoryParams {
-  actorUserId: string;
+  actorUserId?: string | null;
   cartId: string;
   checkoutSessionId: string;
   inventoryItemId: string;
@@ -252,7 +252,7 @@ export class InventoryService {
 
     await tx.auditLog.create({
       data: {
-        actorUserId: params.actorUserId,
+        actorUserId: params.actorUserId ?? undefined,
         entityType: "STOCK_RESERVATION",
         entityId: reservation.id,
         action: "RESERVATION_CREATED",

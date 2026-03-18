@@ -14,13 +14,24 @@ import {
   type AuthenticatedUser
 } from "@velora/contracts";
 
+import {
+  hashGuestCartToken,
+  type CommerceContext
+} from "../../common/commerce-context";
 import { CartService } from "../cart/cart.service";
 import { PrismaService } from "../database/prisma.service";
 import { InventoryService } from "../inventory/inventory.service";
 import {
+  parseCheckoutAddressSnapshot,
+  parseCheckoutContactSnapshot,
+  serializeCheckoutAddress,
+  serializeCheckoutContact
+} from "./checkout.helpers";
+import {
   mapOrderSummary,
   orderSummaryInclude
 } from "../orders/order.helpers";
+import { OrdersService } from "../orders/orders.service";
 import { pricingSnapshotSchema } from "../promotions/pricing.helpers";
 import {
   buildSearchDocument,
@@ -69,7 +80,8 @@ export class CheckoutService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly cartService: CartService,
-    private readonly inventoryService: InventoryService
+    private readonly inventoryService: InventoryService,
+    private readonly ordersService: OrdersService
   ) {}
 
   async getOverview(viewer: AuthenticatedUser) {
@@ -107,14 +119,11 @@ export class CheckoutService {
   }
 
   async getCheckoutSessionDetail(
-    viewer: AuthenticatedUser,
+    context: CommerceContext,
     checkoutSessionId: string
   ) {
     const checkoutSession = await this.prisma.checkoutSession.findFirst({
-      where: {
-        id: checkoutSessionId,
-        userId: viewer.id
-      },
+      where: this.buildCheckoutOwnershipWhere(context, checkoutSessionId),
       include: checkoutDetailInclude.include
     });
 
@@ -127,25 +136,34 @@ export class CheckoutService {
     return this.mapCheckoutSessionDetail(checkoutSession);
   }
 
-  async createCheckoutSession(viewer: AuthenticatedUser, rawInput: unknown) {
+  async createCheckoutSession(context: CommerceContext, rawInput: unknown) {
     const input = createCheckoutSessionRequestSchema.parse(rawInput);
     const now = new Date();
     const reservationExpiresAt = new Date(
       now.getTime() + RESERVATION_TTL_MINUTES * 60 * 1000
     );
     const idempotencyKey = input.idempotencyKey ?? randomUUID();
+    const customerSnapshot = serializeCheckoutContact(input.customer);
+    const deliveryAddressSnapshot = serializeCheckoutAddress(
+      input.deliveryAddress
+    );
 
     return this.prisma.$transaction(async (tx) => {
       await this.inventoryService.releaseExpiredReservationsWithinTransaction(
         tx,
         now,
-        viewer.id
+        context.user?.id ?? null
+      );
+
+      const { cart, pricing } = await this.cartService.prepareCartForCheckout(
+        tx,
+        context
       );
 
       const existingSession = await tx.checkoutSession.findFirst({
         where: {
           idempotencyKey,
-          userId: viewer.id
+          cartId: cart.id
         },
         include: {
           reservations: {
@@ -174,11 +192,6 @@ export class CheckoutService {
         });
       }
 
-      const { cart, pricing } = await this.cartService.prepareCartForCheckout(
-        tx,
-        viewer.id
-      );
-
       if (cart.items.length === 0) {
         throw new BadRequestException("The cart is empty.");
       }
@@ -199,7 +212,7 @@ export class CheckoutService {
         await this.inventoryService.releaseReservationsForCheckoutSessionWithinTransaction(
           tx,
           session.id,
-          viewer.id,
+          context.user?.id ?? null,
           "Superseded by a newer checkout session."
         );
 
@@ -217,11 +230,14 @@ export class CheckoutService {
       const checkoutSession = await tx.checkoutSession.create({
         data: {
           cartId: cart.id,
-          userId: viewer.id,
+          userId: context.user?.id,
           status: "STARTED",
           amount: pricing.total,
           currency: pricing.currency,
           pricingSnapshot: pricing as Prisma.InputJsonValue,
+          customerSnapshot: customerSnapshot as Prisma.InputJsonValue,
+          deliveryAddressSnapshot:
+            deliveryAddressSnapshot as Prisma.InputJsonValue,
           idempotencyKey,
           reservationExpiresAt
         }
@@ -237,7 +253,7 @@ export class CheckoutService {
         await this.inventoryService.reserveInventoryForCheckoutWithinTransaction(
           tx,
           {
-            actorUserId: viewer.id,
+            actorUserId: context.user?.id ?? null,
             cartId: cart.id,
             checkoutSessionId: checkoutSession.id,
             inventoryItemId: item.listing.inventoryItem.id,
@@ -249,13 +265,14 @@ export class CheckoutService {
 
       await tx.auditLog.create({
         data: {
-          actorUserId: viewer.id,
+          actorUserId: context.user?.id ?? undefined,
           entityType: "CHECKOUT_SESSION",
           entityId: checkoutSession.id,
           action: "CHECKOUT_SESSION_CREATED",
           details: {
             cartId: cart.id,
             itemCount: cart.items.length,
+            checkoutMode: context.user ? "authenticated" : "guest",
             reservationExpiresAt: reservationExpiresAt.toISOString()
           }
         }
@@ -292,6 +309,13 @@ export class CheckoutService {
     return this.mapCheckoutSessionDetail(checkoutSession);
   }
 
+  async getCheckoutConfirmationDetail(
+    context: CommerceContext,
+    number: string
+  ) {
+    return this.ordersService.getCheckoutConfirmationDetail(context, number);
+  }
+
   private mapCheckoutSessionDetail(checkoutSession: CheckoutDetailRecord) {
     const pricingSnapshot =
       pricingSnapshotSchema.safeParse(checkoutSession.pricingSnapshot).data ??
@@ -300,11 +324,16 @@ export class CheckoutService {
     return checkoutSessionDetailSchema.parse({
       checkoutSessionId: checkoutSession.id,
       cartId: checkoutSession.cartId,
+      checkoutMode: checkoutSession.userId ? "authenticated" : "guest",
       status: checkoutSession.status,
       amount: {
         amount: checkoutSession.amount,
         currency: checkoutSession.currency
       },
+      customer: parseCheckoutContactSnapshot(checkoutSession.customerSnapshot),
+      deliveryAddress: parseCheckoutAddressSnapshot(
+        checkoutSession.deliveryAddressSnapshot
+      ),
       reservationExpiresAt:
         checkoutSession.reservationExpiresAt?.toISOString() ?? null,
       reservations: checkoutSession.reservations.map((reservation) => {
@@ -341,5 +370,31 @@ export class CheckoutService {
       ),
       order: checkoutSession.order ? mapOrderSummary(checkoutSession.order) : null
     });
+  }
+
+  private buildCheckoutOwnershipWhere(
+    context: CommerceContext,
+    checkoutSessionId: string
+  ) {
+    if (context.user) {
+      return {
+        id: checkoutSessionId,
+        userId: context.user.id
+      };
+    }
+
+    if (context.guestCartToken) {
+      return {
+        id: checkoutSessionId,
+        cart: {
+          guestTokenHash: hashGuestCartToken(context.guestCartToken),
+          userId: null
+        }
+      };
+    }
+
+    return {
+      id: "__missing_checkout_scope__"
+    };
   }
 }

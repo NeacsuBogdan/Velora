@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { Badge, Panel } from "@velora/ui";
 
@@ -8,8 +7,7 @@ import { StorefrontChrome } from "../../../../components/storefront-chrome";
 import { formatDateTime, formatMoney } from "../../../../lib/formatting";
 import { formatStatusLabel } from "../../../../lib/status-label";
 import {
-  getOrderDetail,
-  getSession
+  getCheckoutConfirmationOrder
 } from "../../../../lib/storefront-api";
 
 export const dynamic = "force-dynamic";
@@ -19,14 +17,21 @@ export default async function OrderConfirmationPage({
 }: {
   params: Promise<{ number: string }>;
 }): Promise<React.JSX.Element> {
-  const session = await getSession();
-
-  if (!session) {
-    redirect("/login?from=/checkout");
-  }
-
   const { number } = await params;
-  const order = await getOrderDetail(number);
+  const order = await getCheckoutConfirmationOrder(number);
+
+  const deliveryLines = order?.deliveryAddress
+    ? [
+        order.deliveryAddress.fullName,
+        order.deliveryAddress.line1,
+        order.deliveryAddress.line2,
+        [order.deliveryAddress.city, order.deliveryAddress.state]
+          .filter(Boolean)
+          .join(", "),
+        `${order.deliveryAddress.postalCode} ${order.deliveryAddress.countryCode}`,
+        order.deliveryAddress.phone
+      ].filter(Boolean)
+    : [];
 
   return (
     <StorefrontChrome>
@@ -42,9 +47,9 @@ export default async function OrderConfirmationPage({
           <div className="mt-6">
             <Link
               className="inline-flex items-center justify-center rounded-full bg-[var(--foreground)] px-5 py-3 text-sm font-semibold text-white"
-              href="/account"
+              href="/"
             >
-              Go to account
+              Back to marketplace
             </Link>
           </div>
         </Panel>
@@ -178,6 +183,33 @@ export default async function OrderConfirmationPage({
             </section>
 
             <aside className="space-y-5">
+              <Panel className="space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
+                  Delivery snapshot
+                </p>
+                {order.customer ? (
+                  <div className="grid gap-2 text-sm text-[var(--muted)]">
+                    <p className="font-semibold text-[var(--foreground)]">
+                      {order.customer.firstName} {order.customer.lastName}
+                    </p>
+                    <p>{order.customer.email}</p>
+                    {order.customer.phone ? <p>{order.customer.phone}</p> : null}
+                  </div>
+                ) : (
+                  <p className="text-sm leading-7 text-[var(--muted)]">
+                    This order was created before delivery snapshots were stored.
+                  </p>
+                )}
+
+                {deliveryLines.length ? (
+                  <div className="grid gap-2 border-t border-[var(--stroke)] pt-3 text-sm text-[var(--muted)]">
+                    {deliveryLines.map((line) => (
+                      <p key={line}>{line}</p>
+                    ))}
+                  </div>
+                ) : null}
+              </Panel>
+
               <Panel className="space-y-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
                   Status timeline

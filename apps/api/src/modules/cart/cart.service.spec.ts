@@ -238,16 +238,19 @@ describe("CartService", () => {
 
     const result = await cartService.addItem(
       {
-        id: "user-1",
-        email: "customer@velora.local",
-        firstName: "Demo",
-        lastName: "Customer",
-        roles: [
-          {
-            code: "CUSTOMER",
-            name: "Customer"
-          }
-        ]
+        user: {
+          id: "user-1",
+          email: "customer@velora.local",
+          firstName: "Demo",
+          lastName: "Customer",
+          roles: [
+            {
+              code: "CUSTOMER",
+              name: "Customer"
+            }
+          ]
+        },
+        guestCartToken: null
       },
       {
         listingId: "clisting001",

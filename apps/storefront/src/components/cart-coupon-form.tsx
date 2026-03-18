@@ -2,9 +2,7 @@
 
 import { Button } from "@velora/ui";
 import { startTransition, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
-
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+import { useRouter } from "next/navigation";
 
 interface CartCouponFormProps {
   couponCode: string | null;
@@ -14,7 +12,6 @@ export function CartCouponForm({
   couponCode
 }: CartCouponFormProps): React.JSX.Element {
   const router = useRouter();
-  const pathname = usePathname();
   const [value, setValue] = useState(couponCode ?? "");
   const [pendingAction, setPendingAction] = useState<"apply" | "remove" | null>(
     null
@@ -33,33 +30,32 @@ export function CartCouponForm({
     setErrorMessage(null);
 
     startTransition(async () => {
-      const response = await fetch(`${apiUrl}/cart/coupon`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          couponCode: normalizedValue
-        })
-      });
+      try {
+        const response = await fetch("/api/commerce/cart/coupon", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            couponCode: normalizedValue
+          })
+        });
 
-      if (response.status === 401) {
-        router.push(`/login?from=${encodeURIComponent(pathname)}`);
-        return;
-      }
+        if (!response.ok) {
+          setErrorMessage(
+            "The coupon could not be applied to the current cart."
+          );
+          setPendingAction(null);
+          return;
+        }
 
-      if (!response.ok) {
-        setErrorMessage(
-          "The coupon could not be applied to the current cart."
-        );
+        setValue(normalizedValue);
         setPendingAction(null);
-        return;
+        router.refresh();
+      } catch {
+        setErrorMessage("The coupon could not be applied right now.");
+        setPendingAction(null);
       }
-
-      setValue(normalizedValue);
-      setPendingAction(null);
-      router.refresh();
     });
   }
 
@@ -68,25 +64,24 @@ export function CartCouponForm({
     setErrorMessage(null);
 
     startTransition(async () => {
-      const response = await fetch(`${apiUrl}/cart/coupon`, {
-        method: "DELETE",
-        credentials: "include"
-      });
+      try {
+        const response = await fetch("/api/commerce/cart/coupon", {
+          method: "DELETE"
+        });
 
-      if (response.status === 401) {
-        router.push(`/login?from=${encodeURIComponent(pathname)}`);
-        return;
-      }
+        if (!response.ok) {
+          setErrorMessage("The coupon could not be removed right now.");
+          setPendingAction(null);
+          return;
+        }
 
-      if (!response.ok) {
+        setValue("");
+        setPendingAction(null);
+        router.refresh();
+      } catch {
         setErrorMessage("The coupon could not be removed right now.");
         setPendingAction(null);
-        return;
       }
-
-      setValue("");
-      setPendingAction(null);
-      router.refresh();
     });
   }
 

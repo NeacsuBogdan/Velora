@@ -31,6 +31,10 @@ import { cookies } from "next/headers";
 
 import { type CatalogQueryInput, toUrlSearchParams } from "./catalog-query";
 import { apiUrl } from "./api-url";
+import {
+  buildCommerceHeaders,
+  GUEST_CART_COOKIE_NAME
+} from "./commerce-session";
 
 export const STOREFRONT_API_URL =
   apiUrl;
@@ -131,14 +135,29 @@ async function getAuthenticatedJson<T>(path: string): Promise<T | null> {
 }
 
 export async function getCart(): Promise<CartDetail | null> {
-  return getAuthenticatedJson<CartDetail>("/cart");
+  const cookieStore = await cookies();
+  const sessionToken = cookieStore.get("velora_session")?.value;
+  const guestCartToken = cookieStore.get(GUEST_CART_COOKIE_NAME)?.value;
+
+  return requestJson<CartDetail>("/cart", {
+    cache: "no-store",
+    headers: buildCommerceHeaders(sessionToken, guestCartToken)
+  });
 }
 
 export async function getCheckoutSession(
   checkoutSessionId: string,
 ): Promise<CheckoutSessionDetail | null> {
-  return getAuthenticatedJson<CheckoutSessionDetail>(
+  const cookieStore = await cookies();
+  const sessionToken = cookieStore.get("velora_session")?.value;
+  const guestCartToken = cookieStore.get(GUEST_CART_COOKIE_NAME)?.value;
+
+  return requestJson<CheckoutSessionDetail>(
     `/checkout/sessions/${checkoutSessionId}`,
+    {
+      cache: "no-store",
+      headers: buildCommerceHeaders(sessionToken, guestCartToken)
+    }
   );
 }
 
@@ -147,6 +166,22 @@ export async function getOrderDetail(
 ): Promise<OrderDetail | null> {
   return getAuthenticatedJson<OrderDetail>(
     `/orders/${encodeURIComponent(number)}`,
+  );
+}
+
+export async function getCheckoutConfirmationOrder(
+  number: string
+): Promise<OrderDetail | null> {
+  const cookieStore = await cookies();
+  const sessionToken = cookieStore.get("velora_session")?.value;
+  const guestCartToken = cookieStore.get(GUEST_CART_COOKIE_NAME)?.value;
+
+  return requestJson<OrderDetail>(
+    `/checkout/confirmations/${encodeURIComponent(number)}`,
+    {
+      cache: "no-store",
+      headers: buildCommerceHeaders(sessionToken, guestCartToken)
+    }
   );
 }
 

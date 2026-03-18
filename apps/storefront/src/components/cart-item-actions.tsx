@@ -2,9 +2,7 @@
 
 import { Button } from "@velora/ui";
 import { startTransition, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
-
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+import { useRouter } from "next/navigation";
 
 interface CartItemActionsProps {
   itemId: string;
@@ -16,7 +14,6 @@ export function CartItemActions({
   quantity
 }: CartItemActionsProps): React.JSX.Element {
   const router = useRouter();
-  const pathname = usePathname();
   const [isPending, setIsPending] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -26,15 +23,7 @@ export function CartItemActions({
 
     startTransition(async () => {
       try {
-        const response = await fetch(url, {
-          ...init,
-          credentials: "include"
-        });
-
-        if (response.status === 401) {
-          router.push(`/login?from=${encodeURIComponent(pathname)}`);
-          return;
-        }
+        const response = await fetch(url, init);
 
         if (!response.ok) {
           setErrorMessage("The cart update was rejected. Refresh and try again.");
@@ -52,7 +41,7 @@ export function CartItemActions({
   }
 
   function updateQuantity(nextQuantity: number) {
-    runMutation(`${apiUrl}/cart/items/${itemId}`, {
+    runMutation(`/api/commerce/cart/items/${itemId}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json"
@@ -64,7 +53,7 @@ export function CartItemActions({
   }
 
   function removeItem() {
-    runMutation(`${apiUrl}/cart/items/${itemId}`, {
+    runMutation(`/api/commerce/cart/items/${itemId}`, {
       method: "DELETE"
     });
   }

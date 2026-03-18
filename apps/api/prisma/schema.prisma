@@ -571,6 +571,7 @@ model InventoryMovement {
 model Cart {
   id               String             @id @default(cuid())
   userId           String?
+  guestTokenHash   String?
   status           CartStatus         @default(ACTIVE)
   currency         String             @default("RON")
   couponCode       String?
@@ -587,6 +588,7 @@ model Cart {
   user             User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId, status])
+  @@index([guestTokenHash, status])
 }
 
 model CartItem {
@@ -615,6 +617,8 @@ model CheckoutSession {
   amount               Int
   currency             String             @default("RON")
   pricingSnapshot      Json?
+  customerSnapshot     Json?
+  deliveryAddressSnapshot Json?
   reservationExpiresAt DateTime?
   idempotencyKey       String             @unique
   createdAt            DateTime           @default(now())
@@ -682,6 +686,8 @@ model Order {
   status            OrderStatus               @default(CREATED)
   paymentStatus     PaymentStatus             @default(PENDING)
   currency          String                    @default("RON")
+  customerSnapshot  Json?
+  deliveryAddressSnapshot Json?
   subtotal          Int
   discountTotal     Int                       @default(0)
   total             Int

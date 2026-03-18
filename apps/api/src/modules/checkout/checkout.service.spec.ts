@@ -30,6 +30,9 @@ describe("CheckoutService", () => {
     releaseReservationsForCheckoutSessionWithinTransaction: vi.fn(),
     reserveInventoryForCheckoutWithinTransaction: vi.fn()
   };
+  const ordersService = {
+    getCheckoutConfirmationDetail: vi.fn()
+  };
 
   let checkoutService: CheckoutService;
 
@@ -38,7 +41,8 @@ describe("CheckoutService", () => {
     checkoutService = new CheckoutService(
       prisma as never,
       cartService as never,
-      inventoryService as never
+      inventoryService as never,
+      ordersService as never
     );
     inventoryService.releaseExpiredReservationsWithinTransaction.mockResolvedValue(
       {
@@ -96,18 +100,34 @@ describe("CheckoutService", () => {
 
     const result = await checkoutService.createCheckoutSession(
       {
-        id: "user-1",
-        email: "customer@velora.local",
-        firstName: "Demo",
-        lastName: "Customer",
-        roles: [
-          {
-            code: "CUSTOMER",
-            name: "Customer"
-          }
-        ]
+        user: {
+          id: "user-1",
+          email: "customer@velora.local",
+          firstName: "Demo",
+          lastName: "Customer",
+          roles: [
+            {
+              code: "CUSTOMER",
+              name: "Customer"
+            }
+          ]
+        },
+        guestCartToken: null
       },
-      {}
+      {
+        customer: {
+          firstName: "Demo",
+          lastName: "Customer",
+          email: "customer@velora.local"
+        },
+        deliveryAddress: {
+          fullName: "Demo Customer",
+          line1: "Strada Demo 10",
+          city: "Bucharest",
+          postalCode: "010101",
+          countryCode: "RO"
+        }
+      }
     );
 
     expect(cartService.prepareCartForCheckout).toHaveBeenCalled();
@@ -131,23 +151,38 @@ describe("CheckoutService", () => {
 
     const result = await checkoutService.createCheckoutSession(
       {
-        id: "user-1",
-        email: "customer@velora.local",
-        firstName: "Demo",
-        lastName: "Customer",
-        roles: [
-          {
-            code: "CUSTOMER",
-            name: "Customer"
-          }
-        ]
+        user: {
+          id: "user-1",
+          email: "customer@velora.local",
+          firstName: "Demo",
+          lastName: "Customer",
+          roles: [
+            {
+              code: "CUSTOMER",
+              name: "Customer"
+            }
+          ]
+        },
+        guestCartToken: null
       },
       {
-        idempotencyKey: "checkout-session-key"
+        idempotencyKey: "checkout-session-key",
+        customer: {
+          firstName: "Demo",
+          lastName: "Customer",
+          email: "customer@velora.local"
+        },
+        deliveryAddress: {
+          fullName: "Demo Customer",
+          line1: "Strada Demo 10",
+          city: "Bucharest",
+          postalCode: "010101",
+          countryCode: "RO"
+        }
       }
     );
 
-    expect(cartService.prepareCartForCheckout).not.toHaveBeenCalled();
+    expect(cartService.prepareCartForCheckout).toHaveBeenCalledTimes(1);
     expect(
       inventoryService.reserveInventoryForCheckoutWithinTransaction
     ).not.toHaveBeenCalled();

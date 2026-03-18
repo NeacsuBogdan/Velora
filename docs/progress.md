@@ -180,6 +180,19 @@
 - Tightened the selected-offer summary cards so price and stock metrics collapse more gracefully on narrower seller workspace widths instead of overflowing across adjacent cards.
 - Tightened storefront role-aware navigation so admin-only and seller-only sessions no longer expose the broken customer account entry point, and added explicit marketplace/workspace return actions on the notifications page.
 
+### Post Stage 11 follow-up: guest checkout and delivery capture
+
+- Reworked the buy flow so carts, checkout sessions, and payment attempts can now belong either to an authenticated customer session or to a durable guest cart token carried in a storefront-managed cookie.
+- Added persisted customer-contact and delivery-address snapshots to checkout sessions and orders, which makes the fulfilment context explicit instead of assuming account data at payment time.
+- Added a real delivery step on the storefront checkout page, with prefilled account defaults for signed-in customers and a proper guest-checkout form for anonymous buyers.
+- Removed the old forced-login path from cart and checkout, so visitors can now add products, manage quantities, apply coupons, and complete payment as guests.
+- Moved storefront cart, checkout, and payment mutations behind a same-origin commerce proxy, which keeps guest and authenticated commerce actions on a stable cookie/header path instead of fragile browser-to-API cross-port calls.
+- Added guest-accessible order confirmation retrieval using the same guest cart token, so a guest can still revisit the immediate post-payment confirmation without a customer account.
+- Extended customer order detail and checkout confirmation pages to show the persisted delivery snapshot, keeping the order record understandable after checkout is completed.
+- Hardened the shared `normalize-next-env` script by generating missing `.next/types` stubs, which fixes the intermittent workspace-root `pnpm typecheck` failure under Turbo.
+- Verified `pnpm --filter @velora/api lint`, `pnpm --filter @velora/api typecheck`, `pnpm --filter @velora/api test`, `pnpm --filter @velora/api build`, `pnpm --filter @velora/storefront lint`, `pnpm --filter @velora/storefront typecheck`, `pnpm --filter @velora/storefront test`, `pnpm --filter @velora/storefront build`, `pnpm --filter @velora/admin typecheck`, `pnpm --filter @velora/admin build`, plus root `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.
+- Attempted `pnpm test:e2e`, but the Playwright run was blocked because `http://localhost:3000` was already in use by an existing local server process during this session.
+
 ## Important implementation notes
 
 - Internal packages are designed to build independently so the apps can consume stable outputs.
@@ -232,6 +245,8 @@
 - Seller-owned product deletion is now intentionally gated behind an archived offer state, which keeps destructive merchant cleanup aligned with safer marketplace operations while still allowing reactivation from the same workspace.
 - The seller workspace now uses one unified selector/detail model for both shared-catalog offers and seller-owned catalog records, while still exposing product-content controls only when the merchant owns the underlying product.
 - The storefront header now only exposes the customer account path to sessions that actually carry the `CUSTOMER` role, while `/account` itself redirects admin and seller sessions back to their proper workspaces.
+- Checkout and payment flows now support both authenticated customers and guests, with delivery-contact snapshots persisted on the checkout session and final order for fulfilment correctness.
+- The shared Next normalization script now backfills missing `.next/types/cache-life.d.ts` and `.next/types/validator.ts` stubs, which keeps root workspace typechecking stable after route generation.
 
 ## Known follow-up items
 
@@ -242,3 +257,4 @@
 - Run the new Stage 10 migration and `pnpm perf:smoke` once local infrastructure is available again so the EXPLAIN output can be captured alongside the committed query-review notes.
 - Replace manual activation-link handoff with email delivery and expirable admin-issued invites once outbound notification infrastructure is introduced.
 - Extend the new in-app notification system with digest preferences, outbound delivery channels, and real-time transport once notification infrastructure moves beyond the MVP phase.
+- Extend guest checkout into account-claim and cart-merge flows, so a buyer can create an account after ordering and attach historical guest orders without losing continuity.

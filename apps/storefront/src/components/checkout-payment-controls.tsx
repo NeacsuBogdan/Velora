@@ -8,9 +8,7 @@ import type {
 import { Button } from "@velora/ui";
 import Link from "next/link";
 import { startTransition, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
-
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+import { useRouter } from "next/navigation";
 
 interface PaymentConfirmationResponse {
   attempt: PaymentAttemptSummary;
@@ -43,7 +41,6 @@ export function CheckoutPaymentControls({
   initialOrderNumber
 }: CheckoutPaymentControlsProps): React.JSX.Element {
   const router = useRouter();
-  const pathname = usePathname();
   const [attempt, setAttempt] = useState(initialAttempt);
   const [checkoutStatus, setCheckoutStatus] = useState(initialStatus);
   const [orderNumber, setOrderNumber] = useState(initialOrderNumber);
@@ -57,39 +54,40 @@ export function CheckoutPaymentControls({
     setMessage(null);
 
     startTransition(async () => {
-      const response = await fetch(
-        `${apiUrl}/payments/checkout-sessions/${checkoutSessionId}/attempts`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          credentials: "include",
-          body: JSON.stringify({
-            idempotencyKey: crypto.randomUUID()
-          })
+      try {
+        const response = await fetch(
+          `/api/commerce/payments/checkout-sessions/${checkoutSessionId}/attempts`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              idempotencyKey: crypto.randomUUID()
+            })
+          }
+        );
+
+        if (!response.ok) {
+          setErrorMessage(
+            "Payment preparation failed. Verify the reservation is still active."
+          );
+          setPendingAction(null);
+          return;
         }
-      );
 
-      if (response.status === 401) {
-        router.push(`/login?from=${encodeURIComponent(pathname)}`);
-        return;
-      }
-
-      if (!response.ok) {
+        const nextAttempt = (await response.json()) as PaymentAttemptSummary;
+        setAttempt(nextAttempt);
+        setCheckoutStatus("PAYMENT_PENDING");
+        setMessage("Payment attempt created. Choose a sandbox outcome to continue.");
+        setPendingAction(null);
+        router.refresh();
+      } catch {
         setErrorMessage(
-          "Payment preparation failed. Verify the reservation is still active."
+          "The storefront could not prepare the payment attempt right now."
         );
         setPendingAction(null);
-        return;
       }
-
-      const nextAttempt = (await response.json()) as PaymentAttemptSummary;
-      setAttempt(nextAttempt);
-      setCheckoutStatus("PAYMENT_PENDING");
-      setMessage("Payment attempt created. Choose a sandbox outcome to continue.");
-      setPendingAction(null);
-      router.refresh();
     });
   }
 
@@ -103,50 +101,51 @@ export function CheckoutPaymentControls({
     setMessage(null);
 
     startTransition(async () => {
-      const response = await fetch(
-        `${apiUrl}/payments/attempts/${attempt.attemptId}/confirm`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          credentials: "include",
-          body: JSON.stringify({
-            scenario
-          })
+      try {
+        const response = await fetch(
+          `/api/commerce/payments/attempts/${attempt.attemptId}/confirm`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              scenario
+            })
+          }
+        );
+
+        if (!response.ok) {
+          setErrorMessage(
+            "Payment confirmation failed. Refresh the checkout session or create a new attempt."
+          );
+          setPendingAction(null);
+          return;
         }
-      );
 
-      if (response.status === 401) {
-        router.push(`/login?from=${encodeURIComponent(pathname)}`);
-        return;
-      }
+        const confirmation =
+          (await response.json()) as PaymentConfirmationResponse;
+        setAttempt(confirmation.attempt);
+        setCheckoutStatus(confirmation.checkout.status);
+        setMessage(confirmation.message);
+        setOrderNumber(confirmation.order?.number ?? null);
+        setPendingAction(null);
 
-      if (!response.ok) {
+        if (confirmation.order?.number) {
+          router.push(
+            `/checkout/confirmation/${encodeURIComponent(confirmation.order.number)}`
+          );
+          router.refresh();
+          return;
+        }
+
+        router.refresh();
+      } catch {
         setErrorMessage(
-          "Payment confirmation failed. Refresh the session or create a new attempt."
+          "The storefront could not submit the payment confirmation right now."
         );
         setPendingAction(null);
-        return;
       }
-
-      const confirmation =
-        (await response.json()) as PaymentConfirmationResponse;
-      setAttempt(confirmation.attempt);
-      setCheckoutStatus(confirmation.checkout.status);
-      setMessage(confirmation.message);
-      setOrderNumber(confirmation.order?.number ?? null);
-      setPendingAction(null);
-
-      if (confirmation.order?.number) {
-        router.push(
-          `/checkout/confirmation/${encodeURIComponent(confirmation.order.number)}`
-        );
-        router.refresh();
-        return;
-      }
-
-      router.refresh();
     });
   }
 

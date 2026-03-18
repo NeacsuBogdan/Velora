@@ -11,9 +11,11 @@ import {
 import type { AuthenticatedUser } from "@velora/contracts";
 
 import type { AuthenticatedRequest } from "../../common/authenticated-request";
+import { GUEST_CART_TOKEN_HEADER } from "../../common/commerce-context";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { RateLimit } from "../../common/decorators/rate-limit.decorator";
 import { Roles } from "../../common/decorators/roles.decorator";
+import { OptionalSessionAuthGuard } from "../../common/guards/optional-session-auth.guard";
 import { RateLimitGuard } from "../../common/guards/rate-limit.guard";
 import { RolesGuard } from "../../common/guards/roles.guard";
 import { SessionAuthGuard } from "../../common/guards/session-auth.guard";
@@ -31,31 +33,41 @@ export class PaymentsController {
   }
 
   @Post("checkout-sessions/:checkoutSessionId/attempts")
-  @UseGuards(SessionAuthGuard, RolesGuard, RateLimitGuard)
+  @UseGuards(OptionalSessionAuthGuard, RateLimitGuard)
   @RateLimit("PAYMENT_ATTEMPT_CREATE")
-  @Roles("CUSTOMER")
   createPaymentAttempt(
-    @CurrentUser() viewer: AuthenticatedUser,
+    @Req() request: AuthenticatedRequest,
+    @Headers(GUEST_CART_TOKEN_HEADER) guestCartToken: string | undefined,
     @Param("checkoutSessionId") checkoutSessionId: string,
     @Body() body: unknown
   ) {
     return this.paymentsService.createPaymentAttempt(
-      viewer,
+      {
+        user: request.auth?.user ?? null,
+        guestCartToken: guestCartToken ?? null
+      },
       checkoutSessionId,
       body
     );
   }
 
   @Post("attempts/:attemptId/confirm")
-  @UseGuards(SessionAuthGuard, RolesGuard, RateLimitGuard)
+  @UseGuards(OptionalSessionAuthGuard, RateLimitGuard)
   @RateLimit("PAYMENT_ATTEMPT_CONFIRM")
-  @Roles("CUSTOMER")
   confirmPaymentAttempt(
-    @CurrentUser() viewer: AuthenticatedUser,
+    @Req() request: AuthenticatedRequest,
+    @Headers(GUEST_CART_TOKEN_HEADER) guestCartToken: string | undefined,
     @Param("attemptId") attemptId: string,
     @Body() body: unknown
   ) {
-    return this.paymentsService.confirmPaymentAttempt(viewer, attemptId, body);
+    return this.paymentsService.confirmPaymentAttempt(
+      {
+        user: request.auth?.user ?? null,
+        guestCartToken: guestCartToken ?? null
+      },
+      attemptId,
+      body
+    );
   }
 
   @Post("orders/:orderId/refunds")

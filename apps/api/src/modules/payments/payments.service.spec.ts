@@ -16,16 +16,37 @@ const viewer: AuthenticatedUser = {
     },
   ],
 };
+const customerContext = {
+  user: viewer,
+  guestCartToken: null,
+} as const;
 const reservationExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
 function createCheckoutDetail(overrides: Record<string, unknown> = {}) {
   return {
     checkoutSessionId: "checkout-1",
     cartId: "cart-1",
+    checkoutMode: "authenticated",
     status: "COMPLETED",
     amount: {
       amount: 329900,
       currency: "RON",
+    },
+    customer: {
+      firstName: "Demo",
+      lastName: "Customer",
+      email: "customer@velora.local",
+      phone: null,
+    },
+    deliveryAddress: {
+      fullName: "Demo Customer",
+      line1: "Strada Demo 10",
+      line2: null,
+      city: "Bucharest",
+      state: null,
+      postalCode: "010101",
+      countryCode: "RO",
+      phone: null,
     },
     reservationExpiresAt: reservationExpiresAt.toISOString(),
     reservations: [],
@@ -221,7 +242,7 @@ describe("PaymentsService", () => {
     });
 
     const result = await paymentsService.createPaymentAttempt(
-      viewer,
+      customerContext,
       "checkout-1",
       {
         idempotencyKey: "payment-key-1",
@@ -333,7 +354,7 @@ describe("PaymentsService", () => {
     );
 
     const result = await paymentsService.confirmPaymentAttempt(
-      viewer,
+      customerContext,
       "attempt-1",
       {
         scenario: "success",
@@ -383,7 +404,7 @@ describe("PaymentsService", () => {
       });
 
     const result = await paymentsService.confirmPaymentAttempt(
-      viewer,
+      customerContext,
       "attempt-1",
       {
         scenario: "success",

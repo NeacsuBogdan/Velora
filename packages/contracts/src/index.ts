@@ -95,6 +95,58 @@ export const addressSummarySchema = z.object({
 
 export type AddressSummary = z.infer<typeof addressSummarySchema>;
 
+export const checkoutContactInputSchema = z.object({
+  firstName: z.string().trim().min(1).max(80),
+  lastName: z.string().trim().min(1).max(80),
+  email: z.string().trim().email(),
+  phone: z.string().trim().min(6).max(32).optional()
+});
+
+export type CheckoutContactInput = z.infer<typeof checkoutContactInputSchema>;
+
+export const checkoutContactSummarySchema = z.object({
+  firstName: z.string(),
+  lastName: z.string(),
+  email: z.string().email(),
+  phone: z.string().nullable()
+});
+
+export type CheckoutContactSummary = z.infer<
+  typeof checkoutContactSummarySchema
+>;
+
+export const checkoutAddressInputSchema = z.object({
+  fullName: z.string().trim().min(1).max(120),
+  line1: z.string().trim().min(1).max(120),
+  line2: z.string().trim().max(120).optional(),
+  city: z.string().trim().min(1).max(80),
+  state: z.string().trim().max(80).optional(),
+  postalCode: z.string().trim().min(1).max(24),
+  countryCode: z
+    .string()
+    .trim()
+    .length(2)
+    .transform((value) => value.toUpperCase()),
+  phone: z.string().trim().max(32).optional()
+});
+
+export type CheckoutAddressInput = z.infer<typeof checkoutAddressInputSchema>;
+
+export const checkoutAddressSummarySchema = z.object({
+  fullName: z.string(),
+  line1: z.string(),
+  line2: z.string().nullable(),
+  city: z.string(),
+  state: z.string().nullable(),
+  postalCode: z.string(),
+  countryCode: z.string().length(2),
+  phone: z.string().nullable()
+});
+
+export type CheckoutAddressSummary = z.infer<
+  typeof checkoutAddressSummarySchema
+>;
+
 export const customerProfileSchema = authenticatedUserSchema.extend({
   defaultShippingAddress: addressSummarySchema.nullable(),
   defaultBillingAddress: addressSummarySchema.nullable(),
@@ -591,7 +643,9 @@ export const orderStatusSchema = z.enum([
 export type OrderStatus = z.infer<typeof orderStatusSchema>;
 
 export const createCheckoutSessionRequestSchema = z.object({
-  idempotencyKey: z.string().min(8).max(120).optional()
+  idempotencyKey: z.string().min(8).max(120).optional(),
+  customer: checkoutContactInputSchema,
+  deliveryAddress: checkoutAddressInputSchema
 });
 
 export type CreateCheckoutSessionRequest = z.infer<
@@ -857,8 +911,11 @@ export type OrderSummary = z.infer<typeof orderSummarySchema>;
 export const checkoutSessionDetailSchema = z.object({
   checkoutSessionId: z.string(),
   cartId: z.string(),
+  checkoutMode: z.enum(["authenticated", "guest"]),
   status: checkoutStatusSchema,
   amount: moneySchema,
+  customer: checkoutContactSummarySchema.nullable(),
+  deliveryAddress: checkoutAddressSummarySchema.nullable(),
   reservationExpiresAt: z.string().datetime().nullable(),
   reservations: z.array(checkoutReservationLineSchema),
   discounts: z.array(appliedDiscountSummarySchema),
@@ -912,6 +969,8 @@ export type OrderStatusHistoryEntry = z.infer<
 >;
 
 export const orderDetailSchema = orderSummarySchema.extend({
+  customer: checkoutContactSummarySchema.nullable(),
+  deliveryAddress: checkoutAddressSummarySchema.nullable(),
   items: z.array(orderItemDetailSchema),
   discounts: z.array(appliedDiscountSummarySchema),
   statusHistory: z.array(orderStatusHistoryEntrySchema),

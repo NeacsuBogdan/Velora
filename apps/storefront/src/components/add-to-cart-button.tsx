@@ -2,9 +2,7 @@
 
 import { Button } from "@velora/ui";
 import { startTransition, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
-
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+import { useRouter } from "next/navigation";
 
 interface AddToCartButtonProps {
   listingId: string;
@@ -22,7 +20,6 @@ export function AddToCartButton({
   className
 }: AddToCartButtonProps): React.JSX.Element {
   const router = useRouter();
-  const pathname = usePathname();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
 
@@ -32,26 +29,20 @@ export function AddToCartButton({
 
     startTransition(async () => {
       try {
-        const response = await fetch(`${apiUrl}/cart/items`, {
+        const response = await fetch("/api/commerce/cart/items", {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
           },
-          credentials: "include",
           body: JSON.stringify({
             listingId,
             quantity
           })
         });
 
-        if (response.status === 401) {
-          router.push(`/login?from=${encodeURIComponent(pathname)}`);
-          return;
-        }
-
         if (!response.ok) {
           setErrorMessage(
-            "The item could not be added. Check availability or sign in again."
+            "The item could not be added. Check availability and try again."
           );
           setIsPending(false);
           return;

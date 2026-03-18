@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { Badge, Panel } from "@velora/ui";
 
@@ -15,11 +14,6 @@ export const dynamic = "force-dynamic";
 
 export default async function CartPage(): Promise<React.JSX.Element> {
   const session = await getSession();
-
-  if (!session) {
-    redirect("/login?from=/cart");
-  }
-
   const cart = await getCart();
 
   return (
@@ -40,10 +34,21 @@ export default async function CartPage(): Promise<React.JSX.Element> {
         </div>
 
         <div className="rounded-[28px] border border-[var(--stroke)] bg-white/80 px-5 py-4 text-sm text-[var(--muted)] shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
-          Signed in as{" "}
-          <span className="font-semibold text-[var(--foreground)]">
-            {session.user.firstName} {session.user.lastName}
-          </span>
+          {session ? (
+            <>
+              Signed in as{" "}
+              <span className="font-semibold text-[var(--foreground)]">
+                {session.user.firstName} {session.user.lastName}
+              </span>
+            </>
+          ) : (
+            <>
+              Guest cart with{" "}
+              <span className="font-semibold text-[var(--foreground)]">
+                no account required
+              </span>
+            </>
+          )}
         </div>
       </section>
 
@@ -241,6 +246,7 @@ export default async function CartPage(): Promise<React.JSX.Element> {
               <StartCheckoutButton
                 activeCheckoutSessionId={cart.activeCheckout?.checkoutSessionId}
                 disabled={cart.items.length === 0}
+                label="Continue to checkout"
               />
             </Panel>
 

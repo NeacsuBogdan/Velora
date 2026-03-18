@@ -143,6 +143,12 @@ function createService() {
     notifyAdmins: vi.fn().mockResolvedValue({ count: 1 }),
     notifyUser: vi.fn().mockResolvedValue({ count: 1 })
   };
+  const promotionsService = {
+    createSellerPromotion: vi.fn(),
+    deleteSellerPromotion: vi.fn(),
+    listSellerPromotions: vi.fn(),
+    updateSellerPromotion: vi.fn()
+  };
 
   return {
     tx,
@@ -152,13 +158,15 @@ function createService() {
     openSearchService,
     cacheService,
     notificationsService,
+    promotionsService,
     service: new SellerService(
       prisma as never,
       auditService as never,
       projectionService as never,
       openSearchService as never,
       cacheService as never,
-      notificationsService as never
+      notificationsService as never,
+      promotionsService as never
     )
   };
 }

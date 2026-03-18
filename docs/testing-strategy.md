@@ -16,6 +16,7 @@ The API test suite focuses on business-critical behavior rather than shallow con
 - auth session behavior
 - promotion and pricing rules
 - promotion funding attribution and settlement splits
+- seller-funded campaign ownership and overlap rules
 - cart repricing and coupon application
 - checkout reservation creation
 - stock reservation release behavior

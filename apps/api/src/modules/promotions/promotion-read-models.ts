@@ -11,6 +11,13 @@ type DatabaseClient = PrismaService | Prisma.TransactionClient;
 
 export const promotionReadInclude = Prisma.validator<Prisma.PromotionDefaultArgs>()({
   include: {
+    ownerSeller: {
+      select: {
+        id: true,
+        slug: true,
+        displayName: true
+      }
+    },
     rules: {
       orderBy: {
         createdAt: "asc"

@@ -70,6 +70,10 @@ Access control is enforced by `SessionAuthGuard` and `RolesGuard`.
 - `GET /seller/dashboard`
 - `GET /seller/listings`
 - `GET /seller/catalog-options`
+- `GET /seller/promotions`
+- `POST /seller/promotions`
+- `PATCH /seller/promotions/:promotionId`
+- `DELETE /seller/promotions/:promotionId`
 - `POST /seller/listings`
 - `PATCH /seller/listings/:listingId`
 - `DELETE /seller/listings/:listingId`
@@ -402,6 +406,34 @@ Notes:
 - `sellerFundingSharePercent` is required only for `SHARED`.
 - Rule targeting can use listing IDs, category slugs, or coupon scope depending on the promotion type.
 - Product and category promotions feed both checkout pricing and storefront merchandising, including current-price and compare-at presentation.
+
+### Create a seller-funded listing campaign
+
+Request:
+
+```http
+POST /api/seller/promotions
+Content-Type: application/json
+Cookie: velora_session=...
+
+{
+  "name": "Weekend merchant markdown",
+  "description": "Seller-funded campaign for the active flagship offer.",
+  "type": "PERCENTAGE",
+  "listingId": "cksellerlisting000000000001",
+  "percentage": 8,
+  "isActive": true,
+  "startsAt": "2026-03-18T09:00:00.000Z",
+  "endsAt": "2026-03-20T21:00:00.000Z"
+}
+```
+
+Notes:
+
+- Seller routes create only `SELLER`-funded campaigns.
+- Seller campaigns are restricted to offers owned by the active merchant.
+- Seller campaigns are listing-scoped and cannot target global categories or other merchants.
+- Overlapping active seller campaigns on the same offer are rejected to keep pricing deterministic.
 
 Response shape:
 

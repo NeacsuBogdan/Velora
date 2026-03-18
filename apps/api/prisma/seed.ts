@@ -715,6 +715,7 @@ async function seedCatalogAndCommerce(): Promise<void> {
       name: "Welcome 5%",
       code: "WELCOME5",
       description: "Coupon-backed onboarding discount for first cart validation flows.",
+      ownerSellerId: null,
       type: PromotionType.PERCENTAGE,
       fundingSource: PromotionFundingSource.PLATFORM,
       stackingMode: PromotionStackingMode.STACKABLE,
@@ -734,6 +735,7 @@ async function seedCatalogAndCommerce(): Promise<void> {
       name: "Phones launch 10%",
       code: "PHONE10",
       description: "Automatic category discount for phone listings in the seeded catalog.",
+      ownerSellerId: null,
       type: PromotionType.CATEGORY_DISCOUNT,
       fundingSource: PromotionFundingSource.PLATFORM,
       stackingMode: PromotionStackingMode.STACKABLE,
@@ -750,6 +752,7 @@ async function seedCatalogAndCommerce(): Promise<void> {
       name: "Basket 150 RON",
       code: "BASKET150",
       description: "Threshold discount once the seeded cart reaches a higher basket value.",
+      ownerSellerId: null,
       type: PromotionType.CART_THRESHOLD,
       fundingSource: PromotionFundingSource.PLATFORM,
       stackingMode: PromotionStackingMode.STACKABLE,
@@ -766,6 +769,7 @@ async function seedCatalogAndCommerce(): Promise<void> {
       name: "TV & audio 3 for 2",
       code: "AUDIO3FOR2",
       description: "Bundle logic seed for buy-x-get-y coverage in the promotion engine.",
+      ownerSellerId: null,
       type: PromotionType.BUY_X_GET_Y,
       fundingSource: PromotionFundingSource.SHARED,
       sellerFundingSharePercent: 40,
@@ -784,6 +788,7 @@ async function seedCatalogAndCommerce(): Promise<void> {
       name: "VIP 250 RON",
       code: "VIP250",
       description: "Exclusive fixed discount reserved for a dedicated coupon flow.",
+      ownerSellerId: null,
       type: PromotionType.FIXED_AMOUNT,
       fundingSource: PromotionFundingSource.PLATFORM,
       stackingMode: PromotionStackingMode.EXCLUSIVE,
@@ -805,6 +810,7 @@ async function seedCatalogAndCommerce(): Promise<void> {
       name: "NordWave Edge S platform launch",
       code: "EDGE-S-LAUNCH",
       description: "Product-specific markdown funded by the marketplace for the launch flagship listing.",
+      ownerSellerId: null,
       type: PromotionType.FIXED_AMOUNT,
       fundingSource: PromotionFundingSource.PLATFORM,
       stackingMode: PromotionStackingMode.STACKABLE,
@@ -813,6 +819,23 @@ async function seedCatalogAndCommerce(): Promise<void> {
       ruleName: "100 RON off the NordWave Edge S launch offer",
       configuration: {
         amount: 10000,
+        listingIds: [listing.id]
+      },
+      coupons: []
+    },
+    {
+      name: "North Star seller weekend",
+      code: "NST-WEEKEND",
+      description: "Seller-funded listing campaign for the seeded merchant flagship offer.",
+      ownerSellerId: seller.id,
+      type: PromotionType.PERCENTAGE,
+      fundingSource: PromotionFundingSource.SELLER,
+      stackingMode: PromotionStackingMode.STACKABLE,
+      priority: 300,
+      ruleId: "seed-stage12-promotion-rule-seller-weekend",
+      ruleName: "8 percent off the seller flagship listing",
+      configuration: {
+        percentage: 8,
         listingIds: [listing.id]
       },
       coupons: []
@@ -826,6 +849,7 @@ async function seedCatalogAndCommerce(): Promise<void> {
       where: { code: promotionSeed.code },
       update: {
         name: promotionSeed.name,
+        ownerSellerId: promotionSeed.ownerSellerId,
         description: promotionSeed.description,
         type: promotionSeed.type,
         fundingSource: promotionSeed.fundingSource,
@@ -840,6 +864,7 @@ async function seedCatalogAndCommerce(): Promise<void> {
       create: {
         name: promotionSeed.name,
         code: promotionSeed.code,
+        ownerSellerId: promotionSeed.ownerSellerId,
         description: promotionSeed.description,
         type: promotionSeed.type,
         fundingSource: promotionSeed.fundingSource,

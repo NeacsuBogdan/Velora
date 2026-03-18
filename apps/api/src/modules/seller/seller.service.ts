@@ -21,6 +21,7 @@ import { AuditService } from "../audit/audit.service";
 import { PrismaService } from "../database/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PlatformCacheService } from "../platform-cache/platform-cache.service";
+import { PromotionsService } from "../promotions/promotions.service";
 import { calculateAvailableQuantity } from "../search/search.helpers";
 import { OpenSearchService } from "../search/opensearch.service";
 import { SearchProjectionService } from "../search/search.service";
@@ -52,7 +53,8 @@ export class SellerService {
     private readonly projectionService: SearchProjectionService,
     private readonly openSearchService: OpenSearchService,
     private readonly cacheService: PlatformCacheService,
-    private readonly notificationsService: NotificationsService
+    private readonly notificationsService: NotificationsService,
+    private readonly promotionsService: PromotionsService
   ) {}
 
   async getDashboard(viewer: AuthenticatedUser) {
@@ -222,6 +224,43 @@ export class SellerService {
         label: this.buildCategoryLabel(category.id, categoryMap)
       }))
     });
+  }
+
+  async listPromotions(viewer: AuthenticatedUser) {
+    const seller = await this.getSellerScope(viewer.id);
+    return this.promotionsService.listSellerPromotions(seller.id);
+  }
+
+  async createPromotion(viewer: AuthenticatedUser, rawInput: unknown) {
+    const seller = await this.getSellerScope(viewer.id);
+    return this.promotionsService.createSellerPromotion(
+      viewer,
+      seller.id,
+      rawInput
+    );
+  }
+
+  async updatePromotion(
+    viewer: AuthenticatedUser,
+    promotionId: string,
+    rawInput: unknown
+  ) {
+    const seller = await this.getSellerScope(viewer.id);
+    return this.promotionsService.updateSellerPromotion(
+      viewer,
+      seller.id,
+      promotionId,
+      rawInput
+    );
+  }
+
+  async deletePromotion(viewer: AuthenticatedUser, promotionId: string) {
+    const seller = await this.getSellerScope(viewer.id);
+    return this.promotionsService.deleteSellerPromotion(
+      viewer,
+      seller.id,
+      promotionId
+    );
   }
 
   async createCatalogProduct(viewer: AuthenticatedUser, rawInput: unknown) {

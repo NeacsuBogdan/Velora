@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { AuthenticatedUser } from "@velora/contracts";
 
 import type { SearchProjectionListing } from "../search/search.helpers";
 import { PromotionsService } from "./promotions.service";
@@ -104,8 +105,31 @@ function createListing(): SearchProjectionListing {
   } as unknown as SearchProjectionListing;
 }
 
+const viewer: AuthenticatedUser = {
+  id: "seller-user-1",
+  email: "seller@velora.local",
+  firstName: "North",
+  lastName: "Star",
+  roles: [
+    {
+      code: "SELLER",
+      name: "Seller"
+    }
+  ]
+};
+const ownedListingId = "cksellerlisting000000000001";
+const foreignListingId = "cksellerlisting000000000999";
+
 describe("PromotionsService", () => {
-  const prisma = {};
+  const prisma = {
+    $transaction: vi.fn(),
+    promotion: {
+      findMany: vi.fn()
+    },
+    sellerProductListing: {
+      findMany: vi.fn()
+    }
+  };
   const cacheService = {
     deleteByPrefix: vi.fn()
   };
@@ -217,5 +241,149 @@ describe("PromotionsService", () => {
         ]
       }
     ]);
+  });
+
+  it("creates a seller-funded listing campaign for an owned offer", async () => {
+    prisma.sellerProductListing.findMany.mockResolvedValue([{ id: ownedListingId }]);
+    prisma.promotion.findMany.mockResolvedValue([]);
+    prisma.$transaction.mockImplementation(async (callback) =>
+      callback({
+        promotion: {
+          create: vi.fn().mockResolvedValue({
+            id: "promotion-seller-1",
+            name: "Seller weekend",
+            code: null,
+            description: "Merchant-funded launch reduction",
+            type: "PERCENTAGE",
+            fundingSource: "SELLER",
+            sellerFundingSharePercent: null,
+            stackingMode: "STACKABLE",
+            priority: 300,
+            isActive: true,
+            startsAt: null,
+            endsAt: null,
+            createdAt: new Date("2026-03-18T09:00:00.000Z"),
+            updatedAt: new Date("2026-03-18T09:00:00.000Z"),
+            ownerSellerId: "seller-1",
+            ownerSeller: {
+              id: "seller-1",
+              slug: "north-star-electronics",
+              displayName: "North Star Electronics"
+            },
+            rules: [
+              {
+                id: "rule-seller-1",
+                promotionId: "promotion-seller-1",
+                name: "Seller weekend percentage rule",
+                configuration: {
+                  percentage: 8,
+                  listingIds: [ownedListingId]
+                },
+                createdAt: new Date("2026-03-18T09:00:00.000Z")
+              }
+            ],
+            coupons: []
+          })
+        },
+        auditLog: {
+          create: vi.fn().mockResolvedValue(undefined)
+        }
+      })
+    );
+
+    const promotion = await promotionsService.createSellerPromotion(viewer, "seller-1", {
+      name: "Seller weekend",
+      description: "Merchant-funded launch reduction",
+      type: "PERCENTAGE",
+      listingId: ownedListingId,
+      percentage: 8,
+      isActive: true,
+      startsAt: null,
+      endsAt: null
+    });
+
+    expect(promotion.fundingSource).toBe("SELLER");
+    expect(promotion.ownerSeller?.sellerId).toBe("seller-1");
+    expect(promotion.rules[0]?.configuration.listingIds).toEqual([ownedListingId]);
+    expect(cacheService.deleteByPrefix).toHaveBeenCalledWith([
+      "catalog:",
+      "search:query:"
+    ]);
+    expect(openSearchService.invalidateProjection).toHaveBeenCalled();
+  });
+
+  it("rejects seller campaigns that target another merchant's offer", async () => {
+    prisma.sellerProductListing.findMany.mockResolvedValue([]);
+
+    await expect(
+      promotionsService.createSellerPromotion(viewer, "seller-1", {
+        name: "Foreign listing",
+        description: "Should fail on ownership validation.",
+        type: "FIXED_AMOUNT",
+        listingId: foreignListingId,
+        amount: 1500,
+        isActive: true,
+        startsAt: null,
+        endsAt: null
+      })
+    ).rejects.toThrow(
+      "Seller promotions can only target offers owned by the active merchant."
+    );
+  });
+
+  it("rejects overlapping active seller campaigns on the same offer", async () => {
+    prisma.sellerProductListing.findMany.mockResolvedValue([{ id: ownedListingId }]);
+    prisma.promotion.findMany.mockResolvedValue([
+      {
+        id: "promotion-seller-existing",
+        name: "Existing campaign",
+        code: null,
+        description: "Already active on the same listing.",
+        type: "PERCENTAGE",
+        fundingSource: "SELLER",
+        sellerFundingSharePercent: null,
+        stackingMode: "STACKABLE",
+        priority: 300,
+        isActive: true,
+        startsAt: new Date("2026-03-18T09:00:00.000Z"),
+        endsAt: new Date("2026-03-20T09:00:00.000Z"),
+        createdAt: new Date("2026-03-18T09:00:00.000Z"),
+        updatedAt: new Date("2026-03-18T09:00:00.000Z"),
+        ownerSellerId: "seller-1",
+        ownerSeller: {
+          id: "seller-1",
+          slug: "north-star-electronics",
+          displayName: "North Star Electronics"
+        },
+        rules: [
+          {
+            id: "rule-existing",
+            promotionId: "promotion-seller-existing",
+            name: "Existing rule",
+            configuration: {
+              percentage: 5,
+              listingIds: [ownedListingId]
+            },
+            createdAt: new Date("2026-03-18T09:00:00.000Z")
+          }
+        ],
+        coupons: []
+      }
+    ]);
+
+    await expect(
+      promotionsService.createSellerPromotion(viewer, "seller-1", {
+        name: "Conflicting campaign",
+        description: "Overlaps the same offer and time range.",
+        type: "FIXED_AMOUNT",
+        listingId: ownedListingId,
+        amount: 1000,
+        isActive: true,
+        startsAt: "2026-03-19T09:00:00.000Z",
+        endsAt: "2026-03-21T09:00:00.000Z"
+      })
+    ).rejects.toThrow(
+      "Another active seller campaign already overlaps this offer and time window."
+    );
   });
 });

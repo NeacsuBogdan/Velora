@@ -14,6 +14,7 @@ import type {
   OrderDetail,
   OrderSummary,
   ProductDetail,
+  PromotionSummary,
   SellerActivationPreview,
   SellerDashboard,
   SellerProductCreationOptions,
@@ -221,6 +222,12 @@ export async function getSellerProductCreationOptions(): Promise<
 export async function getSellerOrders(): Promise<SellerOrderSummary[]> {
   return (
     (await getAuthenticatedJson<SellerOrderSummary[]>("/seller/orders")) ?? []
+  );
+}
+
+export async function getSellerPromotions(): Promise<PromotionSummary[]> {
+  return (
+    (await getAuthenticatedJson<PromotionSummary[]>("/seller/promotions")) ?? []
   );
 }
 

@@ -379,6 +379,7 @@ model Seller {
   application   SellerApplication?
   listings      SellerProductListing[]
   ownedProducts Product[]
+  promotions    Promotion[]
   orders        Order[]
   ownerUser     User?                  @relation("SellerOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
 }
@@ -465,6 +466,7 @@ model Price {
 
 model Promotion {
   id                       String                    @id @default(cuid())
+  ownerSellerId            String?
   name                     String
   code                     String?                   @unique
   description              String
@@ -480,9 +482,11 @@ model Promotion {
   updatedAt                DateTime                  @updatedAt
   coupons                  Coupon[]
   discounts                AppliedDiscountSnapshot[]
+  ownerSeller              Seller?                   @relation(fields: [ownerSellerId], references: [id], onDelete: SetNull)
   rules                    PromotionRule[]
 
   @@index([isActive, priority])
+  @@index([ownerSellerId, updatedAt])
 }
 
 model PromotionRule {

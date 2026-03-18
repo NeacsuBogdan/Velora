@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException
 } from "@nestjs/common";
@@ -8,8 +9,10 @@ import {
   domainOverviewSchema,
   promotionRuleConfigurationSchema,
   promotionSummarySchema,
+  upsertSellerPromotionRequestSchema,
   upsertPromotionRequestSchema,
-  type AuthenticatedUser
+  type AuthenticatedUser,
+  type UpsertSellerPromotionRequest
 } from "@velora/contracts";
 
 import { parseWithSchema } from "../../common/zod";
@@ -35,6 +38,7 @@ import {
 import { PrismaService } from "../database/prisma.service";
 
 type DatabaseClient = PrismaService | Prisma.TransactionClient;
+const sellerPromotionPriority = 300;
 
 const cartPricingInclude = Prisma.validator<Prisma.CartDefaultArgs>()({
   include: {
@@ -92,6 +96,25 @@ export class PromotionsService {
       orderBy: [
         {
           priority: "asc"
+        },
+        {
+          updatedAt: "desc"
+        }
+      ]
+    });
+
+    return promotions.map((promotion) => this.mapPromotionSummary(promotion));
+  }
+
+  async listSellerPromotions(sellerId: string) {
+    const promotions = await this.prisma.promotion.findMany({
+      where: {
+        ownerSellerId: sellerId
+      },
+      include: promotionReadInclude.include,
+      orderBy: [
+        {
+          isActive: "desc"
         },
         {
           updatedAt: "desc"
@@ -303,6 +326,224 @@ export class PromotionsService {
     return this.mapPromotionSummary(promotion);
   }
 
+  async createSellerPromotion(
+    viewer: AuthenticatedUser,
+    sellerId: string,
+    rawInput: unknown
+  ) {
+    const input = parseWithSchema(upsertSellerPromotionRequestSchema, rawInput);
+    this.validateDateRange(input.startsAt ?? null, input.endsAt ?? null);
+    await this.assertSellerOwnedListings(sellerId, [input.listingId]);
+    await this.ensureNoOverlappingSellerPromotion(
+      sellerId,
+      [input.listingId],
+      input.startsAt ?? null,
+      input.endsAt ?? null,
+      null,
+      input.isActive
+    );
+    const configuration = this.buildSellerPromotionConfiguration(input);
+
+    const promotion = await this.prisma.$transaction(async (tx) => {
+      const createdPromotion = await tx.promotion.create({
+        data: {
+          ownerSellerId: sellerId,
+          name: input.name,
+          code: null,
+          description: input.description,
+          type: input.type,
+          fundingSource: "SELLER",
+          sellerFundingSharePercent: null,
+          stackingMode: "STACKABLE",
+          priority: sellerPromotionPriority,
+          isActive: input.isActive,
+          startsAt: input.startsAt ? new Date(input.startsAt) : null,
+          endsAt: input.endsAt ? new Date(input.endsAt) : null,
+          rules: {
+            create: {
+              name: this.buildSellerPromotionRuleName(input.name, input.type),
+              configuration: configuration as Prisma.InputJsonValue
+            }
+          }
+        },
+        include: promotionReadInclude.include
+      });
+
+      await tx.auditLog.create({
+        data: {
+          actorUserId: viewer.id,
+          entityType: "PROMOTION",
+          entityId: createdPromotion.id,
+          action: "SELLER_PROMOTION_CREATED",
+          details: {
+            sellerId,
+            listingIds: [input.listingId],
+            type: input.type,
+            fundingSource: "SELLER"
+          }
+        }
+      });
+
+      return createdPromotion;
+    });
+
+    await this.invalidatePromotionReadModels();
+
+    return this.mapPromotionSummary(promotion);
+  }
+
+  async updateSellerPromotion(
+    viewer: AuthenticatedUser,
+    sellerId: string,
+    promotionId: string,
+    rawInput: unknown
+  ) {
+    const input = parseWithSchema(upsertSellerPromotionRequestSchema, rawInput);
+    this.validateDateRange(input.startsAt ?? null, input.endsAt ?? null);
+    await this.assertSellerOwnedListings(sellerId, [input.listingId]);
+    await this.ensureNoOverlappingSellerPromotion(
+      sellerId,
+      [input.listingId],
+      input.startsAt ?? null,
+      input.endsAt ?? null,
+      promotionId,
+      input.isActive
+    );
+    const configuration = this.buildSellerPromotionConfiguration(input);
+
+    const promotion = await this.prisma.$transaction(async (tx) => {
+      const existingPromotion = await tx.promotion.findFirst({
+        where: {
+          id: promotionId,
+          ownerSellerId: sellerId
+        }
+      });
+
+      if (!existingPromotion) {
+        throw new NotFoundException(`Promotion ${promotionId} was not found.`);
+      }
+
+      await tx.promotion.update({
+        where: {
+          id: promotionId
+        },
+        data: {
+          name: input.name,
+          code: null,
+          description: input.description,
+          type: input.type,
+          fundingSource: "SELLER",
+          sellerFundingSharePercent: null,
+          stackingMode: "STACKABLE",
+          priority: sellerPromotionPriority,
+          isActive: input.isActive,
+          startsAt: input.startsAt ? new Date(input.startsAt) : null,
+          endsAt: input.endsAt ? new Date(input.endsAt) : null
+        }
+      });
+
+      await tx.promotionRule.deleteMany({
+        where: {
+          promotionId
+        }
+      });
+
+      await tx.promotionRule.create({
+        data: {
+          promotionId,
+          name: this.buildSellerPromotionRuleName(input.name, input.type),
+          configuration: configuration as Prisma.InputJsonValue
+        }
+      });
+
+      await tx.coupon.deleteMany({
+        where: {
+          promotionId
+        }
+      });
+
+      await tx.auditLog.create({
+        data: {
+          actorUserId: viewer.id,
+          entityType: "PROMOTION",
+          entityId: promotionId,
+          action: "SELLER_PROMOTION_UPDATED",
+          details: {
+            sellerId,
+            listingIds: [input.listingId],
+            type: input.type,
+            fundingSource: "SELLER"
+          }
+        }
+      });
+
+      return tx.promotion.findUniqueOrThrow({
+        where: {
+          id: promotionId
+        },
+        include: promotionReadInclude.include
+      });
+    });
+
+    await this.invalidatePromotionReadModels();
+
+    return this.mapPromotionSummary(promotion);
+  }
+
+  async deleteSellerPromotion(
+    viewer: AuthenticatedUser,
+    sellerId: string,
+    promotionId: string
+  ) {
+    await this.prisma.$transaction(async (tx) => {
+      const existingPromotion = await tx.promotion.findFirst({
+        where: {
+          id: promotionId,
+          ownerSellerId: sellerId
+        },
+        select: {
+          id: true,
+          name: true
+        }
+      });
+
+      if (!existingPromotion) {
+        throw new NotFoundException(`Promotion ${promotionId} was not found.`);
+      }
+
+      await tx.coupon.deleteMany({
+        where: {
+          promotionId
+        }
+      });
+
+      await tx.promotion.delete({
+        where: {
+          id: promotionId
+        }
+      });
+
+      await tx.auditLog.create({
+        data: {
+          actorUserId: viewer.id,
+          entityType: "PROMOTION",
+          entityId: promotionId,
+          action: "SELLER_PROMOTION_DELETED",
+          details: {
+            sellerId,
+            name: existingPromotion.name
+          }
+        }
+      });
+    });
+
+    await this.invalidatePromotionReadModels();
+
+    return {
+      deletedPromotionId: promotionId
+    };
+  }
+
   async repriceCartWithinTransaction(
     tx: DatabaseClient,
     cartId: string
@@ -492,6 +733,103 @@ export class PromotionsService {
     await this.cacheService.deleteByPrefix(["catalog:", "search:query:"]);
   }
 
+  private buildSellerPromotionConfiguration(
+    input: UpsertSellerPromotionRequest
+  ) {
+    return {
+      listingIds: [input.listingId],
+      ...(input.type === "PERCENTAGE"
+        ? { percentage: input.percentage }
+        : { amount: input.amount })
+    };
+  }
+
+  private buildSellerPromotionRuleName(
+    name: string,
+    type: "PERCENTAGE" | "FIXED_AMOUNT"
+  ) {
+    return `${name} ${type === "PERCENTAGE" ? "percentage" : "fixed"} rule`;
+  }
+
+  private async assertSellerOwnedListings(sellerId: string, listingIds: string[]) {
+    const uniqueListingIds = [...new Set(listingIds)];
+    const listings = await this.prisma.sellerProductListing.findMany({
+      where: {
+        id: {
+          in: uniqueListingIds
+        },
+        sellerId
+      },
+      select: {
+        id: true
+      }
+    });
+
+    if (listings.length !== uniqueListingIds.length) {
+      throw new BadRequestException(
+        "Seller promotions can only target offers owned by the active merchant."
+      );
+    }
+  }
+
+  private async ensureNoOverlappingSellerPromotion(
+    sellerId: string,
+    listingIds: string[],
+    startsAt: string | null,
+    endsAt: string | null,
+    ignorePromotionId: string | null,
+    isActive: boolean
+  ) {
+    if (!isActive) {
+      return;
+    }
+
+    const promotions = await this.prisma.promotion.findMany({
+      where: {
+        ownerSellerId: sellerId,
+        isActive: true,
+        ...(ignorePromotionId
+          ? {
+              id: {
+                not: ignorePromotionId
+              }
+            }
+          : {})
+      },
+      include: promotionReadInclude.include
+    });
+
+    const hasConflict = promotions.some((promotion) => {
+      const rule = promotion.rules[0];
+
+      if (!rule) {
+        return false;
+      }
+
+      const configuration = promotionRuleConfigurationSchema.parse(
+        rule.configuration ?? {}
+      );
+      const targetedListingIds = configuration.listingIds ?? [];
+
+      if (!targetedListingIds.some((listingId) => listingIds.includes(listingId))) {
+        return false;
+      }
+
+      return dateRangesOverlap(
+        startsAt,
+        endsAt,
+        promotion.startsAt?.toISOString() ?? null,
+        promotion.endsAt?.toISOString() ?? null
+      );
+    });
+
+    if (hasConflict) {
+      throw new ConflictException(
+        "Another active seller campaign already overlaps this offer and time window."
+      );
+    }
+  }
+
   private mapPromotionSummary(promotion: PromotionRecord) {
     return promotionSummarySchema.parse({
       promotionId: promotion.id,
@@ -506,6 +844,13 @@ export class PromotionsService {
       isActive: promotion.isActive,
       startsAt: promotion.startsAt?.toISOString() ?? null,
       endsAt: promotion.endsAt?.toISOString() ?? null,
+      ownerSeller: promotion.ownerSeller
+        ? {
+            sellerId: promotion.ownerSeller.id,
+            slug: promotion.ownerSeller.slug,
+            displayName: promotion.ownerSeller.displayName
+          }
+        : null,
       rules: promotion.rules.map((rule) => ({
         ruleId: rule.id,
         name: rule.name,
@@ -529,4 +874,26 @@ export class PromotionsService {
 
 function normalizeCouponCode(value: string | null | undefined) {
   return value ? value.trim().toUpperCase() : null;
+}
+
+function dateRangesOverlap(
+  leftStartsAt: string | null,
+  leftEndsAt: string | null,
+  rightStartsAt: string | null,
+  rightEndsAt: string | null
+) {
+  const leftStart = leftStartsAt
+    ? new Date(leftStartsAt).getTime()
+    : Number.NEGATIVE_INFINITY;
+  const leftEnd = leftEndsAt
+    ? new Date(leftEndsAt).getTime()
+    : Number.POSITIVE_INFINITY;
+  const rightStart = rightStartsAt
+    ? new Date(rightStartsAt).getTime()
+    : Number.NEGATIVE_INFINITY;
+  const rightEnd = rightEndsAt
+    ? new Date(rightEndsAt).getTime()
+    : Number.POSITIVE_INFINITY;
+
+  return leftStart <= rightEnd && rightStart <= leftEnd;
 }

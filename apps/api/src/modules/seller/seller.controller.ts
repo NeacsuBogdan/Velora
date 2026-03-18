@@ -42,6 +42,36 @@ export class SellerController {
     return this.sellerService.getProductCreationOptions(viewer);
   }
 
+  @Get("promotions")
+  listPromotions(@CurrentUser() viewer: AuthenticatedUser) {
+    return this.sellerService.listPromotions(viewer);
+  }
+
+  @Post("promotions")
+  createPromotion(
+    @CurrentUser() viewer: AuthenticatedUser,
+    @Body() body: unknown
+  ) {
+    return this.sellerService.createPromotion(viewer, body);
+  }
+
+  @Patch("promotions/:promotionId")
+  updatePromotion(
+    @CurrentUser() viewer: AuthenticatedUser,
+    @Param("promotionId") promotionId: string,
+    @Body() body: unknown
+  ) {
+    return this.sellerService.updatePromotion(viewer, promotionId, body);
+  }
+
+  @Delete("promotions/:promotionId")
+  deletePromotion(
+    @CurrentUser() viewer: AuthenticatedUser,
+    @Param("promotionId") promotionId: string
+  ) {
+    return this.sellerService.deletePromotion(viewer, promotionId);
+  }
+
   @Post("catalog-products")
   createCatalogProduct(
     @CurrentUser() viewer: AuthenticatedUser,

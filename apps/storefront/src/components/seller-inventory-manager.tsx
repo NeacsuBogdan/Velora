@@ -1,6 +1,7 @@
 "use client";
 
 import type {
+  PromotionSummary,
   SellerProductCreationOptions,
   SellerListingCatalogOption,
   SellerListingSummary
@@ -10,6 +11,7 @@ import { startTransition, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { formatMoney } from "../lib/formatting";
+import { SellerPromotionManager } from "./seller-promotion-manager";
 import { StatusBadge } from "./status-badge";
 
 const sellerApiBaseUrl = "/api/seller";
@@ -17,11 +19,13 @@ const sellerApiBaseUrl = "/api/seller";
 export function SellerInventoryManager({
   catalogOptions,
   creationOptions,
-  listings
+  listings,
+  promotions
 }: {
   catalogOptions: SellerListingCatalogOption[];
   creationOptions: SellerProductCreationOptions | null;
   listings: SellerListingSummary[];
+  promotions: PromotionSummary[];
 }): React.JSX.Element {
   const router = useRouter();
   const [pendingKey, setPendingKey] = useState<string | null>(null);
@@ -1362,6 +1366,11 @@ export function SellerInventoryManager({
                   </p>
                 </div>
               )}
+
+              <SellerPromotionManager
+                promotions={promotions}
+                selectedListing={selectedListing}
+              />
 
               <div className="grid gap-5 xl:grid-cols-2">
                 <form

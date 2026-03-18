@@ -215,6 +215,17 @@
 - Verified `pnpm db:migrate`, `pnpm db:seed`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.
 - Attempted `pnpm test:e2e`, but the Playwright run was blocked because `http://localhost:3000` was already occupied by an existing local server process during this session.
 
+### Post Stage 11 follow-up: seller-funded campaign controls
+
+- Added a seller-owned promotion scope so merchant-created campaigns are explicit platform data rather than inferred from ad hoc price changes.
+- Added seller-only promotion endpoints for listing-scoped campaigns, with strict validation that the campaign is seller-funded, targets only the active merchant's listings, and does not overlap another active seller campaign on the same offer.
+- Extended the seller workspace with a campaign panel inside the existing listing detail flow, so merchants can create, edit, pause, and delete their own offer discounts without leaving the operational listing workspace.
+- Added seller-facing expected-price preview in the workspace so merchants can see the customer-facing result before saving the campaign.
+- Added seeded seller-funded campaign data and admin visibility for seller-managed campaigns inside the promotion console.
+- Added service coverage for seller-campaign creation, ownership rejection, and overlap rejection.
+- Verified `pnpm db:migrate`, `pnpm db:seed`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.
+- Attempted `pnpm test:e2e`, but the Playwright run was blocked because `http://localhost:3000` was already occupied by an existing local server process during this session.
+
 ## Important implementation notes
 
 - Internal packages are designed to build independently so the apps can consume stable outputs.
@@ -271,6 +282,7 @@
 - The shared Next normalization script now backfills missing `.next/types/cache-life.d.ts` and `.next/types/validator.ts` stubs, which keeps root workspace typechecking stable after route generation.
 - Seller fulfillment status updates are intentionally limited to single-seller orders, because the current order model does not yet split shipment state by seller. Mixed-seller orders remain an admin-coordinated path for correctness.
 - Promotion funding is now modeled explicitly, and order settlement snapshots preserve the difference between customer-visible discounting and seller-visible payout impact.
+- Seller-managed campaigns are intentionally limited to seller-funded, listing-scoped promotions. Platform-funded and cross-marketplace campaigns remain an admin-only concern.
 
 ## Known follow-up items
 

@@ -422,6 +422,9 @@ export function PromotionConsole({
               </p>
               <p className="mt-3 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
                 {promotion.fundingSource} - Priority {promotion.priority}
+                {promotion.ownerSeller
+                  ? ` - Seller ${promotion.ownerSeller.displayName}`
+                  : " - Platform managed"}
               </p>
             </button>
           ))}

@@ -721,6 +721,16 @@ export const couponSummarySchema = z.object({
 
 export type CouponSummary = z.infer<typeof couponSummarySchema>;
 
+export const promotionOwnerSellerSchema = z.object({
+  sellerId: z.string(),
+  slug: z.string(),
+  displayName: z.string()
+});
+
+export type PromotionOwnerSeller = z.infer<
+  typeof promotionOwnerSellerSchema
+>;
+
 export const promotionSummarySchema = z.object({
   promotionId: z.string(),
   name: z.string(),
@@ -734,6 +744,7 @@ export const promotionSummarySchema = z.object({
   isActive: z.boolean(),
   startsAt: z.string().datetime().nullable(),
   endsAt: z.string().datetime().nullable(),
+  ownerSeller: promotionOwnerSellerSchema.nullable(),
   rules: z.array(promotionRuleSummarySchema),
   coupons: z.array(couponSummarySchema),
   updatedAt: z.string().datetime()
@@ -1700,6 +1711,57 @@ export const updateSellerListingCommercialRequestSchema = z
 
 export type UpdateSellerListingCommercialRequest = z.infer<
   typeof updateSellerListingCommercialRequestSchema
+>;
+
+export const sellerPromotionTypeSchema = z.enum([
+  "PERCENTAGE",
+  "FIXED_AMOUNT"
+]);
+
+export type SellerPromotionType = z.infer<
+  typeof sellerPromotionTypeSchema
+>;
+
+export const upsertSellerPromotionRequestSchema = z
+  .object({
+    name: z.string().trim().min(3).max(120),
+    description: z.string().trim().min(8).max(400),
+    type: sellerPromotionTypeSchema,
+    listingId: z.string().cuid(),
+    percentage: z.number().positive().max(100).optional(),
+    amount: z.number().int().positive().optional(),
+    isActive: z.boolean().default(true),
+    startsAt: z.string().datetime().nullable().optional(),
+    endsAt: z.string().datetime().nullable().optional()
+  })
+  .superRefine((value, context) => {
+    if (value.type === "PERCENTAGE" && value.percentage === undefined) {
+      context.addIssue({
+        code: "custom",
+        path: ["percentage"],
+        message: "Percentage campaigns require a percentage value."
+      });
+    }
+
+    if (value.type === "FIXED_AMOUNT" && value.amount === undefined) {
+      context.addIssue({
+        code: "custom",
+        path: ["amount"],
+        message: "Fixed campaigns require a discount amount."
+      });
+    }
+
+    if (value.startsAt && value.endsAt && value.startsAt > value.endsAt) {
+      context.addIssue({
+        code: "custom",
+        path: ["endsAt"],
+        message: "Campaign end date must be after the start date."
+      });
+    }
+  });
+
+export type UpsertSellerPromotionRequest = z.infer<
+  typeof upsertSellerPromotionRequestSchema
 >;
 
 export const sellerOrderCustomerSchema = z.object({

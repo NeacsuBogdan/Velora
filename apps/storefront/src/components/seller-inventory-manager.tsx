@@ -38,18 +38,11 @@ export function SellerInventoryManager({
     null;
   const createDisabled = !selectedProduct;
   const catalogCreationDisabled = !creationOptions?.categories.length;
-  const ownedProducts = dedupeOwnedProducts(listings);
   const [selectedListingId, setSelectedListingId] = useState(
     listings[0]?.listingId ?? ""
   );
-  const [selectedOwnedProductId, setSelectedOwnedProductId] = useState(
-    ownedProducts[0]?.productId ?? ""
-  );
   const selectedListing =
     listings.find((listing) => listing.listingId === selectedListingId) ?? null;
-  const selectedOwnedProduct =
-    ownedProducts.find((listing) => listing.productId === selectedOwnedProductId) ??
-    null;
 
   useEffect(() => {
     if (!listings.length) {
@@ -64,20 +57,6 @@ export function SellerInventoryManager({
       setSelectedListingId(listings[0]?.listingId ?? "");
     }
   }, [listings, selectedListingId]);
-
-  useEffect(() => {
-    if (!ownedProducts.length) {
-      if (selectedOwnedProductId) {
-        setSelectedOwnedProductId("");
-      }
-
-      return;
-    }
-
-    if (!ownedProducts.some((listing) => listing.productId === selectedOwnedProductId)) {
-      setSelectedOwnedProductId(ownedProducts[0]?.productId ?? "");
-    }
-  }, [ownedProducts, selectedOwnedProductId]);
 
   async function handleCreateSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -885,284 +864,6 @@ export function SellerInventoryManager({
       <Panel className="space-y-6">
         <div className="space-y-3">
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
-            Seller-created catalog
-          </p>
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <h2 className="font-[var(--font-heading)] text-3xl font-bold tracking-tight">
-                Maintain catalog content your store introduced.
-              </h2>
-              <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--muted)]">
-                Seller-created products stay editable by their owning merchant.
-                Shared marketplace catalog products remain platform-managed, so
-                offers you attach to existing marketplace products are managed in
-                the offer workspace below, not here.
-              </p>
-            </div>
-            <div className="rounded-[24px] bg-black/3 px-5 py-4 text-sm text-[var(--muted)]">
-              {ownedProducts.length} seller-created product{ownedProducts.length === 1 ? "" : "s"}
-            </div>
-          </div>
-        </div>
-
-        {ownedProducts.length && selectedOwnedProduct ? (
-          <div className="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)]">
-            <div className="overflow-hidden rounded-[28px] border border-[var(--stroke)] bg-white/70">
-              {ownedProducts.map((listing) => {
-                const isSelected = listing.productId === selectedOwnedProduct.productId;
-
-                return (
-                  <button
-                    key={`owned-${listing.productId}`}
-                    className={`grid w-full gap-1 border-b border-[var(--stroke)] px-4 py-4 text-left transition-colors last:border-b-0 ${
-                      isSelected
-                        ? "bg-[rgba(190,24,52,0.08)]"
-                        : "bg-white/80 hover:bg-black/3"
-                    }`}
-                    onClick={() => setSelectedOwnedProductId(listing.productId)}
-                    type="button"
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <p className="font-semibold text-[var(--foreground)]">
-                        {listing.title}
-                      </p>
-                      <StatusBadge value={listing.status} />
-                    </div>
-                    <p className="text-sm text-[var(--muted)]">
-                      {listing.categoryName ?? "Uncategorized"}
-                      {listing.brandName ? ` / ${listing.brandName}` : ""}
-                    </p>
-                    <p className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
-                      SKU {listing.sellerSku}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-
-            <form
-              className="grid min-w-0 gap-5 rounded-[28px] border border-[var(--stroke)] bg-white/80 p-6"
-              onSubmit={(event) =>
-                void handleProductContentSubmit(event, selectedOwnedProduct)
-              }
-            >
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <h3 className="font-[var(--font-heading)] text-2xl font-bold tracking-tight">
-                    {selectedOwnedProduct.title}
-                  </h3>
-                  <p className="mt-2 text-sm leading-7 text-[var(--muted)]">
-                    {selectedOwnedProduct.categoryName ?? "Uncategorized"}
-                    {selectedOwnedProduct.brandName
-                      ? ` / ${selectedOwnedProduct.brandName}`
-                      : ""}
-                    {selectedOwnedProduct.variantTitle
-                      ? ` / ${selectedOwnedProduct.variantTitle}`
-                      : ""}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <StatusBadge value={selectedOwnedProduct.status} />
-                  <StatusBadge value="SELLER" />
-                </div>
-              </div>
-
-              <div className="grid gap-4 xl:grid-cols-2">
-                <label className="grid min-w-0 gap-2 text-sm">
-                  <span className="font-semibold text-[var(--foreground)]">
-                    Product title
-                  </span>
-                  <input
-                    className="min-w-0 rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
-                    defaultValue={selectedOwnedProduct.title}
-                    name="title"
-                    type="text"
-                  />
-                </label>
-
-                <label className="grid min-w-0 gap-2 text-sm">
-                  <span className="font-semibold text-[var(--foreground)]">
-                    Category
-                  </span>
-                  <select
-                    className="min-w-0 w-full rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
-                    defaultValue={selectedOwnedProduct.categoryId ?? ""}
-                    disabled={catalogCreationDisabled}
-                    name="categoryId"
-                  >
-                    {(creationOptions?.categories ?? []).map((category) => (
-                      <option key={category.categoryId} value={category.categoryId}>
-                        {category.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-
-              <div className="grid gap-4 xl:grid-cols-2">
-                <label className="grid min-w-0 gap-2 text-sm">
-                  <span className="font-semibold text-[var(--foreground)]">
-                    Brand
-                  </span>
-                  <input
-                    className="min-w-0 rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
-                    defaultValue={selectedOwnedProduct.brandName ?? ""}
-                    name="brandName"
-                    placeholder="Lumio"
-                    type="text"
-                  />
-                </label>
-
-                <label className="grid min-w-0 gap-2 text-sm">
-                  <span className="font-semibold text-[var(--foreground)]">
-                    Audit note
-                  </span>
-                  <input
-                    className="min-w-0 rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
-                    defaultValue=""
-                    name="note"
-                    placeholder="Why this product content changed"
-                    type="text"
-                  />
-                </label>
-              </div>
-
-              <div className="grid gap-4 xl:grid-cols-2">
-                <label className="grid min-w-0 gap-2 text-sm">
-                  <span className="font-semibold text-[var(--foreground)]">
-                    Hero image URL
-                  </span>
-                  <input
-                    className="min-w-0 rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
-                    defaultValue={selectedOwnedProduct.image?.url ?? ""}
-                    name="imageUrl"
-                    placeholder="https://images.example.com/product-hero.jpg"
-                    type="url"
-                  />
-                </label>
-
-                <label className="grid min-w-0 gap-2 text-sm">
-                  <span className="font-semibold text-[var(--foreground)]">
-                    Image alt text
-                  </span>
-                  <input
-                    className="min-w-0 rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
-                    defaultValue={
-                      selectedOwnedProduct.image?.altText ?? selectedOwnedProduct.title
-                    }
-                    name="imageAlt"
-                    placeholder="Describe the hero image for accessibility"
-                    type="text"
-                  />
-                </label>
-              </div>
-
-              <label className="grid min-w-0 gap-2 text-sm">
-                <span className="font-semibold text-[var(--foreground)]">
-                  Product description
-                </span>
-                <textarea
-                  className="min-h-32 min-w-0 rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
-                  defaultValue={selectedOwnedProduct.productDescription}
-                  name="description"
-                />
-              </label>
-
-              <div className="grid gap-3 border-t border-[var(--stroke)] pt-4">
-                <p className="text-sm leading-7 text-[var(--muted)]">
-                  Content changes propagate to this seller-owned product across
-                  search and storefront detail pages.
-                  {selectedOwnedProduct.status === "ARCHIVED"
-                    ? " Archived products can be reactivated for storefront exposure or deleted once they are no longer needed."
-                    : " Archive the offer first if you later want to remove the product completely."}
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  <Button
-                    disabled={pendingKey === `product:${selectedOwnedProduct.productId}`}
-                    type="submit"
-                    variant="secondary"
-                  >
-                    {pendingKey === `product:${selectedOwnedProduct.productId}`
-                      ? "Saving..."
-                      : "Update product content"}
-                  </Button>
-                  {selectedOwnedProduct.status === "ARCHIVED" ? (
-                    <>
-                      <Button
-                        disabled={
-                          pendingKey === `reactivate:${selectedOwnedProduct.listingId}`
-                        }
-                        onClick={() => void handleReactivate(selectedOwnedProduct)}
-                        type="button"
-                        variant="secondary"
-                      >
-                        {pendingKey ===
-                        `reactivate:${selectedOwnedProduct.listingId}`
-                          ? "Reactivating..."
-                          : "Reactivate offer"}
-                      </Button>
-                      <Button
-                        className="text-[var(--accent)]"
-                        disabled={pendingKey === `delete:${selectedOwnedProduct.productId}`}
-                        onClick={() => void handleDeleteOwnedProduct(selectedOwnedProduct)}
-                        type="button"
-                        variant="secondary"
-                      >
-                        {pendingKey === `delete:${selectedOwnedProduct.productId}`
-                          ? "Deleting..."
-                          : "Delete product"}
-                      </Button>
-                    </>
-                  ) : (
-                    <Button
-                      className="text-[var(--accent)]"
-                      disabled={pendingKey === `archive:${selectedOwnedProduct.listingId}`}
-                      onClick={() => void handleArchive(selectedOwnedProduct)}
-                      type="button"
-                      variant="secondary"
-                    >
-                      {pendingKey === `archive:${selectedOwnedProduct.listingId}`
-                        ? "Archiving..."
-                        : "Archive offer"}
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              {feedback[`product:${selectedOwnedProduct.productId}`] ? (
-                <p className="text-sm text-[var(--muted)]">
-                  {feedback[`product:${selectedOwnedProduct.productId}`]}
-                </p>
-              ) : null}
-              {feedback[`archive:${selectedOwnedProduct.listingId}`] ? (
-                <p className="text-sm text-[var(--muted)]">
-                  {feedback[`archive:${selectedOwnedProduct.listingId}`]}
-                </p>
-              ) : null}
-              {feedback[`reactivate:${selectedOwnedProduct.listingId}`] ? (
-                <p className="text-sm text-[var(--muted)]">
-                  {feedback[`reactivate:${selectedOwnedProduct.listingId}`]}
-                </p>
-              ) : null}
-              {feedback[`delete:${selectedOwnedProduct.productId}`] ? (
-                <p className="text-sm text-[var(--muted)]">
-                  {feedback[`delete:${selectedOwnedProduct.productId}`]}
-                </p>
-              ) : null}
-            </form>
-          </div>
-        ) : (
-          <div className="rounded-[28px] border border-dashed border-[var(--stroke)] bg-white/60 px-6 py-5 text-sm leading-7 text-[var(--muted)]">
-            Create your first seller-owned product above to unlock catalog
-            content editing here. Shared marketplace products stay offer-only in
-            the seller workspace.
-          </div>
-        )}
-      </Panel>
-
-      <Panel className="space-y-6">
-        <div className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
             Add offer
           </p>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -1374,17 +1075,18 @@ export function SellerInventoryManager({
       <Panel className="space-y-6">
         <div className="space-y-3">
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
-            Offer workspace
+            Catalog workspace
           </p>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <h2 className="font-[var(--font-heading)] text-3xl font-bold tracking-tight">
-                Manage every live offer from one place.
+                Manage your catalog and offers from one place.
               </h2>
               <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--muted)]">
                 This workspace includes both seller-created products and offers
                 attached to products that already exist on Velora. Use it for
-                pricing, visibility, stock posture, and offer lifecycle actions.
+                product content where you own the catalog record, plus pricing,
+                visibility, stock posture, and offer lifecycle actions.
               </p>
             </div>
             <div className="rounded-[24px] bg-black/3 px-5 py-4 text-sm text-[var(--muted)]">
@@ -1475,6 +1177,191 @@ export function SellerInventoryManager({
                   />
                 </div>
               </div>
+
+              {selectedListing.canEditProductContent ? (
+                <form
+                  className="grid min-w-0 gap-5 rounded-[28px] border border-[var(--stroke)] bg-white/80 p-6"
+                  onSubmit={(event) =>
+                    void handleProductContentSubmit(event, selectedListing)
+                  }
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
+                        Product content
+                      </p>
+                      <p className="mt-2 text-sm leading-7 text-[var(--muted)]">
+                        You own this catalog record, so content updates here flow
+                        into storefront product pages and search.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <StatusBadge value={selectedListing.status} />
+                      <StatusBadge value="SELLER" />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 xl:grid-cols-2">
+                    <label className="grid min-w-0 gap-2 text-sm">
+                      <span className="font-semibold text-[var(--foreground)]">
+                        Product title
+                      </span>
+                      <input
+                        className="min-w-0 rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                        defaultValue={selectedListing.title}
+                        name="title"
+                        type="text"
+                      />
+                    </label>
+
+                    <label className="grid min-w-0 gap-2 text-sm">
+                      <span className="font-semibold text-[var(--foreground)]">
+                        Category
+                      </span>
+                      <select
+                        className="min-w-0 w-full rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                        defaultValue={selectedListing.categoryId ?? ""}
+                        disabled={catalogCreationDisabled}
+                        name="categoryId"
+                      >
+                        {(creationOptions?.categories ?? []).map((category) => (
+                          <option
+                            key={category.categoryId}
+                            value={category.categoryId}
+                          >
+                            {category.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+
+                  <div className="grid gap-4 xl:grid-cols-2">
+                    <label className="grid min-w-0 gap-2 text-sm">
+                      <span className="font-semibold text-[var(--foreground)]">
+                        Brand
+                      </span>
+                      <input
+                        className="min-w-0 rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                        defaultValue={selectedListing.brandName ?? ""}
+                        name="brandName"
+                        placeholder="Lumio"
+                        type="text"
+                      />
+                    </label>
+
+                    <label className="grid min-w-0 gap-2 text-sm">
+                      <span className="font-semibold text-[var(--foreground)]">
+                        Audit note
+                      </span>
+                      <input
+                        className="min-w-0 rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                        defaultValue=""
+                        name="note"
+                        placeholder="Why this product content changed"
+                        type="text"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="grid gap-4 xl:grid-cols-2">
+                    <label className="grid min-w-0 gap-2 text-sm">
+                      <span className="font-semibold text-[var(--foreground)]">
+                        Hero image URL
+                      </span>
+                      <input
+                        className="min-w-0 rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                        defaultValue={selectedListing.image?.url ?? ""}
+                        name="imageUrl"
+                        placeholder="https://images.example.com/product-hero.jpg"
+                        type="url"
+                      />
+                    </label>
+
+                    <label className="grid min-w-0 gap-2 text-sm">
+                      <span className="font-semibold text-[var(--foreground)]">
+                        Image alt text
+                      </span>
+                      <input
+                        className="min-w-0 rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                        defaultValue={
+                          selectedListing.image?.altText ?? selectedListing.title
+                        }
+                        name="imageAlt"
+                        placeholder="Describe the hero image for accessibility"
+                        type="text"
+                      />
+                    </label>
+                  </div>
+
+                  <label className="grid min-w-0 gap-2 text-sm">
+                    <span className="font-semibold text-[var(--foreground)]">
+                      Product description
+                    </span>
+                    <textarea
+                      className="min-h-32 min-w-0 rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--accent)]"
+                      defaultValue={selectedListing.productDescription}
+                      name="description"
+                    />
+                  </label>
+
+                  <div className="grid gap-3 border-t border-[var(--stroke)] pt-4">
+                    <p className="text-sm leading-7 text-[var(--muted)]">
+                      Content changes propagate to this seller-owned product across
+                      search and storefront detail pages.
+                      {selectedListing.status === "ARCHIVED"
+                        ? " This archived seller product can also be deleted if you no longer want to keep it in your catalog."
+                        : " Use the offer controls below if you want to archive the listing before deleting it later."}
+                    </p>
+                    <div className="flex flex-wrap gap-3">
+                      <Button
+                        disabled={pendingKey === `product:${selectedListing.productId}`}
+                        type="submit"
+                        variant="secondary"
+                      >
+                        {pendingKey === `product:${selectedListing.productId}`
+                          ? "Saving..."
+                          : "Update product content"}
+                      </Button>
+                      {selectedListing.status === "ARCHIVED" ? (
+                        <Button
+                          className="text-[var(--accent)]"
+                          disabled={pendingKey === `delete:${selectedListing.productId}`}
+                          onClick={() => void handleDeleteOwnedProduct(selectedListing)}
+                          type="button"
+                          variant="secondary"
+                        >
+                          {pendingKey === `delete:${selectedListing.productId}`
+                            ? "Deleting..."
+                            : "Delete product"}
+                        </Button>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {feedback[`product:${selectedListing.productId}`] ? (
+                    <p className="text-sm text-[var(--muted)]">
+                      {feedback[`product:${selectedListing.productId}`]}
+                    </p>
+                  ) : null}
+                  {feedback[`delete:${selectedListing.productId}`] ? (
+                    <p className="text-sm text-[var(--muted)]">
+                      {feedback[`delete:${selectedListing.productId}`]}
+                    </p>
+                  ) : null}
+                </form>
+              ) : (
+                <div className="rounded-[28px] border border-[var(--stroke)] bg-white/80 p-6">
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
+                    Product content
+                  </p>
+                  <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--muted)]">
+                    This listing is attached to the shared Velora catalog, so you
+                    can manage commercial terms and stock here, but the core
+                    product content remains platform-managed.
+                  </p>
+                </div>
+              )}
 
               <div className="grid gap-5 xl:grid-cols-2">
                 <form
@@ -1765,24 +1652,6 @@ function MoneyField({
       </p>
     </label>
   );
-}
-
-function dedupeOwnedProducts(
-  listings: SellerListingSummary[]
-): SellerListingSummary[] {
-  const seen = new Set<string>();
-  const ownedProducts: SellerListingSummary[] = [];
-
-  for (const listing of listings) {
-    if (!listing.canEditProductContent || seen.has(listing.productId)) {
-      continue;
-    }
-
-    seen.add(listing.productId);
-    ownedProducts.push(listing);
-  }
-
-  return ownedProducts;
 }
 
 function formatListingWorkspaceLabel(listing: SellerListingSummary): string {

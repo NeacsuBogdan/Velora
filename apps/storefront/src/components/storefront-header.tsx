@@ -19,6 +19,7 @@ export async function StorefrontHeader(): Promise<React.JSX.Element> {
   const unreadNotificationCount = notificationFeed?.unreadCount ?? 0;
   const isSeller = session?.user.roles.some((role) => role.code === "SELLER");
   const isAdmin = session?.user.roles.some((role) => role.code === "ADMIN");
+  const isCustomer = session?.user.roles.some((role) => role.code === "CUSTOMER");
 
   return (
     <header className="rounded-[32px] border border-[var(--stroke)] bg-white/85 px-6 py-5 shadow-[0_20px_60px_rgba(16,32,47,0.08)] backdrop-blur">
@@ -79,7 +80,7 @@ export async function StorefrontHeader(): Promise<React.JSX.Element> {
                     ) : null}
                   </Link>
                 ) : null}
-                {session ? (
+                {session && isCustomer ? (
                   <Link className={navLinkClass} href="/account">
                     Account
                   </Link>

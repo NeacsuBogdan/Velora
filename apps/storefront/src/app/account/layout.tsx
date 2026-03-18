@@ -19,11 +19,24 @@ export default async function AccountLayout({
   children: React.ReactNode;
 }>): Promise<React.JSX.Element> {
   const session = await getSession();
+  const isCustomer = session?.user.roles.some((role) => role.code === "CUSTOMER");
   const isSeller = session?.user.roles.some((role) => role.code === "SELLER");
   const isAdmin = session?.user.roles.some((role) => role.code === "ADMIN");
 
   if (!session) {
     redirect("/login");
+  }
+
+  if (!isCustomer) {
+    if (isAdmin) {
+      redirect(adminWorkspaceUrl);
+    }
+
+    if (isSeller) {
+      redirect("/seller");
+    }
+
+    redirect("/");
   }
 
   return (

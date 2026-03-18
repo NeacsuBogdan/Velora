@@ -178,6 +178,7 @@
 - Added major-currency seller price entry with live RON previews, so merchants now type normal amounts like `20.00` while the platform still persists minor units internally.
 - Consolidated seller-owned product content, offer pricing, and inventory management into one selector/detail seller workspace, so merchants now manage every listing from a single left-hand picker and one right-hand operational pane.
 - Tightened the selected-offer summary cards so price and stock metrics collapse more gracefully on narrower seller workspace widths instead of overflowing across adjacent cards.
+- Tightened storefront role-aware navigation so admin-only and seller-only sessions no longer expose the broken customer account entry point, and added explicit marketplace/workspace return actions on the notifications page.
 
 ## Important implementation notes
 
@@ -230,6 +231,7 @@
 - Seller SKU labels now explicitly describe the field as the merchant's internal stock code, which removes the ambiguity around that identifier in seller create and listing views.
 - Seller-owned product deletion is now intentionally gated behind an archived offer state, which keeps destructive merchant cleanup aligned with safer marketplace operations while still allowing reactivation from the same workspace.
 - The seller workspace now uses one unified selector/detail model for both shared-catalog offers and seller-owned catalog records, while still exposing product-content controls only when the merchant owns the underlying product.
+- The storefront header now only exposes the customer account path to sessions that actually carry the `CUSTOMER` role, while `/account` itself redirects admin and seller sessions back to their proper workspaces.
 
 ## Known follow-up items
 

@@ -10,6 +10,7 @@ import {
 
 import { PrismaService } from "../database/prisma.service";
 import { PlatformCacheService } from "../platform-cache/platform-cache.service";
+import { MerchandisingPricingService } from "../search/merchandising-pricing.service";
 import {
   buildSearchDocument,
   searchProjectionListingInclude
@@ -59,7 +60,8 @@ export class CatalogService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly cacheService: PlatformCacheService,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
+    private readonly merchandisingPricingService: MerchandisingPricingService
   ) {}
 
   private buildChildrenMap(categories: CategoryRecord[]) {
@@ -410,10 +412,16 @@ export class CatalogService {
               }
             ]
           : [];
+        const relatedDocuments =
+          await this.merchandisingPricingService.applyToDocuments(
+            relatedListings.map((listing) => buildSearchDocument(listing))
+          );
+        const activeOfferDocuments =
+          await this.merchandisingPricingService.applyToDocuments(
+            activeListings.map((listing) => buildSearchDocument(listing))
+          );
         const relatedProducts = [...new Map(
-          relatedListings
-            .map((listing) => buildSearchDocument(listing))
-            .map((item) => [item.productId, item])
+          relatedDocuments.map((item) => [item.productId, item])
         ).values()]
           .slice(0, 4);
 
@@ -460,7 +468,9 @@ export class CatalogService {
           })),
           offers: activeListings
             .map((listing) => {
-              const projection = buildSearchDocument(listing);
+              const projection =
+                activeOfferDocuments.find((entry) => entry.listingId === listing.id) ??
+                buildSearchDocument(listing);
 
               return {
                 listingId: projection.listingId,

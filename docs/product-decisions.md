@@ -59,6 +59,20 @@ The design uses:
 
 Without this, duplicate events could create duplicate orders, double-consume stock, or corrupt payment state.
 
+## Why promotion funding and seller settlement are modeled separately
+
+Marketplace pricing is not only about what the customer pays. It is also about who absorbs the discount.
+
+Velora now distinguishes between:
+
+- `PLATFORM` funded promotions, where the customer pays less but the seller still settles at the listed sale price
+- `SELLER` funded promotions, where the merchant funds the discount directly
+- `SHARED` funded promotions, where platform and seller split the discount by an explicit percentage
+
+This separation matters because a strikethrough or discounted customer price is not enough to explain marketplace economics. The order therefore stores immutable settlement data alongside the customer-facing discount snapshot. That keeps finance, seller reporting, and operational review aligned after checkout is complete.
+
+The MVP deliberately stops short of a full payout ledger, but the settlement snapshot already preserves the information needed to evolve toward that model later.
+
 ## Why seller onboarding is approval-based instead of public seller signup
 
 Customers can self-register immediately because their access is low-risk and bounded to customer workflows. Sellers are different: they affect catalog quality, marketplace trust, inventory correctness, and operational support load.

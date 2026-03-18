@@ -1,7 +1,10 @@
 "use client";
 
 import type {
+  AdminCatalogOptions,
+  AdminProductSummary,
   CouponStatus,
+  PromotionFundingSource,
   PromotionStackingMode,
   PromotionSummary,
   PromotionType
@@ -23,9 +26,12 @@ const promotionTypes: PromotionType[] = [
 
 const stackingModes: PromotionStackingMode[] = ["STACKABLE", "EXCLUSIVE"];
 const couponStatuses: CouponStatus[] = ["ACTIVE", "DISABLED", "EXPIRED"];
+const fundingSources: PromotionFundingSource[] = ["PLATFORM", "SELLER", "SHARED"];
 
 interface PromotionConsoleProps {
   initialPromotions: PromotionSummary[];
+  initialProducts: AdminProductSummary[];
+  catalogOptions: AdminCatalogOptions;
 }
 
 interface PromotionFormState {
@@ -33,6 +39,8 @@ interface PromotionFormState {
   code: string;
   description: string;
   type: PromotionType;
+  fundingSource: PromotionFundingSource;
+  sellerFundingSharePercent: string;
   stackingMode: PromotionStackingMode;
   priority: string;
   isActive: boolean;
@@ -42,8 +50,8 @@ interface PromotionFormState {
   percentage: string;
   amount: string;
   thresholdAmount: string;
-  categorySlugs: string;
-  listingIds: string;
+  categorySlugs: string[];
+  listingIds: string[];
   buyQuantity: string;
   getQuantity: string;
   couponCode: string;
@@ -58,6 +66,8 @@ const emptyFormState: PromotionFormState = {
   code: "",
   description: "",
   type: "PERCENTAGE",
+  fundingSource: "PLATFORM",
+  sellerFundingSharePercent: "",
   stackingMode: "STACKABLE",
   priority: "100",
   isActive: true,
@@ -67,8 +77,8 @@ const emptyFormState: PromotionFormState = {
   percentage: "",
   amount: "",
   thresholdAmount: "",
-  categorySlugs: "",
-  listingIds: "",
+  categorySlugs: [],
+  listingIds: [],
   buyQuantity: "",
   getQuantity: "",
   couponCode: "",
@@ -80,6 +90,38 @@ const emptyFormState: PromotionFormState = {
 
 function toLocalDateTime(value: string | null) {
   return value ? value.slice(0, 16) : "";
+}
+
+function formatMinorAmount(value: number | undefined) {
+  return value === undefined ? "" : (value / 100).toFixed(2);
+}
+
+function parseOptionalInteger(value: string) {
+  return value.trim().length > 0 ? Number(value) : undefined;
+}
+
+function parseOptionalDate(value: string) {
+  return value ? new Date(value).toISOString() : null;
+}
+
+function parseOptionalCurrency(value: string) {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return undefined;
+  }
+
+  const normalized = Number(trimmed.replace(",", "."));
+  return Number.isFinite(normalized) ? Math.round(normalized * 100) : undefined;
+}
+
+function formatMoney(amount: number, currency = "RON") {
+  return new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(amount / 100);
 }
 
 function toFormState(promotion: PromotionSummary | null): PromotionFormState {
@@ -95,6 +137,10 @@ function toFormState(promotion: PromotionSummary | null): PromotionFormState {
     code: promotion.code ?? "",
     description: promotion.description,
     type: promotion.type,
+    fundingSource: promotion.fundingSource,
+    sellerFundingSharePercent: promotion.sellerFundingSharePercent
+      ? String(promotion.sellerFundingSharePercent)
+      : "",
     stackingMode: promotion.stackingMode,
     priority: String(promotion.priority),
     isActive: promotion.isActive,
@@ -104,12 +150,10 @@ function toFormState(promotion: PromotionSummary | null): PromotionFormState {
     percentage: rule?.configuration.percentage
       ? String(rule.configuration.percentage)
       : "",
-    amount: rule?.configuration.amount ? String(rule.configuration.amount) : "",
-    thresholdAmount: rule?.configuration.thresholdAmount
-      ? String(rule.configuration.thresholdAmount)
-      : "",
-    categorySlugs: rule?.configuration.categorySlugs?.join(", ") ?? "",
-    listingIds: rule?.configuration.listingIds?.join(", ") ?? "",
+    amount: formatMinorAmount(rule?.configuration.amount),
+    thresholdAmount: formatMinorAmount(rule?.configuration.thresholdAmount),
+    categorySlugs: rule?.configuration.categorySlugs ?? [],
+    listingIds: rule?.configuration.listingIds ?? [],
     buyQuantity: rule?.configuration.buyQuantity
       ? String(rule.configuration.buyQuantity)
       : "",
@@ -124,23 +168,22 @@ function toFormState(promotion: PromotionSummary | null): PromotionFormState {
   };
 }
 
-function parseList(value: string) {
-  return value
-    .split(",")
-    .map((entry) => entry.trim())
-    .filter(Boolean);
-}
+function fundingHelperCopy(fundingSource: PromotionFundingSource) {
+  if (fundingSource === "PLATFORM") {
+    return "Customer pricing changes while seller settlement stays at the listed offer price.";
+  }
 
-function parseOptionalNumber(value: string) {
-  return value.trim().length > 0 ? Number(value) : undefined;
-}
+  if (fundingSource === "SELLER") {
+    return "The merchant funds the discount and receives a lower net payout.";
+  }
 
-function parseOptionalDate(value: string) {
-  return value ? new Date(value).toISOString() : null;
+  return "The discount is split between platform and seller by the configured share.";
 }
 
 export function PromotionConsole({
-  initialPromotions
+  initialPromotions,
+  initialProducts,
+  catalogOptions
 }: PromotionConsoleProps): React.JSX.Element {
   const router = useRouter();
   const [promotions, setPromotions] = useState(initialPromotions);
@@ -150,9 +193,40 @@ export function PromotionConsole({
   const [form, setForm] = useState<PromotionFormState>(
     toFormState(initialPromotions[0] ?? null)
   );
+  const [offerQuery, setOfferQuery] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
+
+  const targetableOffers = initialProducts
+    .filter((product) => product.listingId)
+    .slice()
+    .sort((left, right) => left.title.localeCompare(right.title));
+  const filteredOffers = (() => {
+    const query = offerQuery.trim().toLowerCase();
+
+    if (!query) {
+      return targetableOffers;
+    }
+
+    return targetableOffers.filter((product) =>
+      [
+        product.title,
+        product.sellerName,
+        product.categoryName,
+        product.brandName,
+        product.sellerSku
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(query)
+    );
+  })();
+  const selectedTargetOffers = targetableOffers.filter(
+    (product) => product.listingId && form.listingIds.includes(product.listingId)
+  );
+  const pricePreviewAmount = parseOptionalCurrency(form.amount);
 
   function setField<Key extends keyof PromotionFormState>(
     key: Key,
@@ -164,9 +238,28 @@ export function PromotionConsole({
     }));
   }
 
+  function toggleCategory(slug: string) {
+    setForm((current) => ({
+      ...current,
+      categorySlugs: current.categorySlugs.includes(slug)
+        ? current.categorySlugs.filter((entry) => entry !== slug)
+        : [...current.categorySlugs, slug]
+    }));
+  }
+
+  function toggleListing(listingId: string) {
+    setForm((current) => ({
+      ...current,
+      listingIds: current.listingIds.includes(listingId)
+        ? current.listingIds.filter((entry) => entry !== listingId)
+        : [...current.listingIds, listingId]
+    }));
+  }
+
   function handleCreateNew() {
     setSelectedPromotionId(null);
     setForm(emptyFormState);
+    setOfferQuery("");
     setErrorMessage(null);
     setStatusMessage(null);
   }
@@ -178,6 +271,7 @@ export function PromotionConsole({
 
     setSelectedPromotionId(promotionId);
     setForm(toFormState(selectedPromotion));
+    setOfferQuery("");
     setErrorMessage(null);
     setStatusMessage(null);
   }
@@ -193,6 +287,11 @@ export function PromotionConsole({
       code: form.code.trim() ? form.code.trim().toUpperCase() : null,
       description: form.description,
       type: form.type,
+      fundingSource: form.fundingSource,
+      sellerFundingSharePercent:
+        form.fundingSource === "SHARED"
+          ? parseOptionalInteger(form.sellerFundingSharePercent) ?? null
+          : null,
       stackingMode: form.stackingMode,
       priority: Number(form.priority),
       isActive: form.isActive,
@@ -201,26 +300,24 @@ export function PromotionConsole({
       rule: {
         name: form.ruleName || `${form.type} rule`,
         configuration: {
-          ...(parseOptionalNumber(form.percentage)
-            ? { percentage: parseOptionalNumber(form.percentage) }
+          ...(parseOptionalInteger(form.percentage)
+            ? { percentage: parseOptionalInteger(form.percentage) }
             : {}),
-          ...(parseOptionalNumber(form.amount)
-            ? { amount: parseOptionalNumber(form.amount) }
+          ...(parseOptionalCurrency(form.amount)
+            ? { amount: parseOptionalCurrency(form.amount) }
             : {}),
-          ...(parseOptionalNumber(form.thresholdAmount)
-            ? { thresholdAmount: parseOptionalNumber(form.thresholdAmount) }
+          ...(parseOptionalCurrency(form.thresholdAmount)
+            ? { thresholdAmount: parseOptionalCurrency(form.thresholdAmount) }
             : {}),
-          ...(parseList(form.categorySlugs).length
-            ? { categorySlugs: parseList(form.categorySlugs) }
+          ...(form.categorySlugs.length
+            ? { categorySlugs: form.categorySlugs }
             : {}),
-          ...(parseList(form.listingIds).length
-            ? { listingIds: parseList(form.listingIds) }
+          ...(form.listingIds.length ? { listingIds: form.listingIds } : {}),
+          ...(parseOptionalInteger(form.buyQuantity)
+            ? { buyQuantity: parseOptionalInteger(form.buyQuantity) }
             : {}),
-          ...(parseOptionalNumber(form.buyQuantity)
-            ? { buyQuantity: parseOptionalNumber(form.buyQuantity) }
-            : {}),
-          ...(parseOptionalNumber(form.getQuantity)
-            ? { getQuantity: parseOptionalNumber(form.getQuantity) }
+          ...(parseOptionalInteger(form.getQuantity)
+            ? { getQuantity: parseOptionalInteger(form.getQuantity) }
             : {})
         }
       },
@@ -229,7 +326,7 @@ export function PromotionConsole({
             {
               code: form.couponCode.trim().toUpperCase(),
               status: form.couponStatus,
-              usageLimit: parseOptionalNumber(form.couponUsageLimit) ?? null,
+              usageLimit: parseOptionalInteger(form.couponUsageLimit) ?? null,
               startsAt: parseOptionalDate(form.couponStartsAt),
               endsAt: parseOptionalDate(form.couponEndsAt)
             }
@@ -254,7 +351,7 @@ export function PromotionConsole({
 
       if (!response.ok) {
         setErrorMessage(
-          "The promotion could not be saved. Verify the rule configuration and admin session."
+          "The promotion could not be saved. Verify funding, timing, and targeting values."
         );
         setIsPending(false);
         return;
@@ -324,7 +421,7 @@ export function PromotionConsole({
                 {promotion.description}
               </p>
               <p className="mt-3 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
-                Priority {promotion.priority} - {promotion.stackingMode}
+                {promotion.fundingSource} - Priority {promotion.priority}
               </p>
             </button>
           ))}
@@ -332,7 +429,7 @@ export function PromotionConsole({
       </Panel>
 
       <Panel>
-        <form className="grid gap-5" onSubmit={handleSubmit}>
+        <form className="grid gap-6" onSubmit={handleSubmit}>
           <div className="grid gap-5 md:grid-cols-2">
             <Field
               label="Promotion name"
@@ -353,12 +450,20 @@ export function PromotionConsole({
             value={form.description}
           />
 
-          <div className="grid gap-5 md:grid-cols-3">
+          <div className="grid gap-5 md:grid-cols-4">
             <SelectField
               label="Type"
               onChange={(value) => setField("type", value as PromotionType)}
               options={promotionTypes}
               value={form.type}
+            />
+            <SelectField
+              label="Funding"
+              onChange={(value) =>
+                setField("fundingSource", value as PromotionFundingSource)
+              }
+              options={fundingSources}
+              value={form.fundingSource}
             />
             <SelectField
               label="Stacking"
@@ -376,6 +481,44 @@ export function PromotionConsole({
             />
           </div>
 
+          <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_220px]">
+            <Field
+              hint={fundingHelperCopy(form.fundingSource)}
+              label="Rule name"
+              onChange={(value) => setField("ruleName", value)}
+              value={form.ruleName}
+            />
+            {form.fundingSource === "SHARED" ? (
+              <Field
+                hint="Merchant-funded share of the total promotion discount."
+                label="Seller share %"
+                onChange={(value) => setField("sellerFundingSharePercent", value)}
+                type="number"
+                value={form.sellerFundingSharePercent}
+              />
+            ) : (
+              <label className="flex items-center gap-3 rounded-[24px] border border-[var(--stroke)] bg-white px-4 py-3 text-sm">
+                <input
+                  checked={form.isActive}
+                  onChange={(event) => setField("isActive", event.target.checked)}
+                  type="checkbox"
+                />
+                Active promotion
+              </label>
+            )}
+          </div>
+
+          {form.fundingSource === "SHARED" ? (
+            <label className="flex items-center gap-3 rounded-[24px] border border-[var(--stroke)] bg-white px-4 py-3 text-sm">
+              <input
+                checked={form.isActive}
+                onChange={(event) => setField("isActive", event.target.checked)}
+                type="checkbox"
+              />
+              Active promotion
+            </label>
+          ) : null}
+
           <div className="grid gap-5 md:grid-cols-2">
             <Field
               label="Starts at"
@@ -391,22 +534,6 @@ export function PromotionConsole({
             />
           </div>
 
-          <div className="grid gap-5 md:grid-cols-2">
-            <Field
-              label="Rule name"
-              onChange={(value) => setField("ruleName", value)}
-              value={form.ruleName}
-            />
-            <label className="flex items-center gap-3 rounded-[24px] border border-[var(--stroke)] bg-white px-4 py-3 text-sm">
-              <input
-                checked={form.isActive}
-                onChange={(event) => setField("isActive", event.target.checked)}
-                type="checkbox"
-              />
-              Active promotion
-            </label>
-          </div>
-
           <div className="grid gap-5 md:grid-cols-3">
             <Field
               label="Percentage"
@@ -415,31 +542,22 @@ export function PromotionConsole({
               value={form.percentage}
             />
             <Field
-              label="Fixed amount"
+              hint={
+                pricePreviewAmount
+                  ? `Customer-facing markdown: ${formatMoney(pricePreviewAmount)}`
+                  : "Use a major-unit RON value like 150 or 49.99."
+              }
+              label="Fixed amount (RON)"
               onChange={(value) => setField("amount", value)}
               type="number"
               value={form.amount}
             />
             <Field
-              label="Threshold amount"
+              hint="Minimum basket value before the discount can apply."
+              label="Threshold (RON)"
               onChange={(value) => setField("thresholdAmount", value)}
               type="number"
               value={form.thresholdAmount}
-            />
-          </div>
-
-          <div className="grid gap-5 md:grid-cols-2">
-            <Field
-              label="Category slugs"
-              onChange={(value) => setField("categorySlugs", value)}
-              placeholder="phones, audio"
-              value={form.categorySlugs}
-            />
-            <Field
-              label="Listing ids"
-              onChange={(value) => setField("listingIds", value)}
-              placeholder="listing-1, listing-2"
-              value={form.listingIds}
             />
           </div>
 
@@ -456,6 +574,101 @@ export function PromotionConsole({
               type="number"
               value={form.getQuantity}
             />
+          </div>
+
+          <div className="grid gap-5 rounded-[28px] border border-[var(--stroke)] bg-[rgba(15,23,42,0.02)] p-5">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
+                Merchandising scope
+              </p>
+              <p className="mt-2 text-sm leading-7 text-[var(--muted)]">
+                Target categories or specific marketplace offers. Automatic
+                product pricing presentation uses only non-coupon merchandising
+                promotions.
+              </p>
+            </div>
+
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+              <div className="space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
+                  Categories
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {catalogOptions.categories.map((category) => (
+                    <button
+                      className={`rounded-full border px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] transition-colors ${
+                        form.categorySlugs.includes(category.slug)
+                          ? "border-[var(--accent)] bg-[rgba(15,118,110,0.08)] text-[var(--accent)]"
+                          : "border-[var(--stroke)] bg-white text-[var(--muted)]"
+                      }`}
+                      key={category.categoryId}
+                      onClick={() => toggleCategory(category.slug)}
+                      type="button"
+                    >
+                      {category.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-end justify-between gap-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
+                    Target offers
+                  </p>
+                  <input
+                    className="w-full max-w-[260px] rounded-2xl border border-[var(--stroke)] bg-white px-4 py-3 text-sm text-[var(--foreground)] outline-none transition-colors focus:border-[var(--accent)]"
+                    onChange={(event) => setOfferQuery(event.target.value)}
+                    placeholder="Search products or sellers"
+                    value={offerQuery}
+                  />
+                </div>
+                <div className={ListScrollClassName()}>
+                  {filteredOffers.map((product) =>
+                    product.listingId ? (
+                      <button
+                        className={`rounded-[22px] border px-4 py-4 text-left transition-colors ${
+                          form.listingIds.includes(product.listingId)
+                            ? "border-[var(--accent)] bg-[rgba(15,118,110,0.08)]"
+                            : "border-[var(--stroke)] bg-white"
+                        }`}
+                        key={product.listingId}
+                        onClick={() => toggleListing(product.listingId!)}
+                        type="button"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-sm font-semibold text-[var(--foreground)]">
+                            {product.title}
+                          </span>
+                          <span className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+                            {product.price
+                              ? formatMoney(product.price.amount, product.price.currency)
+                              : "No price"}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                          {[product.sellerName, product.categoryName, product.brandName]
+                            .filter(Boolean)
+                            .join(" / ")}
+                        </p>
+                      </button>
+                    ) : null
+                  )}
+                </div>
+                {selectedTargetOffers.length ? (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedTargetOffers.map((product) => (
+                      <span
+                        className="rounded-full border border-[rgba(15,118,110,0.14)] bg-[rgba(15,118,110,0.06)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--accent)]"
+                        key={product.listingId}
+                      >
+                        {product.title}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </div>
           </div>
 
           <div className="grid gap-5 rounded-[28px] border border-[var(--stroke)] bg-[rgba(15,23,42,0.02)] p-5">
@@ -512,9 +725,10 @@ export function PromotionConsole({
           ) : null}
 
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <p className="text-sm leading-7 text-[var(--muted)]">
-              The form writes directly to the promotion engine endpoints used by
-              cart repricing and checkout snapshots.
+            <p className="max-w-3xl text-sm leading-7 text-[var(--muted)]">
+              Platform-funded promotions preserve seller settlement, while
+              seller-funded and shared promotions feed order-level funding
+              attribution for payout review.
             </p>
             <Button disabled={isPending} type="submit">
               {isPending
@@ -532,6 +746,7 @@ export function PromotionConsole({
 
 function Field({
   label,
+  hint,
   onChange,
   placeholder,
   textarea = false,
@@ -539,6 +754,7 @@ function Field({
   value
 }: {
   label: string;
+  hint?: string;
   onChange: (value: string) => void;
   placeholder?: string;
   textarea?: boolean;
@@ -569,6 +785,7 @@ function Field({
           value={value}
         />
       )}
+      {hint ? <p className="mt-2 text-xs leading-6 text-[var(--muted)]">{hint}</p> : null}
     </label>
   );
 }

@@ -25,6 +25,7 @@ import {
   parseCheckoutAddressSnapshot,
   parseCheckoutContactSnapshot
 } from "../checkout/checkout.helpers";
+import { parseOrderSettlementSnapshot } from "../orders/order-settlement.helpers";
 import { calculateAvailableQuantity } from "../search/search.helpers";
 
 function resolveActivePrice(prices: Price[], now = new Date()) {
@@ -341,6 +342,15 @@ export function mapAdminOrderDetail(order: AdminOrderRecord) {
         amount: discount.amount,
         currency: discount.currency
       },
+      fundingSource: discount.fundingSource,
+      sellerFundedAmount: {
+        amount: discount.sellerFundedAmount,
+        currency: discount.currency
+      },
+      platformFundedAmount: {
+        amount: discount.platformFundedAmount,
+        currency: discount.currency
+      },
       description:
         typeof discount.metadata === "object" &&
         discount.metadata &&
@@ -349,6 +359,7 @@ export function mapAdminOrderDetail(order: AdminOrderRecord) {
           ? discount.metadata.description
           : null
     })),
+    settlement: parseOrderSettlementSnapshot(order.settlementSnapshot),
     statusHistory: order.statusHistory.map((entry) => ({
       status: entry.status,
       note: entry.note ?? null,

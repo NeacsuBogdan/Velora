@@ -8,6 +8,7 @@ import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { Stripe } from "stripe";
 import { Prisma, type PaymentStatus } from "@prisma/client";
 import {
+  type OrderSettlementSummary,
   confirmPaymentAttemptRequestSchema,
   createPaymentAttemptRequestSchema,
   domainOverviewSchema,
@@ -31,7 +32,11 @@ import {
   mapOrderDetail,
   orderDetailInclude
 } from "../orders/order.helpers";
-import { pricingSnapshotSchema } from "../promotions/pricing.helpers";
+import {
+  orderSettlementSnapshotSchema,
+  pricingSnapshotSchema,
+  type PricingSnapshot
+} from "../promotions/pricing.helpers";
 
 type PrismaTransactionClient = Prisma.TransactionClient;
 
@@ -762,6 +767,11 @@ export class PaymentsService {
         couponCode: paymentAttempt.checkoutSession.cart.couponCode ?? null,
         discounts: []
       };
+    const settlementSnapshot = this.buildOrderSettlementSnapshot(
+      paymentAttempt.checkoutSession.cart.items,
+      pricingSnapshot,
+      paymentAttempt.currency
+    );
 
     if (!order) {
       const sellerIds = new Set(
@@ -790,6 +800,8 @@ export class PaymentsService {
             paymentAttempt.checkoutSession.deliveryAddressSnapshot as
               | Prisma.InputJsonValue
               | undefined,
+          settlementSnapshot:
+            settlementSnapshot as unknown as Prisma.InputJsonValue,
           subtotal: pricingSnapshot.subtotal,
           discountTotal: pricingSnapshot.discountTotal,
           total: pricingSnapshot.total,
@@ -801,8 +813,12 @@ export class PaymentsService {
               label: discount.label,
               amount: discount.amount.amount,
               currency: discount.amount.currency,
+              fundingSource: discount.fundingSource,
+              sellerFundedAmount: discount.sellerFundedAmount.amount,
+              platformFundedAmount: discount.platformFundedAmount.amount,
               metadata: {
-                description: discount.description
+                description: discount.description,
+                allocations: discount.allocations
               }
             }))
           },
@@ -859,6 +875,8 @@ export class PaymentsService {
             paymentAttempt.checkoutSession.deliveryAddressSnapshot as
               | Prisma.InputJsonValue
               | undefined,
+          settlementSnapshot:
+            settlementSnapshot as unknown as Prisma.InputJsonValue,
           subtotal: pricingSnapshot.subtotal,
           discountTotal: pricingSnapshot.discountTotal,
           total: pricingSnapshot.total
@@ -981,6 +999,103 @@ export class PaymentsService {
     }
 
     return notificationPlans;
+  }
+
+  private buildOrderSettlementSnapshot(
+    cartItems: Prisma.PaymentAttemptGetPayload<typeof settlementInclude>["checkoutSession"]["cart"]["items"],
+    pricingSnapshot: PricingSnapshot,
+    currency: string
+  ): OrderSettlementSummary {
+    const linesBySellerId = new Map<
+      string,
+      {
+        sellerId: string;
+        sellerName: string;
+        grossAmount: number;
+        sellerDiscountAmount: number;
+        platformDiscountAmount: number;
+      }
+    >();
+    const listingToSeller = new Map<string, string>();
+
+    for (const item of cartItems) {
+      listingToSeller.set(item.listingId, item.listing.sellerId);
+      const currentLine = linesBySellerId.get(item.listing.sellerId) ?? {
+        sellerId: item.listing.sellerId,
+        sellerName: item.listing.seller.displayName,
+        grossAmount: 0,
+        sellerDiscountAmount: 0,
+        platformDiscountAmount: 0
+      };
+
+      currentLine.grossAmount += item.unitPrice * item.quantity;
+      linesBySellerId.set(item.listing.sellerId, currentLine);
+    }
+
+    for (const discount of pricingSnapshot.discounts) {
+      const sellerAllocations = allocateWeightedAmount(
+        discount.sellerFundedAmount.amount,
+        discount.allocations
+      );
+      const platformAllocations = allocateWeightedAmount(
+        discount.platformFundedAmount.amount,
+        discount.allocations
+      );
+
+      for (const allocation of discount.allocations) {
+        const sellerId = listingToSeller.get(allocation.listingId);
+
+        if (!sellerId) {
+          continue;
+        }
+
+        const currentLine = linesBySellerId.get(sellerId);
+
+        if (!currentLine) {
+          continue;
+        }
+
+        currentLine.sellerDiscountAmount +=
+          sellerAllocations.get(allocation.listingId) ?? 0;
+        currentLine.platformDiscountAmount +=
+          platformAllocations.get(allocation.listingId) ?? 0;
+      }
+    }
+
+    return orderSettlementSnapshotSchema.parse({
+      customerPaidAmount: {
+        amount: pricingSnapshot.total,
+        currency
+      },
+      discountTotal: {
+        amount: pricingSnapshot.discountTotal,
+        currency
+      },
+      lines: [...linesBySellerId.values()].map((line) => ({
+        sellerId: line.sellerId,
+        sellerName: line.sellerName,
+        grossAmount: {
+          amount: line.grossAmount,
+          currency
+        },
+        sellerDiscountAmount: {
+          amount: line.sellerDiscountAmount,
+          currency
+        },
+        platformDiscountAmount: {
+          amount: line.platformDiscountAmount,
+          currency
+        },
+        commissionAmount: {
+          amount: 0,
+          currency
+        },
+        netPayoutAmount: {
+          amount: Math.max(line.grossAmount - line.sellerDiscountAmount, 0),
+          currency
+        }
+      }))
+    });
   }
 
   private async markPaymentFailed(
@@ -1396,4 +1511,66 @@ export class PaymentsService {
       this.stripeWebhookSecret !== "whsec_placeholder"
     );
   }
+}
+
+function allocateWeightedAmount(
+  totalAmount: number,
+  allocations: Array<{ listingId: string; amount: number }>
+) {
+  const distributed = new Map<string, number>();
+
+  if (totalAmount <= 0 || allocations.length === 0) {
+    return distributed;
+  }
+
+  const totalWeight = allocations.reduce(
+    (sum, allocation) => sum + allocation.amount,
+    0
+  );
+
+  if (totalWeight <= 0) {
+    return distributed;
+  }
+
+  const provisional = allocations.map((allocation) => {
+    const exactShare = (totalAmount * allocation.amount) / totalWeight;
+    const flooredAmount = Math.floor(exactShare);
+
+    distributed.set(allocation.listingId, flooredAmount);
+
+    return {
+      listingId: allocation.listingId,
+      exactShare,
+      flooredAmount
+    };
+  });
+  let allocatedAmount = provisional.reduce(
+    (sum, allocation) => sum + allocation.flooredAmount,
+    0
+  );
+  let remainder = totalAmount - allocatedAmount;
+
+  while (remainder > 0) {
+    const nextAllocation = provisional
+      .slice()
+      .sort(
+        (left, right) =>
+          (right.exactShare - right.flooredAmount) -
+            (left.exactShare - left.flooredAmount) ||
+          left.listingId.localeCompare(right.listingId)
+      )[0];
+
+    if (!nextAllocation) {
+      break;
+    }
+
+    distributed.set(
+      nextAllocation.listingId,
+      (distributed.get(nextAllocation.listingId) ?? 0) + 1
+    );
+    remainder -= 1;
+    allocatedAmount += 1;
+  }
+
+  return distributed;
 }

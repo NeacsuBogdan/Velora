@@ -60,6 +60,14 @@ export const promotionStackingModes = ["STACKABLE", "EXCLUSIVE"] as const;
 export type PromotionStackingMode =
   (typeof promotionStackingModes)[number];
 
+export const promotionFundingSources = [
+  "PLATFORM",
+  "SELLER",
+  "SHARED"
+] as const;
+export type PromotionFundingSource =
+  (typeof promotionFundingSources)[number];
+
 export const sellerStatuses = ["PENDING", "ACTIVE", "SUSPENDED"] as const;
 export type SellerStatus = (typeof sellerStatuses)[number];
 

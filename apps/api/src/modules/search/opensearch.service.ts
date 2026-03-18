@@ -386,6 +386,10 @@ export class OpenSearchService {
     return true;
   }
 
+  invalidateProjection() {
+    this.projectionReady = false;
+  }
+
   async searchDocuments(
     query: NormalizedSearchQuery,
     fallbackDocuments: SearchProjectionDocument[]

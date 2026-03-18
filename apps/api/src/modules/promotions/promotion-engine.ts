@@ -1,6 +1,4 @@
-import type {
-  PromotionRuleConfiguration
-} from "@velora/contracts";
+import type { PromotionFundingSource, PromotionRuleConfiguration } from "@velora/contracts";
 import type { PromotionStackingMode, PromotionType } from "@prisma/client";
 
 export interface PricingLine {
@@ -18,10 +16,17 @@ export interface PricingPromotionCandidate {
   name: string;
   description: string;
   type: PromotionType;
+  fundingSource: PromotionFundingSource;
+  sellerFundingSharePercent: number | null;
   stackingMode: PromotionStackingMode;
   priority: number;
   couponCode: string | null;
   configuration: PromotionRuleConfiguration;
+}
+
+export interface AppliedDiscountAllocation {
+  listingId: string;
+  amount: number;
 }
 
 export interface AppliedDiscountResult {
@@ -30,6 +35,10 @@ export interface AppliedDiscountResult {
   label: string;
   description: string | null;
   amount: number;
+  fundingSource: PromotionFundingSource;
+  sellerFundedAmount: number;
+  platformFundedAmount: number;
+  allocations: AppliedDiscountAllocation[];
 }
 
 export interface PricingEvaluationResult {
@@ -51,52 +60,78 @@ export interface PricingEvaluationInput {
   promotions: PricingPromotionCandidate[];
 }
 
+type LineTotals = Map<string, number>;
+
 export function evaluatePromotions(
   input: PricingEvaluationInput
 ): PricingEvaluationResult {
+  const normalizedCouponCode = normalizeCouponCode(input.couponCode);
   const subtotal = input.lines.reduce(
     (sum, line) => sum + line.unitPrice * line.quantity,
     0
   );
-  const normalizedCouponCode = normalizeCouponCode(input.couponCode);
+  const workingTotals = new Map(
+    input.lines.map((line) => [line.listingId, line.unitPrice * line.quantity])
+  );
   const eligiblePromotions = input.promotions
     .map((promotion) =>
-      evaluatePromotion(promotion, input.lines, subtotal, normalizedCouponCode)
+      evaluatePromotion(
+        promotion,
+        input.lines,
+        workingTotals,
+        subtotal,
+        normalizedCouponCode
+      )
     )
     .filter((promotion): promotion is EvaluatedPromotion => promotion !== null)
     .sort(comparePromotions);
-
   const exclusivePromotion = eligiblePromotions.find(
     (promotion) => promotion.stackingMode === "EXCLUSIVE"
   );
   const selectedPromotions = exclusivePromotion
-    ? [exclusivePromotion]
-    : eligiblePromotions;
+    ? [input.promotions.find((promotion) => promotion.promotionId === exclusivePromotion.promotionId)!]
+    : eligiblePromotions.map((promotion) =>
+        input.promotions.find(
+          (candidate) => candidate.promotionId === promotion.promotionId
+        )!
+      );
 
   const discounts: AppliedDiscountResult[] = [];
   let discountTotal = 0;
 
   for (const promotion of selectedPromotions) {
-    const remaining = Math.max(subtotal - discountTotal, 0);
+    const evaluatedPromotion = evaluatePromotion(
+      promotion,
+      input.lines,
+      workingTotals,
+      subtotal,
+      normalizedCouponCode
+    );
 
-    if (remaining <= 0) {
-      break;
-    }
-
-    const amount = Math.min(promotion.amount, remaining);
-
-    if (amount <= 0) {
+    if (!evaluatedPromotion || evaluatedPromotion.amount <= 0) {
       continue;
     }
 
     discounts.push({
-      promotionId: promotion.promotionId,
-      couponCode: promotion.couponCode,
-      label: promotion.label,
-      description: promotion.description,
-      amount
+      promotionId: evaluatedPromotion.promotionId,
+      couponCode: evaluatedPromotion.couponCode,
+      label: evaluatedPromotion.label,
+      description: evaluatedPromotion.description,
+      amount: evaluatedPromotion.amount,
+      fundingSource: evaluatedPromotion.fundingSource,
+      sellerFundedAmount: evaluatedPromotion.sellerFundedAmount,
+      platformFundedAmount: evaluatedPromotion.platformFundedAmount,
+      allocations: evaluatedPromotion.allocations
     });
-    discountTotal += amount;
+    discountTotal += evaluatedPromotion.amount;
+
+    for (const allocation of evaluatedPromotion.allocations) {
+      const currentAmount = workingTotals.get(allocation.listingId) ?? 0;
+      workingTotals.set(
+        allocation.listingId,
+        Math.max(currentAmount - allocation.amount, 0)
+      );
+    }
   }
 
   return {
@@ -107,10 +142,29 @@ export function evaluatePromotions(
   };
 }
 
+export function supportsMerchandisingDisplay(
+  promotion: PricingPromotionCandidate
+): boolean {
+  if (promotion.couponCode) {
+    return false;
+  }
+
+  if (promotion.type === "PERCENTAGE" || promotion.type === "CATEGORY_DISCOUNT") {
+    return true;
+  }
+
+  if (promotion.type === "FIXED_AMOUNT") {
+    return hasScopedTargets(promotion.configuration);
+  }
+
+  return false;
+}
+
 function evaluatePromotion(
   promotion: PricingPromotionCandidate,
   lines: PricingLine[],
-  subtotal: number,
+  lineTotals: LineTotals,
+  cartSubtotal: number,
   couponCode: string | null
 ): EvaluatedPromotion | null {
   const requiredCouponCode = normalizeCouponCode(promotion.couponCode);
@@ -119,118 +173,209 @@ function evaluatePromotion(
     return null;
   }
 
-  const amount = calculatePromotionAmount(promotion, lines, subtotal);
+  const calculated = calculatePromotionEffect(
+    promotion,
+    lines,
+    lineTotals,
+    cartSubtotal
+  );
 
-  if (amount <= 0) {
+  if (!calculated || calculated.amount <= 0) {
     return null;
   }
+
+  const funding = splitFunding(
+    calculated.amount,
+    promotion.fundingSource,
+    promotion.sellerFundingSharePercent
+  );
 
   return {
     promotionId: promotion.promotionId,
     couponCode: requiredCouponCode,
     label: promotion.name,
     description: promotion.description,
-    amount,
+    amount: calculated.amount,
+    fundingSource: promotion.fundingSource,
+    sellerFundedAmount: funding.sellerFundedAmount,
+    platformFundedAmount: funding.platformFundedAmount,
+    allocations: calculated.allocations,
     priority: promotion.priority,
     stackingMode: promotion.stackingMode
   };
 }
 
-function calculatePromotionAmount(
+function calculatePromotionEffect(
   promotion: PricingPromotionCandidate,
   lines: PricingLine[],
-  subtotal: number
+  lineTotals: LineTotals,
+  cartSubtotal: number
 ) {
   switch (promotion.type) {
     case "PERCENTAGE":
-      return calculatePercentageAmount(
-        subtotal,
-        promotion.configuration.percentage
+      return calculateScopedPercentageEffect(
+        promotion.configuration,
+        lines,
+        lineTotals
       );
     case "FIXED_AMOUNT":
-      return clampIntegerAmount(promotion.configuration.amount);
+      return calculateScopedFixedAmountEffect(
+        promotion.configuration,
+        lines,
+        lineTotals
+      );
     case "CART_THRESHOLD":
-      return calculateCartThresholdAmount(promotion.configuration, subtotal);
+      return calculateCartThresholdEffect(
+        promotion.configuration,
+        lines,
+        lineTotals,
+        cartSubtotal
+      );
     case "CATEGORY_DISCOUNT":
-      return calculateCategoryDiscountAmount(promotion.configuration, lines);
+      return calculateCategoryDiscountEffect(
+        promotion.configuration,
+        lines,
+        lineTotals
+      );
     case "BUY_X_GET_Y":
-      return calculateBuyXGetYAmount(promotion.configuration, lines);
+      return calculateBuyXGetYEffect(promotion.configuration, lines, lineTotals);
     default:
-      return 0;
+      return null;
   }
 }
 
-function calculateCartThresholdAmount(
+function calculateScopedPercentageEffect(
   configuration: PromotionRuleConfiguration,
-  subtotal: number
+  lines: PricingLine[],
+  lineTotals: LineTotals
+) {
+  const eligibleLines = getEligibleLines(lines, lineTotals, configuration);
+  const eligibleSubtotal = sumEligibleLines(eligibleLines);
+  const amount = calculatePercentageAmount(
+    eligibleSubtotal,
+    configuration.percentage
+  );
+
+  if (amount <= 0) {
+    return null;
+  }
+
+  return {
+    amount,
+    allocations: allocateAmountAcrossLines(amount, eligibleLines)
+  };
+}
+
+function calculateScopedFixedAmountEffect(
+  configuration: PromotionRuleConfiguration,
+  lines: PricingLine[],
+  lineTotals: LineTotals
+) {
+  const eligibleLines = getEligibleLines(lines, lineTotals, configuration);
+  const eligibleSubtotal = sumEligibleLines(eligibleLines);
+  const amount = Math.min(
+    clampIntegerAmount(configuration.amount),
+    eligibleSubtotal
+  );
+
+  if (amount <= 0) {
+    return null;
+  }
+
+  return {
+    amount,
+    allocations: allocateAmountAcrossLines(amount, eligibleLines)
+  };
+}
+
+function calculateCartThresholdEffect(
+  configuration: PromotionRuleConfiguration,
+  lines: PricingLine[],
+  lineTotals: LineTotals,
+  cartSubtotal: number
 ) {
   if (
     configuration.thresholdAmount === undefined ||
-    subtotal < configuration.thresholdAmount
+    cartSubtotal < configuration.thresholdAmount
   ) {
-    return 0;
+    return null;
   }
 
-  if (configuration.amount !== undefined) {
-    return clampIntegerAmount(configuration.amount);
+  const eligibleLines = getEligibleLines(lines, lineTotals);
+  const eligibleSubtotal = sumEligibleLines(eligibleLines);
+
+  if (eligibleSubtotal <= 0) {
+    return null;
   }
 
-  return calculatePercentageAmount(subtotal, configuration.percentage);
+  const amount =
+    configuration.amount !== undefined
+      ? Math.min(clampIntegerAmount(configuration.amount), eligibleSubtotal)
+      : calculatePercentageAmount(eligibleSubtotal, configuration.percentage);
+
+  if (amount <= 0) {
+    return null;
+  }
+
+  return {
+    amount,
+    allocations: allocateAmountAcrossLines(amount, eligibleLines)
+  };
 }
 
-function calculateCategoryDiscountAmount(
+function calculateCategoryDiscountEffect(
   configuration: PromotionRuleConfiguration,
-  lines: PricingLine[]
+  lines: PricingLine[],
+  lineTotals: LineTotals
 ) {
   const categorySlugs = configuration.categorySlugs ?? [];
 
   if (categorySlugs.length === 0) {
-    return 0;
+    return null;
   }
 
-  const eligibleSubtotal = lines
-    .filter((line) =>
-      categorySlugs.some(
-        (categorySlug) =>
-          line.categorySlug === categorySlug ||
-          line.categoryPath.includes(categorySlug)
-      )
-    )
-    .reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
+  const eligibleLines = getEligibleLines(lines, lineTotals, configuration);
+  const eligibleSubtotal = sumEligibleLines(eligibleLines);
 
   if (eligibleSubtotal <= 0) {
-    return 0;
+    return null;
   }
 
-  if (configuration.amount !== undefined) {
-    return Math.min(clampIntegerAmount(configuration.amount), eligibleSubtotal);
+  const amount =
+    configuration.amount !== undefined
+      ? Math.min(clampIntegerAmount(configuration.amount), eligibleSubtotal)
+      : calculatePercentageAmount(eligibleSubtotal, configuration.percentage);
+
+  if (amount <= 0) {
+    return null;
   }
 
-  return calculatePercentageAmount(
-    eligibleSubtotal,
-    configuration.percentage
-  );
+  return {
+    amount,
+    allocations: allocateAmountAcrossLines(amount, eligibleLines)
+  };
 }
 
-function calculateBuyXGetYAmount(
+function calculateBuyXGetYEffect(
   configuration: PromotionRuleConfiguration,
-  lines: PricingLine[]
+  lines: PricingLine[],
+  lineTotals: LineTotals
 ) {
   const buyQuantity = configuration.buyQuantity ?? 0;
   const getQuantity = configuration.getQuantity ?? 0;
 
   if (buyQuantity <= 0 || getQuantity <= 0) {
-    return 0;
+    return null;
   }
 
-  const eligibleLines = lines.filter((line) => matchesScopedLine(line, configuration));
+  const eligibleLines = getEligibleLines(lines, lineTotals, configuration);
   const totalEligibleQuantity = eligibleLines.reduce(
     (sum, line) => sum + line.quantity,
     0
   );
 
   if (totalEligibleQuantity < buyQuantity + getQuantity) {
-    return 0;
+    return null;
   }
 
   const freeUnits =
@@ -238,14 +383,161 @@ function calculateBuyXGetYAmount(
     getQuantity;
 
   if (freeUnits <= 0) {
-    return 0;
+    return null;
   }
 
   const unitPrices = eligibleLines
-    .flatMap((line) => Array.from({ length: line.quantity }, () => line.unitPrice))
-    .sort((left, right) => left - right);
+    .flatMap((line) => buildUnitPrices(line.amount, line.quantity).map((amount) => ({
+      listingId: line.listingId,
+      amount
+    })))
+    .sort((left, right) => left.amount - right.amount);
+  const selectedUnits = unitPrices.slice(0, freeUnits);
+  const allocationsByListing = new Map<string, number>();
 
-  return unitPrices.slice(0, freeUnits).reduce((sum, value) => sum + value, 0);
+  for (const unit of selectedUnits) {
+    allocationsByListing.set(
+      unit.listingId,
+      (allocationsByListing.get(unit.listingId) ?? 0) + unit.amount
+    );
+  }
+
+  const allocations = [...allocationsByListing.entries()].map(
+    ([listingId, amount]) => ({
+      listingId,
+      amount
+    })
+  );
+  const amount = allocations.reduce((sum, allocation) => sum + allocation.amount, 0);
+
+  if (amount <= 0) {
+    return null;
+  }
+
+  return {
+    amount,
+    allocations
+  };
+}
+
+function getEligibleLines(
+  lines: PricingLine[],
+  lineTotals: LineTotals,
+  configuration?: PromotionRuleConfiguration
+) {
+  return lines
+    .map((line) => ({
+      ...line,
+      amount: lineTotals.get(line.listingId) ?? 0
+    }))
+    .filter((line) => line.amount > 0)
+    .filter((line) => (configuration ? matchesScopedLine(line, configuration) : true));
+}
+
+function sumEligibleLines(
+  lines: Array<{
+    amount: number;
+  }>
+) {
+  return lines.reduce((sum, line) => sum + line.amount, 0);
+}
+
+function allocateAmountAcrossLines(
+  targetAmount: number,
+  lines: Array<{
+    listingId: string;
+    amount: number;
+  }>
+): AppliedDiscountAllocation[] {
+  const cappedTargetAmount = Math.min(
+    targetAmount,
+    lines.reduce((sum, line) => sum + line.amount, 0)
+  );
+
+  if (cappedTargetAmount <= 0 || lines.length === 0) {
+    return [];
+  }
+
+  const provisional = lines.map((line) => {
+    const exactShare = (cappedTargetAmount * line.amount) / sumEligibleLines(lines);
+    const flooredAmount = Math.min(Math.floor(exactShare), line.amount);
+
+    return {
+      listingId: line.listingId,
+      amount: flooredAmount,
+      fractional: exactShare - flooredAmount,
+      capacity: line.amount - flooredAmount
+    };
+  });
+  let allocatedAmount = provisional.reduce((sum, line) => sum + line.amount, 0);
+  let remainder = cappedTargetAmount - allocatedAmount;
+
+  while (remainder > 0) {
+    const nextLine = provisional
+      .filter((line) => line.capacity > 0)
+      .sort(
+        (left, right) =>
+          right.fractional - left.fractional ||
+          left.listingId.localeCompare(right.listingId)
+      )[0];
+
+    if (!nextLine) {
+      break;
+    }
+
+    nextLine.amount += 1;
+    nextLine.capacity -= 1;
+    remainder -= 1;
+    allocatedAmount += 1;
+  }
+
+  return provisional
+    .filter((line) => line.amount > 0)
+    .map((line) => ({
+      listingId: line.listingId,
+      amount: line.amount
+    }));
+}
+
+function buildUnitPrices(totalAmount: number, quantity: number) {
+  if (quantity <= 0) {
+    return [];
+  }
+
+  const baseAmount = Math.floor(totalAmount / quantity);
+  const remainder = totalAmount % quantity;
+
+  return Array.from({ length: quantity }, (_, index) =>
+    index < remainder ? baseAmount + 1 : baseAmount
+  );
+}
+
+function splitFunding(
+  amount: number,
+  fundingSource: PromotionFundingSource,
+  sellerFundingSharePercent: number | null
+) {
+  if (fundingSource === "SELLER") {
+    return {
+      sellerFundedAmount: amount,
+      platformFundedAmount: 0
+    };
+  }
+
+  if (fundingSource === "SHARED") {
+    const sellerSharePercent = sellerFundingSharePercent ?? 0;
+    const sellerFundedAmount = Math.floor(amount * (sellerSharePercent / 100));
+
+    return {
+      sellerFundedAmount,
+      platformFundedAmount: amount - sellerFundedAmount
+    };
+  }
+
+  return {
+    sellerFundedAmount: 0,
+    platformFundedAmount: amount
+  };
 }
 
 function matchesScopedLine(
@@ -266,6 +558,13 @@ function matchesScopedLine(
           line.categorySlug === categorySlug ||
           line.categoryPath.includes(categorySlug)
       )
+  );
+}
+
+function hasScopedTargets(configuration: PromotionRuleConfiguration) {
+  return (
+    (configuration.listingIds?.length ?? 0) > 0 ||
+    (configuration.categorySlugs?.length ?? 0) > 0
   );
 }
 

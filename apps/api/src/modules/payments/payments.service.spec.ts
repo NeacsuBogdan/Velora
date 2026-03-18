@@ -165,7 +165,7 @@ describe("PaymentsService", () => {
   let paymentsService: PaymentsService;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     process.env.STRIPE_SECRET_KEY = "sk_test_placeholder";
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_local_stage5";
 
@@ -266,6 +266,9 @@ describe("PaymentsService", () => {
         checkoutSession: {
           id: "checkout-1",
           userId: "user-1",
+          cart: {
+            guestTokenHash: null,
+          },
         },
       })
       .mockResolvedValueOnce({
@@ -324,6 +327,7 @@ describe("PaymentsService", () => {
                       variantId: "variant-1",
                       seller: {
                         id: "seller-1",
+                        displayName: "North Star Electronics",
                         ownerUserId: "seller-user-1",
                       },
                       product: {
@@ -389,6 +393,9 @@ describe("PaymentsService", () => {
         checkoutSession: {
           id: "checkout-1",
           userId: "user-1",
+          cart: {
+            guestTokenHash: null,
+          },
         },
       })
       .mockResolvedValueOnce({

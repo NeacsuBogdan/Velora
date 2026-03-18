@@ -13,14 +13,21 @@ import {
 } from "@velora/contracts";
 
 import { parseWithSchema } from "../../common/zod";
+import { PlatformCacheService } from "../platform-cache/platform-cache.service";
 import {
   buildSearchDocument,
   searchProjectionListingInclude
 } from "../search/search.helpers";
+import { OpenSearchService } from "../search/opensearch.service";
 import {
-  evaluatePromotions,
-  type PricingPromotionCandidate
+  evaluatePromotions
 } from "./promotion-engine";
+import {
+  findActivePromotionRecords,
+  normalizePromotionCandidates,
+  promotionReadInclude,
+  type PromotionRecord
+} from "./promotion-read-models";
 import {
   pricingSnapshotSchema,
   type PricingSnapshot
@@ -28,21 +35,6 @@ import {
 import { PrismaService } from "../database/prisma.service";
 
 type DatabaseClient = PrismaService | Prisma.TransactionClient;
-
-const promotionInclude = Prisma.validator<Prisma.PromotionDefaultArgs>()({
-  include: {
-    rules: {
-      orderBy: {
-        createdAt: "asc"
-      }
-    },
-    coupons: {
-      orderBy: {
-        createdAt: "asc"
-      }
-    }
-  }
-});
 
 const cartPricingInclude = Prisma.validator<Prisma.CartDefaultArgs>()({
   include: {
@@ -59,12 +51,15 @@ const cartPricingInclude = Prisma.validator<Prisma.CartDefaultArgs>()({
   }
 });
 
-type PromotionRecord = Prisma.PromotionGetPayload<typeof promotionInclude>;
 type CartPricingRecord = Prisma.CartGetPayload<typeof cartPricingInclude>;
 
 @Injectable()
 export class PromotionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cacheService: PlatformCacheService,
+    private readonly openSearchService: OpenSearchService
+  ) {}
 
   async getOverview() {
     const [promotionCount, couponCount, activePromotionCount] =
@@ -93,7 +88,7 @@ export class PromotionsService {
 
   async listPromotions() {
     const promotions = await this.prisma.promotion.findMany({
-      include: promotionInclude.include,
+      include: promotionReadInclude.include,
       orderBy: [
         {
           priority: "asc"
@@ -110,6 +105,10 @@ export class PromotionsService {
   async createPromotion(viewer: AuthenticatedUser, rawInput: unknown) {
     const input = parseWithSchema(upsertPromotionRequestSchema, rawInput);
     this.validatePromotionRule(input.type, input.rule.configuration);
+    this.validateFundingConfiguration(
+      input.fundingSource,
+      input.sellerFundingSharePercent ?? null
+    );
     this.validateDateRange(input.startsAt ?? null, input.endsAt ?? null);
     input.coupons.forEach((coupon) =>
       this.validateDateRange(coupon.startsAt ?? null, coupon.endsAt ?? null)
@@ -122,6 +121,11 @@ export class PromotionsService {
           code: normalizeCouponCode(input.code),
           description: input.description,
           type: input.type,
+          fundingSource: input.fundingSource,
+          sellerFundingSharePercent:
+            input.fundingSource === "SHARED"
+              ? input.sellerFundingSharePercent ?? null
+              : null,
           stackingMode: input.stackingMode,
           priority: input.priority,
           isActive: input.isActive,
@@ -134,7 +138,7 @@ export class PromotionsService {
             }
           }
         },
-        include: promotionInclude.include
+        include: promotionReadInclude.include
       });
 
       for (const coupon of input.coupons) {
@@ -167,9 +171,11 @@ export class PromotionsService {
         where: {
           id: createdPromotion.id
         },
-        include: promotionInclude.include
+        include: promotionReadInclude.include
       });
     });
+
+    await this.invalidatePromotionReadModels();
 
     return this.mapPromotionSummary(promotion);
   }
@@ -181,6 +187,10 @@ export class PromotionsService {
   ) {
     const input = parseWithSchema(upsertPromotionRequestSchema, rawInput);
     this.validatePromotionRule(input.type, input.rule.configuration);
+    this.validateFundingConfiguration(
+      input.fundingSource,
+      input.sellerFundingSharePercent ?? null
+    );
     this.validateDateRange(input.startsAt ?? null, input.endsAt ?? null);
     input.coupons.forEach((coupon) =>
       this.validateDateRange(coupon.startsAt ?? null, coupon.endsAt ?? null)
@@ -206,6 +216,11 @@ export class PromotionsService {
           code: normalizeCouponCode(input.code),
           description: input.description,
           type: input.type,
+          fundingSource: input.fundingSource,
+          sellerFundingSharePercent:
+            input.fundingSource === "SHARED"
+              ? input.sellerFundingSharePercent ?? null
+              : null,
           stackingMode: input.stackingMode,
           priority: input.priority,
           isActive: input.isActive,
@@ -279,9 +294,11 @@ export class PromotionsService {
         where: {
           id: promotionId
         },
-        include: promotionInclude.include
+        include: promotionReadInclude.include
       });
     });
+
+    await this.invalidatePromotionReadModels();
 
     return this.mapPromotionSummary(promotion);
   }
@@ -329,26 +346,7 @@ export class PromotionsService {
     cart: CartPricingRecord
   ): Promise<PricingSnapshot> {
     const now = new Date();
-    const promotions = await tx.promotion.findMany({
-      where: {
-        isActive: true,
-        AND: [
-          {
-            OR: [
-              { startsAt: null },
-              { startsAt: { lte: now } }
-            ]
-          },
-          {
-            OR: [
-              { endsAt: null },
-              { endsAt: { gte: now } }
-            ]
-          }
-        ]
-      },
-      include: promotionInclude.include
-    });
+    const promotions = await findActivePromotionRecords(tx, now);
 
     const pricing = evaluatePromotions({
       currency: cart.currency,
@@ -366,7 +364,7 @@ export class PromotionsService {
           categoryPath: projection.category?.path.map((entry) => entry.slug) ?? []
         };
       }),
-      promotions: this.normalizePromotionCandidates(promotions, now)
+      promotions: normalizePromotionCandidates(promotions, now)
     });
 
     return pricingSnapshotSchema.parse({
@@ -383,71 +381,19 @@ export class PromotionsService {
           amount: discount.amount,
           currency: cart.currency
         },
-        description: discount.description
+        description: discount.description,
+        fundingSource: discount.fundingSource,
+        sellerFundedAmount: {
+          amount: discount.sellerFundedAmount,
+          currency: cart.currency
+        },
+        platformFundedAmount: {
+          amount: discount.platformFundedAmount,
+          currency: cart.currency
+        },
+        allocations: discount.allocations
       }))
     });
-  }
-
-  private normalizePromotionCandidates(
-    promotions: PromotionRecord[],
-    now: Date
-  ): PricingPromotionCandidate[] {
-    return promotions.flatMap(
-      (promotion): PricingPromotionCandidate[] => {
-      const rule = promotion.rules[0];
-
-      if (!rule) {
-        return [];
-      }
-
-      const configuration = promotionRuleConfigurationSchema.parse(
-        rule.configuration ?? {}
-      );
-
-      const baseCandidate = {
-        promotionId: promotion.id,
-        name: promotion.name,
-        description: promotion.description,
-        type: promotion.type,
-        stackingMode: promotion.stackingMode,
-        priority: promotion.priority,
-        configuration
-      };
-
-      const activeCoupons = promotion.coupons.filter((coupon) =>
-        this.isCouponActive(coupon, now)
-      );
-
-      if (activeCoupons.length === 0) {
-        return [
-          {
-            ...baseCandidate,
-            couponCode: null
-          }
-        ];
-      }
-
-      return activeCoupons.map((coupon) => ({
-        ...baseCandidate,
-        couponCode: coupon.code
-      }));
-      }
-    );
-  }
-
-  private isCouponActive(
-    coupon: PromotionRecord["coupons"][number],
-    now: Date
-  ) {
-    if (coupon.status !== "ACTIVE") {
-      return false;
-    }
-
-    const startsAtValid = coupon.startsAt ? coupon.startsAt <= now : true;
-    const endsAtValid = coupon.endsAt ? coupon.endsAt >= now : true;
-    const usageValid = coupon.usageLimit ? coupon.usedCount < coupon.usageLimit : true;
-
-    return startsAtValid && endsAtValid && usageValid;
   }
 
   private validatePromotionRule(
@@ -516,6 +462,36 @@ export class PromotionsService {
     }
   }
 
+  private validateFundingConfiguration(
+    fundingSource: "PLATFORM" | "SELLER" | "SHARED",
+    sellerFundingSharePercent: number | null
+  ) {
+    if (fundingSource === "SHARED") {
+      if (
+        sellerFundingSharePercent === null ||
+        sellerFundingSharePercent < 1 ||
+        sellerFundingSharePercent > 99
+      ) {
+        throw new BadRequestException(
+          "Shared promotions require a seller funding share between 1 and 99 percent."
+        );
+      }
+
+      return;
+    }
+
+    if (sellerFundingSharePercent !== null && sellerFundingSharePercent !== undefined) {
+      throw new BadRequestException(
+        "Seller funding share is only valid for shared promotions."
+      );
+    }
+  }
+
+  private async invalidatePromotionReadModels() {
+    this.openSearchService.invalidateProjection();
+    await this.cacheService.deleteByPrefix(["catalog:", "search:query:"]);
+  }
+
   private mapPromotionSummary(promotion: PromotionRecord) {
     return promotionSummarySchema.parse({
       promotionId: promotion.id,
@@ -523,6 +499,8 @@ export class PromotionsService {
       code: promotion.code ?? null,
       description: promotion.description,
       type: promotion.type,
+      fundingSource: promotion.fundingSource,
+      sellerFundingSharePercent: promotion.sellerFundingSharePercent ?? null,
       stackingMode: promotion.stackingMode,
       priority: promotion.priority,
       isActive: promotion.isActive,

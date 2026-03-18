@@ -15,6 +15,7 @@ The API test suite focuses on business-critical behavior rather than shallow con
 
 - auth session behavior
 - promotion and pricing rules
+- promotion funding attribution and settlement splits
 - cart repricing and coupon application
 - checkout reservation creation
 - stock reservation release behavior
@@ -69,6 +70,7 @@ Coverage focuses on:
 - duplicate webhook deliveries
 - replay-safe webhook processing with persisted external identifiers
 - repeated reservation cleanup execution
+- settlement snapshot persistence after discount-funded checkout flows
 
 Assertions check for single business effects rather than only checking HTTP status codes.
 

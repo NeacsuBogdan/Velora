@@ -1,6 +1,7 @@
 import {
   notificationKinds,
   notificationLevels,
+  promotionFundingSources,
   productStatuses,
   sellerApplicationStatuses,
   sellerStatuses,
@@ -610,6 +611,12 @@ export type PromotionStackingMode = z.infer<
   typeof promotionStackingModeSchema
 >;
 
+export const promotionFundingSourceSchema = z.enum(promotionFundingSources);
+
+export type PromotionFundingSource = z.infer<
+  typeof promotionFundingSourceSchema
+>;
+
 export const couponStatusSchema = z.enum([
   "ACTIVE",
   "DISABLED",
@@ -671,7 +678,10 @@ export const appliedDiscountSummarySchema = z.object({
   couponCode: z.string().nullable(),
   label: z.string(),
   amount: moneySchema,
-  description: z.string().nullable()
+  description: z.string().nullable(),
+  fundingSource: promotionFundingSourceSchema,
+  sellerFundedAmount: moneySchema,
+  platformFundedAmount: moneySchema
 });
 
 export type AppliedDiscountSummary = z.infer<
@@ -717,6 +727,8 @@ export const promotionSummarySchema = z.object({
   code: z.string().nullable(),
   description: z.string(),
   type: promotionTypeSchema,
+  fundingSource: promotionFundingSourceSchema,
+  sellerFundingSharePercent: z.number().int().min(1).max(99).nullable(),
   stackingMode: promotionStackingModeSchema,
   priority: z.number().int(),
   isActive: z.boolean(),
@@ -741,6 +753,8 @@ export const upsertPromotionRequestSchema = z.object({
     .optional(),
   description: z.string().min(8).max(400),
   type: promotionTypeSchema,
+  fundingSource: promotionFundingSourceSchema.default("PLATFORM"),
+  sellerFundingSharePercent: z.number().int().min(1).max(99).nullable().optional(),
   stackingMode: promotionStackingModeSchema,
   priority: z.number().int().min(0).max(1000),
   isActive: z.boolean().default(true),
@@ -766,6 +780,14 @@ export const upsertPromotionRequestSchema = z.object({
       })
     )
     .default([])
+}).superRefine((value, context) => {
+  if (value.fundingSource === "SHARED" && !value.sellerFundingSharePercent) {
+    context.addIssue({
+      code: "custom",
+      path: ["sellerFundingSharePercent"],
+      message: "Shared promotions require a seller funding share."
+    });
+  }
 });
 
 export type UpsertPromotionRequest = z.infer<
@@ -944,6 +966,28 @@ export const refundSummarySchema = z.object({
 
 export type RefundSummary = z.infer<typeof refundSummarySchema>;
 
+export const orderSettlementLineSchema = z.object({
+  sellerId: z.string(),
+  sellerName: z.string(),
+  grossAmount: moneySchema,
+  sellerDiscountAmount: moneySchema,
+  platformDiscountAmount: moneySchema,
+  commissionAmount: moneySchema,
+  netPayoutAmount: moneySchema
+});
+
+export type OrderSettlementLine = z.infer<typeof orderSettlementLineSchema>;
+
+export const orderSettlementSummarySchema = z.object({
+  customerPaidAmount: moneySchema,
+  discountTotal: moneySchema,
+  lines: z.array(orderSettlementLineSchema)
+});
+
+export type OrderSettlementSummary = z.infer<
+  typeof orderSettlementSummarySchema
+>;
+
 export const orderItemDetailSchema = z.object({
   orderItemId: z.string(),
   listingId: z.string(),
@@ -973,6 +1017,7 @@ export const orderDetailSchema = orderSummarySchema.extend({
   deliveryAddress: checkoutAddressSummarySchema.nullable(),
   items: z.array(orderItemDetailSchema),
   discounts: z.array(appliedDiscountSummarySchema),
+  settlement: orderSettlementSummarySchema.nullable(),
   statusHistory: z.array(orderStatusHistoryEntrySchema),
   refunds: z.array(refundSummarySchema)
 });
@@ -1234,6 +1279,7 @@ export const adminOrderDetailSchema = adminOrderSummarySchema.extend({
   deliveryAddress: checkoutAddressSummarySchema.nullable(),
   items: z.array(orderItemDetailSchema),
   discounts: z.array(appliedDiscountSummarySchema),
+  settlement: orderSettlementSummarySchema.nullable(),
   statusHistory: z.array(orderStatusHistoryEntrySchema),
   refunds: z.array(refundSummarySchema)
 });
@@ -1690,6 +1736,7 @@ export const sellerOrderDetailSchema = sellerOrderSummarySchema.extend({
   availableNextStatuses: z.array(orderStatusSchema),
   statusManagementNote: z.string().nullable(),
   items: z.array(orderItemDetailSchema),
+  settlement: orderSettlementLineSchema.nullable(),
   statusHistory: z.array(orderStatusHistoryEntrySchema),
   refunds: z.array(refundSummarySchema)
 });

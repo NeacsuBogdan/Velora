@@ -24,10 +24,10 @@
 
 ### Pricing and promotions
 
-- `Promotion`
+- `Promotion`: campaign definition including funding source and optional seller-share split
 - `PromotionRule`
 - `Coupon`
-- `AppliedDiscountSnapshot`
+- `AppliedDiscountSnapshot`: immutable discount record with funding attribution
 
 ### Inventory
 
@@ -49,7 +49,7 @@
 
 ### Orders and fulfillment placeholders
 
-- `Order`
+- `Order`: immutable commercial record with customer-paid totals, discount snapshots, and a settlement snapshot
 - `OrderItem`
 - `OrderStatusHistory`
 - `Shipment`
@@ -72,7 +72,7 @@
 - A `SellerProductListing` has one inventory row, many prices, and optional search projection state.
 - A `Cart` belongs to one user and can later spawn checkout sessions over its lifetime, though only one active checkout is kept valid after cart mutation.
 - A `CheckoutSession` owns the active reservation set and can settle into exactly one `Order`.
-- An `Order` references the payment attempt that settled it and stores immutable discount snapshots.
+- An `Order` references the payment attempt that settled it and stores immutable discount snapshots plus seller/platform settlement attribution.
 
 ## State transitions
 
@@ -129,6 +129,8 @@
 - Webhook processing is replay-safe. Duplicate external event identifiers are persisted and ignored after the first successful effect.
 - Cart, checkout, and order totals are server-authored. Client-submitted totals are never trusted.
 - Promotions are deterministic. Exclusive promotions block stackable combinations when selected by the pricing engine.
+- Promotion funding is explicit. Every applied discount is attributed to `PLATFORM`, `SELLER`, or `SHARED` funding so customer pricing and seller settlement do not drift apart.
 - Order discount data is immutable after order creation because discount snapshots are persisted at settlement time.
+- Platform-funded promotions do not reduce seller payout. Seller-funded and shared promotions reduce seller settlement only by their attributed share.
 - Seller access is scoped. Sellers can view and mutate only their own listings, inventory, and seller-order slices.
 - Search remains recoverable. OpenSearch failure does not invalidate the transactional catalog; reindex and persisted projections can rebuild the search layer.

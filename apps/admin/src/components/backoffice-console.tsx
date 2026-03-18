@@ -189,7 +189,11 @@ export function BackofficeConsole({
         id="promotions"
         title="Promotion management"
       >
-        <PromotionConsole initialPromotions={promotions} />
+        <PromotionConsole
+          catalogOptions={catalogOptions}
+          initialProducts={products}
+          initialPromotions={promotions}
+        />
       </SectionShell>
     </div>
   );

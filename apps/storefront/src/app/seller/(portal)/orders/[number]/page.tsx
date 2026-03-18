@@ -129,6 +129,35 @@ export default async function SellerOrderDetailPage({
                 </span>
               </div>
             </div>
+
+            {order.settlement ? (
+              <div className="mt-6 grid gap-3 border-t border-[var(--stroke)] pt-4 text-sm">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-[var(--muted)]">Gross merchandise</span>
+                  <span className="font-semibold">
+                    {formatMoney(order.settlement.grossAmount)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-[var(--muted)]">Seller-funded discount</span>
+                  <span className="font-semibold">
+                    -{formatMoney(order.settlement.sellerDiscountAmount)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-[var(--muted)]">Platform-funded discount</span>
+                  <span className="font-semibold">
+                    {formatMoney(order.settlement.platformDiscountAmount)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-[var(--muted)]">Expected payout</span>
+                  <span className="font-semibold">
+                    {formatMoney(order.settlement.netPayoutAmount)}
+                  </span>
+                </div>
+              </div>
+            ) : null}
           </Panel>
 
           <div className="grid gap-4">

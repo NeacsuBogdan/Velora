@@ -546,6 +546,66 @@ export function OrderManager({
                   ) : null}
                 </div>
 
+                {orderDetail.settlement ? (
+                  <div className="rounded-[24px] border border-[var(--stroke)] bg-white px-5 py-5">
+                    <h4 className="font-semibold text-[var(--foreground)]">
+                      Settlement split
+                    </h4>
+                    <div className="mt-4 grid gap-3 text-sm text-[var(--muted)]">
+                      <div className="flex items-center justify-between gap-4">
+                        <span>Customer paid</span>
+                        <span className="font-semibold text-[var(--foreground)]">
+                          {formatMoney(
+                            orderDetail.settlement.customerPaidAmount.amount,
+                            orderDetail.settlement.customerPaidAmount.currency
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-4">
+                        <span>Total discount</span>
+                        <span className="font-semibold text-[var(--foreground)]">
+                          -{formatMoney(
+                            orderDetail.settlement.discountTotal.amount,
+                            orderDetail.settlement.discountTotal.currency
+                          )}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid gap-3 border-t border-[var(--stroke)] pt-4">
+                      {orderDetail.settlement.lines.map((line) => (
+                        <div
+                          className="rounded-[20px] border border-[var(--stroke)] px-4 py-4 text-sm"
+                          key={line.sellerId}
+                        >
+                          <div className="flex items-center justify-between gap-4">
+                            <p className="font-semibold text-[var(--foreground)]">
+                              {line.sellerName}
+                            </p>
+                            <p className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+                              Net {formatMoney(line.netPayoutAmount.amount, line.netPayoutAmount.currency)}
+                            </p>
+                          </div>
+                          <div className="mt-3 grid gap-2 text-[var(--muted)]">
+                            <div className="flex items-center justify-between gap-4">
+                              <span>Gross</span>
+                              <span>{formatMoney(line.grossAmount.amount, line.grossAmount.currency)}</span>
+                            </div>
+                            <div className="flex items-center justify-between gap-4">
+                              <span>Seller-funded</span>
+                              <span>-{formatMoney(line.sellerDiscountAmount.amount, line.sellerDiscountAmount.currency)}</span>
+                            </div>
+                            <div className="flex items-center justify-between gap-4">
+                              <span>Platform-funded</span>
+                              <span>{formatMoney(line.platformDiscountAmount.amount, line.platformDiscountAmount.currency)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
                 <div className="rounded-[24px] border border-[var(--stroke)] bg-white px-5 py-5">
                   <h4 className="font-semibold text-[var(--foreground)]">Status timeline</h4>
                   <div className="mt-4 grid gap-3">

@@ -10,6 +10,7 @@ import {
   parseCheckoutAddressSnapshot,
   parseCheckoutContactSnapshot
 } from "../checkout/checkout.helpers";
+import { findSellerSettlementLine } from "../orders/order-settlement.helpers";
 import { calculateAvailableQuantity } from "../search/search.helpers";
 
 export function slugify(value: string) {
@@ -385,6 +386,7 @@ export function mapSellerOrderDetail(order: SellerOrderRecord, sellerId: string)
         currency: order.currency
       }
     })),
+    settlement: findSellerSettlementLine(order.settlementSnapshot, sellerId),
     statusHistory: order.statusHistory.map((entry) => ({
       status: entry.status,
       note: entry.note ?? null,

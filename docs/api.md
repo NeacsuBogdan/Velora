@@ -365,6 +365,44 @@ Cookie: velora_session=...
 }
 ```
 
+### Create a platform-funded product promotion
+
+Request:
+
+```http
+POST /api/promotions
+Content-Type: application/json
+Cookie: velora_session=...
+
+{
+  "name": "NordWave Edge S launch subsidy",
+  "code": "EDGE-S-LAUNCH",
+  "description": "Platform-funded launch discount for the Edge S hero offer.",
+  "type": "FIXED_AMOUNT",
+  "fundingSource": "PLATFORM",
+  "stackingMode": "STACKABLE",
+  "priority": 45,
+  "isActive": true,
+  "startsAt": "2026-03-18T09:00:00.000Z",
+  "endsAt": "2026-03-31T21:00:00.000Z",
+  "rules": [
+    {
+      "configuration": {
+        "amount": 10000,
+        "listingIds": ["seed-listing-phone-edge-s"]
+      }
+    }
+  ]
+}
+```
+
+Notes:
+
+- `fundingSource` accepts `PLATFORM`, `SELLER`, or `SHARED`.
+- `sellerFundingSharePercent` is required only for `SHARED`.
+- Rule targeting can use listing IDs, category slugs, or coupon scope depending on the promotion type.
+- Product and category promotions feed both checkout pricing and storefront merchandising, including current-price and compare-at presentation.
+
 Response shape:
 
 ```json
@@ -487,5 +525,6 @@ Confirmation response shape:
 - Role violations return `403`.
 - Missing resources return `404`.
 - Business-rule violations such as insufficient stock, invalid coupons, or invalid order transitions return `400`.
+- Invalid promotion funding configurations, such as a shared campaign without a seller share, also return `400`.
 - Replay-safe flows may return an already-settled view instead of failing when the same action is repeated with the same business identity.
 - Seller onboarding activation fails closed: unknown, expired, or already-consumed tokens return safe errors without exposing internal review notes or operator metadata.

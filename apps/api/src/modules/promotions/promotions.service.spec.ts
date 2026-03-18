@@ -106,11 +106,21 @@ function createListing(): SearchProjectionListing {
 
 describe("PromotionsService", () => {
   const prisma = {};
+  const cacheService = {
+    deleteByPrefix: vi.fn()
+  };
+  const openSearchService = {
+    invalidateProjection: vi.fn()
+  };
   let promotionsService: PromotionsService;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    promotionsService = new PromotionsService(prisma as never);
+    promotionsService = new PromotionsService(
+      prisma as never,
+      cacheService as never,
+      openSearchService as never
+    );
   });
 
   it("builds a pricing snapshot that includes coupon-backed discounts", async () => {
@@ -138,6 +148,8 @@ describe("PromotionsService", () => {
             name: "Welcome 5%",
             description: "Coupon-backed launch discount",
             type: "PERCENTAGE",
+            fundingSource: "PLATFORM",
+            sellerFundingSharePercent: null,
             stackingMode: "STACKABLE",
             priority: 10,
             rules: [
@@ -187,7 +199,22 @@ describe("PromotionsService", () => {
           amount: 32990,
           currency: "RON"
         },
-        description: "Coupon-backed launch discount"
+        description: "Coupon-backed launch discount",
+        fundingSource: "PLATFORM",
+        sellerFundedAmount: {
+          amount: 0,
+          currency: "RON"
+        },
+        platformFundedAmount: {
+          amount: 32990,
+          currency: "RON"
+        },
+        allocations: [
+          {
+            listingId: "clisting001",
+            amount: 32990
+          }
+        ]
       }
     ]);
   });

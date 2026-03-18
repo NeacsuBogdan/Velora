@@ -12,6 +12,7 @@ import {
   OrderStatus,
   PaymentStatus,
   ProductStatus,
+  PromotionFundingSource,
   PromotionStackingMode,
   PromotionType,
   SearchSyncStatus,
@@ -715,6 +716,7 @@ async function seedCatalogAndCommerce(): Promise<void> {
       code: "WELCOME5",
       description: "Coupon-backed onboarding discount for first cart validation flows.",
       type: PromotionType.PERCENTAGE,
+      fundingSource: PromotionFundingSource.PLATFORM,
       stackingMode: PromotionStackingMode.STACKABLE,
       priority: 10,
       ruleId: "seed-stage6-promotion-rule-welcome",
@@ -733,6 +735,7 @@ async function seedCatalogAndCommerce(): Promise<void> {
       code: "PHONE10",
       description: "Automatic category discount for phone listings in the seeded catalog.",
       type: PromotionType.CATEGORY_DISCOUNT,
+      fundingSource: PromotionFundingSource.PLATFORM,
       stackingMode: PromotionStackingMode.STACKABLE,
       priority: 20,
       ruleId: "seed-stage6-promotion-rule-phone10",
@@ -748,6 +751,7 @@ async function seedCatalogAndCommerce(): Promise<void> {
       code: "BASKET150",
       description: "Threshold discount once the seeded cart reaches a higher basket value.",
       type: PromotionType.CART_THRESHOLD,
+      fundingSource: PromotionFundingSource.PLATFORM,
       stackingMode: PromotionStackingMode.STACKABLE,
       priority: 30,
       ruleId: "seed-stage6-promotion-rule-basket150",
@@ -763,6 +767,8 @@ async function seedCatalogAndCommerce(): Promise<void> {
       code: "AUDIO3FOR2",
       description: "Bundle logic seed for buy-x-get-y coverage in the promotion engine.",
       type: PromotionType.BUY_X_GET_Y,
+      fundingSource: PromotionFundingSource.SHARED,
+      sellerFundingSharePercent: 40,
       stackingMode: PromotionStackingMode.STACKABLE,
       priority: 40,
       ruleId: "seed-stage6-promotion-rule-audio3for2",
@@ -779,6 +785,7 @@ async function seedCatalogAndCommerce(): Promise<void> {
       code: "VIP250",
       description: "Exclusive fixed discount reserved for a dedicated coupon flow.",
       type: PromotionType.FIXED_AMOUNT,
+      fundingSource: PromotionFundingSource.PLATFORM,
       stackingMode: PromotionStackingMode.EXCLUSIVE,
       priority: 5,
       ruleId: "seed-stage6-promotion-rule-vip250",
@@ -793,6 +800,22 @@ async function seedCatalogAndCommerce(): Promise<void> {
           usageLimit: 25
         }
       ]
+    },
+    {
+      name: "NordWave Edge S platform launch",
+      code: "EDGE-S-LAUNCH",
+      description: "Product-specific markdown funded by the marketplace for the launch flagship listing.",
+      type: PromotionType.FIXED_AMOUNT,
+      fundingSource: PromotionFundingSource.PLATFORM,
+      stackingMode: PromotionStackingMode.STACKABLE,
+      priority: 15,
+      ruleId: "seed-stage6-promotion-rule-edge-launch",
+      ruleName: "100 RON off the NordWave Edge S launch offer",
+      configuration: {
+        amount: 10000,
+        listingIds: [listing.id]
+      },
+      coupons: []
     }
   ];
 
@@ -805,6 +828,11 @@ async function seedCatalogAndCommerce(): Promise<void> {
         name: promotionSeed.name,
         description: promotionSeed.description,
         type: promotionSeed.type,
+        fundingSource: promotionSeed.fundingSource,
+        sellerFundingSharePercent:
+          promotionSeed.fundingSource === PromotionFundingSource.SHARED
+            ? promotionSeed.sellerFundingSharePercent ?? null
+            : null,
         stackingMode: promotionSeed.stackingMode,
         priority: promotionSeed.priority,
         isActive: true
@@ -814,6 +842,11 @@ async function seedCatalogAndCommerce(): Promise<void> {
         code: promotionSeed.code,
         description: promotionSeed.description,
         type: promotionSeed.type,
+        fundingSource: promotionSeed.fundingSource,
+        sellerFundingSharePercent:
+          promotionSeed.fundingSource === PromotionFundingSource.SHARED
+            ? promotionSeed.sellerFundingSharePercent ?? null
+            : null,
         stackingMode: promotionSeed.stackingMode,
         priority: promotionSeed.priority,
         isActive: true
@@ -867,6 +900,9 @@ async function seedCatalogAndCommerce(): Promise<void> {
       couponCode: "DEMO5",
       label: "Welcome 5%",
       amount: 22500,
+      fundingSource: PromotionFundingSource.PLATFORM,
+      sellerFundedAmount: 0,
+      platformFundedAmount: 22500,
       metadata: { source: "bootstrap-seed" }
     },
     create: {
@@ -876,6 +912,9 @@ async function seedCatalogAndCommerce(): Promise<void> {
       couponCode: "DEMO5",
       label: "Welcome 5%",
       amount: 22500,
+      fundingSource: PromotionFundingSource.PLATFORM,
+      sellerFundedAmount: 0,
+      platformFundedAmount: 22500,
       metadata: { source: "bootstrap-seed" }
     }
   });

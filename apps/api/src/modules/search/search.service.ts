@@ -5,6 +5,7 @@ import { type CatalogSearchResponse } from "@velora/contracts";
 
 import { PrismaService } from "../database/prisma.service";
 import { PlatformCacheService } from "../platform-cache/platform-cache.service";
+import { MerchandisingPricingService } from "./merchandising-pricing.service";
 import { OpenSearchService } from "./opensearch.service";
 import {
   type SearchProjectionDocument,
@@ -145,7 +146,8 @@ export class SearchService {
     private readonly projectionService: SearchProjectionService,
     private readonly openSearchService: OpenSearchService,
     private readonly cacheService: PlatformCacheService,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
+    private readonly merchandisingPricingService: MerchandisingPricingService
   ) {}
 
   async searchProducts(rawQuery: Record<string, unknown>): Promise<CatalogSearchResponse> {
@@ -156,7 +158,10 @@ export class SearchService {
       queryCacheKey,
       this.configService.get<number>("CACHE_TTL_SEARCH_SECONDS") ?? 30,
       async () => {
-        const documents = await this.projectionService.getProjectionDocuments();
+        const baseDocuments = await this.projectionService.getProjectionDocuments();
+        const documents = await this.merchandisingPricingService.applyToDocuments(
+          baseDocuments
+        );
         const openSearchResponse = await this.openSearchService.searchDocuments(
           query,
           documents

@@ -5,6 +5,7 @@ import {
   parseCheckoutAddressSnapshot,
   parseCheckoutContactSnapshot
 } from "../checkout/checkout.helpers";
+import { parseOrderSettlementSnapshot } from "./order-settlement.helpers";
 
 export const orderSummaryInclude =
   Prisma.validator<Prisma.OrderDefaultArgs>()({
@@ -121,6 +122,15 @@ export function mapOrderDetail(order: OrderDetailRecord) {
         amount: discount.amount,
         currency: discount.currency
       },
+      fundingSource: discount.fundingSource,
+      sellerFundedAmount: {
+        amount: discount.sellerFundedAmount,
+        currency: discount.currency
+      },
+      platformFundedAmount: {
+        amount: discount.platformFundedAmount,
+        currency: discount.currency
+      },
       description:
         typeof discount.metadata === "object" &&
         discount.metadata &&
@@ -129,6 +139,7 @@ export function mapOrderDetail(order: OrderDetailRecord) {
           ? discount.metadata.description
           : null
     })),
+    settlement: parseOrderSettlementSnapshot(order.settlementSnapshot),
     statusHistory: order.statusHistory.map((entry) => ({
       status: entry.status,
       note: entry.note ?? null,

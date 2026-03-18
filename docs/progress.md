@@ -203,6 +203,18 @@
 - Added seller-side and admin-side delivery/contact panels so the operational views now show the information needed to actually fulfil the order.
 - Verified `pnpm --filter @velora/api test -- seller.service.spec.ts`, `pnpm --filter @velora/api typecheck`, `pnpm --filter @velora/storefront typecheck`, `pnpm --filter @velora/admin typecheck`, root `pnpm lint`, `pnpm test`, `pnpm build`, and a final `pnpm --filter @velora/storefront build` after the last seller-form lint cleanup.
 
+### Post Stage 11 follow-up: funding-aware promotions and settlement visibility
+
+- Extended the promotion model with explicit `PLATFORM`, `SELLER`, and `SHARED` funding sources plus optional seller-share percentages, so marketplace discounts now separate customer pricing from seller settlement.
+- Reworked the promotion engine to allocate discount value per listing, preserve stackable and exclusive behavior, and persist funding attribution onto applied discount snapshots during checkout and order creation.
+- Added product-targeted merchandising promotions, including active product/listing discounts that now flow through search, category listing, and product-detail read models to support realistic strikethrough pricing on the storefront.
+- Added immutable settlement snapshots on orders so admin and seller surfaces can see gross merchandise, seller-funded discount share, platform-funded subsidy, and expected seller payout after checkout settlement.
+- Rebuilt the admin promotion console around funding source, seller-share, and target-selection controls so operators can configure platform-funded, seller-funded, shared, and product-specific campaigns without manual payload editing.
+- Expanded deterministic seed data with funding-aware campaigns, including a product-scoped launch subsidy and a shared buy-x-get-y example.
+- Added promotion-engine, promotion-service, and payment-settlement regression coverage for funding attribution and order settlement persistence.
+- Verified `pnpm db:migrate`, `pnpm db:seed`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.
+- Attempted `pnpm test:e2e`, but the Playwright run was blocked because `http://localhost:3000` was already occupied by an existing local server process during this session.
+
 ## Important implementation notes
 
 - Internal packages are designed to build independently so the apps can consume stable outputs.
@@ -258,6 +270,7 @@
 - Checkout and payment flows now support both authenticated customers and guests, with delivery-contact snapshots persisted on the checkout session and final order for fulfilment correctness.
 - The shared Next normalization script now backfills missing `.next/types/cache-life.d.ts` and `.next/types/validator.ts` stubs, which keeps root workspace typechecking stable after route generation.
 - Seller fulfillment status updates are intentionally limited to single-seller orders, because the current order model does not yet split shipment state by seller. Mixed-seller orders remain an admin-coordinated path for correctness.
+- Promotion funding is now modeled explicitly, and order settlement snapshots preserve the difference between customer-visible discounting and seller-visible payout impact.
 
 ## Known follow-up items
 

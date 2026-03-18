@@ -72,6 +72,12 @@ enum PromotionStackingMode {
   EXCLUSIVE
 }
 
+enum PromotionFundingSource {
+  PLATFORM
+  SELLER
+  SHARED
+}
+
 enum AddressType {
   SHIPPING
   BILLING
@@ -458,21 +464,23 @@ model Price {
 }
 
 model Promotion {
-  id           String                    @id @default(cuid())
-  name         String
-  code         String?                   @unique
-  description  String
-  type         PromotionType
-  stackingMode PromotionStackingMode
-  priority     Int                       @default(100)
-  isActive     Boolean                   @default(true)
-  startsAt     DateTime?
-  endsAt       DateTime?
-  createdAt    DateTime                  @default(now())
-  updatedAt    DateTime                  @updatedAt
-  coupons      Coupon[]
-  discounts    AppliedDiscountSnapshot[]
-  rules        PromotionRule[]
+  id                       String                    @id @default(cuid())
+  name                     String
+  code                     String?                   @unique
+  description              String
+  type                     PromotionType
+  fundingSource            PromotionFundingSource    @default(PLATFORM)
+  sellerFundingSharePercent Int?
+  stackingMode             PromotionStackingMode
+  priority                 Int                       @default(100)
+  isActive                 Boolean                   @default(true)
+  startsAt                 DateTime?
+  endsAt                   DateTime?
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+  coupons                  Coupon[]
+  discounts                AppliedDiscountSnapshot[]
+  rules                    PromotionRule[]
 
   @@index([isActive, priority])
 }
@@ -505,17 +513,20 @@ model Coupon {
 }
 
 model AppliedDiscountSnapshot {
-  id          String     @id @default(cuid())
-  orderId     String?
-  promotionId String?
-  couponCode  String?
-  label       String
-  amount      Int
-  currency    String     @default("RON")
-  metadata    Json?
-  createdAt   DateTime   @default(now())
-  order       Order?     @relation(fields: [orderId], references: [id], onDelete: SetNull)
-  promotion   Promotion? @relation(fields: [promotionId], references: [id], onDelete: SetNull)
+  id                   String                @id @default(cuid())
+  orderId              String?
+  promotionId          String?
+  couponCode           String?
+  label                String
+  amount               Int
+  currency             String                @default("RON")
+  fundingSource        PromotionFundingSource @default(PLATFORM)
+  sellerFundedAmount   Int                   @default(0)
+  platformFundedAmount Int                   @default(0)
+  metadata             Json?
+  createdAt            DateTime              @default(now())
+  order                Order?                @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  promotion            Promotion?            @relation(fields: [promotionId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
 }
@@ -677,32 +688,33 @@ model RefundRecord {
 }
 
 model Order {
-  id                String                    @id @default(cuid())
-  number            String                    @unique
-  userId            String?
-  sellerId          String?
-  checkoutSessionId String?                   @unique
-  paymentAttemptId  String?
-  status            OrderStatus               @default(CREATED)
-  paymentStatus     PaymentStatus             @default(PENDING)
-  currency          String                    @default("RON")
-  customerSnapshot  Json?
+  id                      String                    @id @default(cuid())
+  number                  String                    @unique
+  userId                  String?
+  sellerId                String?
+  checkoutSessionId       String?                   @unique
+  paymentAttemptId        String?
+  status                  OrderStatus               @default(CREATED)
+  paymentStatus           PaymentStatus             @default(PENDING)
+  currency                String                    @default("RON")
+  customerSnapshot        Json?
   deliveryAddressSnapshot Json?
-  subtotal          Int
-  discountTotal     Int                       @default(0)
-  total             Int
-  placedAt          DateTime?
-  createdAt         DateTime                  @default(now())
-  updatedAt         DateTime                  @updatedAt
-  checkoutSession   CheckoutSession?          @relation(fields: [checkoutSessionId], references: [id], onDelete: SetNull)
-  discountSnapshots AppliedDiscountSnapshot[]
-  items             OrderItem[]
-  paymentAttempt    PaymentAttempt?           @relation(fields: [paymentAttemptId], references: [id], onDelete: SetNull)
-  returnRequests    ReturnRequest[]
-  seller            Seller?                   @relation(fields: [sellerId], references: [id], onDelete: SetNull)
-  shipments         Shipment[]
-  statusHistory     OrderStatusHistory[]
-  user              User?                     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  settlementSnapshot      Json?
+  subtotal                Int
+  discountTotal           Int                       @default(0)
+  total                   Int
+  placedAt                DateTime?
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+  checkoutSession         CheckoutSession?          @relation(fields: [checkoutSessionId], references: [id], onDelete: SetNull)
+  discountSnapshots       AppliedDiscountSnapshot[]
+  items                   OrderItem[]
+  paymentAttempt          PaymentAttempt?           @relation(fields: [paymentAttemptId], references: [id], onDelete: SetNull)
+  returnRequests          ReturnRequest[]
+  seller                  Seller?                   @relation(fields: [sellerId], references: [id], onDelete: SetNull)
+  shipments               Shipment[]
+  statusHistory           OrderStatusHistory[]
+  user                    User?                     @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId, status])
   @@index([userId, createdAt])

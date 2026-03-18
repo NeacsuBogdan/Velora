@@ -66,6 +66,13 @@ function createService() {
       delete: vi.fn(),
       update: vi.fn()
     },
+    order: {
+      update: vi.fn(),
+      findUniqueOrThrow: vi.fn()
+    },
+    orderStatusHistory: {
+      create: vi.fn()
+    },
     productVariant: {
       create: vi.fn()
     },
@@ -133,7 +140,8 @@ function createService() {
     deleteByPrefix: vi.fn().mockResolvedValue(undefined)
   };
   const notificationsService = {
-    notifyAdmins: vi.fn().mockResolvedValue({ count: 1 })
+    notifyAdmins: vi.fn().mockResolvedValue({ count: 1 }),
+    notifyUser: vi.fn().mockResolvedValue({ count: 1 })
   };
 
   return {
@@ -174,6 +182,14 @@ describe("SellerService", () => {
         number: "VEL-2026-0101",
         status: "PAID",
         paymentStatus: "SUCCEEDED",
+        userId: "customer-user-1",
+        customerSnapshot: {
+          firstName: "Demo",
+          lastName: "Customer",
+          email: "customer@velora.local",
+          phone: "0700000000"
+        },
+        deliveryAddressSnapshot: null,
         currency: "RON",
         subtotal: 60000,
         discountTotal: 6000,
@@ -242,6 +258,69 @@ describe("SellerService", () => {
     expect(result[0]?.customer.label).toBe("Demo Customer");
   });
 
+  it("uses guest contact snapshots in seller order summaries", async () => {
+    const { prisma, service } = createService();
+    prisma.seller.findUnique.mockResolvedValue({
+      id: "seller-1",
+      slug: "north-star-electronics",
+      displayName: "North Star Electronics",
+      status: "ACTIVE"
+    });
+    prisma.order.findMany.mockResolvedValue([
+      {
+        id: "order-guest-1",
+        number: "VEL-2026-GUEST",
+        status: "PAID",
+        paymentStatus: "SUCCEEDED",
+        userId: null,
+        customerSnapshot: {
+          firstName: "Guest",
+          lastName: "Buyer",
+          email: "guest@velora.local",
+          phone: "0711111111"
+        },
+        deliveryAddressSnapshot: null,
+        currency: "RON",
+        subtotal: 2000,
+        discountTotal: 0,
+        total: 2000,
+        createdAt: new Date("2026-03-18T10:00:00.000Z"),
+        placedAt: new Date("2026-03-18T10:01:00.000Z"),
+        user: null,
+        items: [
+          {
+            id: "item-guest-1",
+            listingId: "listing-1",
+            productId: "product-1",
+            quantity: 1,
+            unitPrice: 2000,
+            totalPrice: 2000,
+            productTitleSnapshot: "Guest item",
+            sellerNameSnapshot: "North Star Electronics",
+            listing: {
+              sellerId: "seller-1",
+              seller: {
+                slug: "north-star-electronics"
+              }
+            },
+            product: {
+              slug: "guest-item"
+            }
+          }
+        ],
+        paymentAttempt: {
+          refunds: []
+        },
+        statusHistory: []
+      }
+    ]);
+
+    const result = await service.listOrders(viewer);
+
+    expect(result[0]?.customer.label).toBe("Guest Buyer");
+    expect(result[0]?.customer.email).toBe("guest@velora.local");
+  });
+
   it("rejects inventory updates below the reserved quantity", async () => {
     const { prisma, service } = createService();
     prisma.seller.findUnique.mockResolvedValue({
@@ -281,6 +360,236 @@ describe("SellerService", () => {
     await expect(
       service.getOrderDetail(viewer, "VEL-2026-9999")
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it("updates seller-managed order status for single-seller fulfillment", async () => {
+    const { notificationsService, prisma, service, tx } = createService();
+    prisma.seller.findUnique.mockResolvedValue({
+      id: "seller-1",
+      slug: "north-star-electronics",
+      displayName: "North Star Electronics",
+      status: "ACTIVE"
+    });
+    prisma.order.findFirst.mockResolvedValue({
+      id: "order-1",
+      number: "VEL-2026-0001",
+      status: "PAID",
+      paymentStatus: "SUCCEEDED",
+      userId: "customer-user-1",
+      customerSnapshot: {
+        firstName: "Demo",
+        lastName: "Customer",
+        email: "customer@velora.local",
+        phone: "0700000000"
+      },
+      deliveryAddressSnapshot: {
+        fullName: "Demo Customer",
+        line1: "Main street 1",
+        line2: null,
+        city: "Cluj-Napoca",
+        state: "Cluj",
+        postalCode: "400001",
+        countryCode: "RO",
+        phone: "0700000000"
+      },
+      currency: "RON",
+      subtotal: 20000,
+      discountTotal: 0,
+      total: 20000,
+      createdAt: new Date("2026-03-18T10:00:00.000Z"),
+      placedAt: new Date("2026-03-18T10:05:00.000Z"),
+      user: {
+        email: "customer@velora.local",
+        firstName: "Demo",
+        lastName: "Customer"
+      },
+      items: [
+        {
+          id: "item-1",
+          listingId: "listing-1",
+          productId: "product-1",
+          quantity: 1,
+          unitPrice: 20000,
+          totalPrice: 20000,
+          productTitleSnapshot: "Seller product",
+          sellerNameSnapshot: "North Star Electronics",
+          listing: {
+            sellerId: "seller-1",
+            seller: {
+              slug: "north-star-electronics"
+            }
+          },
+          product: {
+            slug: "seller-product"
+          }
+        }
+      ],
+      paymentAttempt: {
+        refunds: []
+      },
+      statusHistory: []
+    });
+    tx.order.findUniqueOrThrow.mockResolvedValue({
+      id: "order-1",
+      number: "VEL-2026-0001",
+      status: "PROCESSING",
+      paymentStatus: "SUCCEEDED",
+      userId: "customer-user-1",
+      customerSnapshot: {
+        firstName: "Demo",
+        lastName: "Customer",
+        email: "customer@velora.local",
+        phone: "0700000000"
+      },
+      deliveryAddressSnapshot: {
+        fullName: "Demo Customer",
+        line1: "Main street 1",
+        line2: null,
+        city: "Cluj-Napoca",
+        state: "Cluj",
+        postalCode: "400001",
+        countryCode: "RO",
+        phone: "0700000000"
+      },
+      currency: "RON",
+      subtotal: 20000,
+      discountTotal: 0,
+      total: 20000,
+      createdAt: new Date("2026-03-18T10:00:00.000Z"),
+      placedAt: new Date("2026-03-18T10:05:00.000Z"),
+      user: {
+        email: "customer@velora.local",
+        firstName: "Demo",
+        lastName: "Customer"
+      },
+      items: [
+        {
+          id: "item-1",
+          listingId: "listing-1",
+          productId: "product-1",
+          quantity: 1,
+          unitPrice: 20000,
+          totalPrice: 20000,
+          productTitleSnapshot: "Seller product",
+          sellerNameSnapshot: "North Star Electronics",
+          listing: {
+            sellerId: "seller-1",
+            seller: {
+              slug: "north-star-electronics"
+            }
+          },
+          product: {
+            slug: "seller-product"
+          }
+        }
+      ],
+      paymentAttempt: {
+        refunds: []
+      },
+      statusHistory: [
+        {
+          status: "PROCESSING",
+          note: "Seller picked and packed the order.",
+          createdAt: new Date("2026-03-18T10:10:00.000Z")
+        }
+      ]
+    });
+
+    const result = await service.updateOrderStatus(viewer, "VEL-2026-0001", {
+      status: "PROCESSING",
+      note: "Seller picked and packed the order."
+    });
+
+    expect(tx.order.update).toHaveBeenCalledWith({
+      where: {
+        id: "order-1"
+      },
+      data: {
+        status: "PROCESSING"
+      }
+    });
+    expect(tx.orderStatusHistory.create).toHaveBeenCalled();
+    expect(notificationsService.notifyUser).toHaveBeenCalled();
+    expect(notificationsService.notifyAdmins).toHaveBeenCalled();
+    expect(result.status).toBe("PROCESSING");
+    expect(result.canManageStatus).toBe(true);
+  });
+
+  it("rejects seller order status updates on mixed-seller orders", async () => {
+    const { prisma, service } = createService();
+    prisma.seller.findUnique.mockResolvedValue({
+      id: "seller-1",
+      slug: "north-star-electronics",
+      displayName: "North Star Electronics",
+      status: "ACTIVE"
+    });
+    prisma.order.findFirst.mockResolvedValue({
+      id: "order-1",
+      number: "VEL-2026-0002",
+      status: "PAID",
+      paymentStatus: "SUCCEEDED",
+      userId: "customer-user-1",
+      customerSnapshot: null,
+      deliveryAddressSnapshot: null,
+      currency: "RON",
+      subtotal: 30000,
+      discountTotal: 0,
+      total: 30000,
+      createdAt: new Date("2026-03-18T10:00:00.000Z"),
+      placedAt: new Date("2026-03-18T10:05:00.000Z"),
+      user: null,
+      items: [
+        {
+          id: "item-1",
+          listingId: "listing-1",
+          productId: "product-1",
+          quantity: 1,
+          unitPrice: 10000,
+          totalPrice: 10000,
+          productTitleSnapshot: "Seller product",
+          sellerNameSnapshot: "North Star Electronics",
+          listing: {
+            sellerId: "seller-1",
+            seller: {
+              slug: "north-star-electronics"
+            }
+          },
+          product: {
+            slug: "seller-product"
+          }
+        },
+        {
+          id: "item-2",
+          listingId: "listing-2",
+          productId: "product-2",
+          quantity: 1,
+          unitPrice: 20000,
+          totalPrice: 20000,
+          productTitleSnapshot: "Other seller product",
+          sellerNameSnapshot: "Other seller",
+          listing: {
+            sellerId: "seller-2",
+            seller: {
+              slug: "other-seller"
+            }
+          },
+          product: {
+            slug: "other-seller-product"
+          }
+        }
+      ],
+      paymentAttempt: {
+        refunds: []
+      },
+      statusHistory: []
+    });
+
+    await expect(
+      service.updateOrderStatus(viewer, "VEL-2026-0002", {
+        status: "PROCESSING",
+        note: "Trying to process"
+      })
+    ).rejects.toBeInstanceOf(ConflictException);
   });
 
   it("updates seller-owned listing pricing and visibility", async () => {

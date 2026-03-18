@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Badge, Panel } from "@velora/ui";
 
+import { SellerOrderStatusForm } from "../../../../../components/seller-order-status-form";
 import { StatusBadge } from "../../../../../components/status-badge";
 import { formatDateTime, formatMoney } from "../../../../../lib/formatting";
 import { formatStatusLabel } from "../../../../../lib/status-label";
@@ -15,6 +16,18 @@ export default async function SellerOrderDetailPage({
 }): Promise<React.JSX.Element> {
   const { number } = await params;
   const order = await getSellerOrderDetail(number);
+  const deliveryLines = order?.deliveryAddress
+    ? [
+        order.deliveryAddress.fullName,
+        order.deliveryAddress.line1,
+        order.deliveryAddress.line2,
+        [order.deliveryAddress.city, order.deliveryAddress.state]
+          .filter(Boolean)
+          .join(", "),
+        `${order.deliveryAddress.postalCode} ${order.deliveryAddress.countryCode}`,
+        order.deliveryAddress.phone
+      ].filter(Boolean)
+    : [];
 
   if (!order) {
     return (
@@ -47,8 +60,8 @@ export default async function SellerOrderDetailPage({
               {order.number}
             </h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--muted)]">
-              Customer identity, seller-scoped items, status history, and refund
-              records are filtered to the active merchant account.
+              Customer contact, delivery snapshot, seller-scoped items, and
+              fulfillment history are filtered to the active merchant account.
             </p>
           </div>
 
@@ -84,7 +97,17 @@ export default async function SellerOrderDetailPage({
               <div className="flex items-center justify-between gap-4">
                 <span className="text-[var(--muted)]">Customer email</span>
                 <span className="font-semibold">
-                  {order.customer.email ?? "Guest checkout"}
+                  {order.customerContact?.email ??
+                    order.customer.email ??
+                    "Guest checkout"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-[var(--muted)]">Customer phone</span>
+                <span className="font-semibold">
+                  {order.customerContact?.phone ??
+                    order.deliveryAddress?.phone ??
+                    "Not provided"}
                 </span>
               </div>
               <div className="flex items-center justify-between gap-4">
@@ -137,6 +160,43 @@ export default async function SellerOrderDetailPage({
         </section>
 
         <aside className="space-y-5">
+          <Panel className="space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
+              Delivery contact
+            </p>
+            {order.customerContact ? (
+              <div className="grid gap-2 text-sm text-[var(--muted)]">
+                <p className="font-semibold text-[var(--foreground)]">
+                  {order.customerContact.firstName} {order.customerContact.lastName}
+                </p>
+                <p>{order.customerContact.email}</p>
+                {order.customerContact.phone ? (
+                  <p>{order.customerContact.phone}</p>
+                ) : null}
+              </div>
+            ) : (
+              <p className="text-sm leading-7 text-[var(--muted)]">
+                This order does not include a persisted customer contact snapshot.
+              </p>
+            )}
+
+            {deliveryLines.length ? (
+              <div className="grid gap-2 border-t border-[var(--stroke)] pt-3 text-sm text-[var(--muted)]">
+                {deliveryLines.map((line) => (
+                  <p key={line}>{line}</p>
+                ))}
+              </div>
+            ) : null}
+          </Panel>
+
+          <SellerOrderStatusForm
+            availableNextStatuses={order.availableNextStatuses}
+            canManageStatus={order.canManageStatus}
+            currentStatus={order.status}
+            orderNumber={order.number}
+            statusManagementNote={order.statusManagementNote}
+          />
+
           <Panel className="space-y-3">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
               Status timeline

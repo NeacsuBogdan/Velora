@@ -121,4 +121,13 @@ export class SellerController {
   ) {
     return this.sellerService.getOrderDetail(viewer, number);
   }
+
+  @Patch("orders/:number/status")
+  updateOrderStatus(
+    @CurrentUser() viewer: AuthenticatedUser,
+    @Param("number") number: string,
+    @Body() body: unknown
+  ) {
+    return this.sellerService.updateOrderStatus(viewer, number, body);
+  }
 }

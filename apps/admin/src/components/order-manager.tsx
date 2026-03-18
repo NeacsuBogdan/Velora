@@ -280,6 +280,18 @@ export function OrderManager({
     remainingRefundableAmount > 0;
   const refundCurrency = orderDetail?.total.currency ?? "RON";
   const refundAmountError = refundForm.formState.errors.amount?.message;
+  const deliveryLines = orderDetail?.deliveryAddress
+    ? [
+        orderDetail.deliveryAddress.fullName,
+        orderDetail.deliveryAddress.line1,
+        orderDetail.deliveryAddress.line2,
+        [orderDetail.deliveryAddress.city, orderDetail.deliveryAddress.state]
+          .filter(Boolean)
+          .join(", "),
+        `${orderDetail.deliveryAddress.postalCode} ${orderDetail.deliveryAddress.countryCode}`,
+        orderDetail.deliveryAddress.phone
+      ].filter(Boolean)
+    : [];
 
   return (
     <SectionShell
@@ -504,6 +516,36 @@ export function OrderManager({
               </div>
 
               <div className="grid gap-6">
+                <div className="rounded-[24px] border border-[var(--stroke)] bg-white px-5 py-5">
+                  <h4 className="font-semibold text-[var(--foreground)]">
+                    Delivery and contact
+                  </h4>
+                  {orderDetail.customerContact ? (
+                    <div className="mt-4 grid gap-2 text-sm text-[var(--muted)]">
+                      <p className="font-semibold text-[var(--foreground)]">
+                        {orderDetail.customerContact.firstName}{" "}
+                        {orderDetail.customerContact.lastName}
+                      </p>
+                      <p>{orderDetail.customerContact.email}</p>
+                      {orderDetail.customerContact.phone ? (
+                        <p>{orderDetail.customerContact.phone}</p>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <p className="mt-4 text-sm leading-7 text-[var(--muted)]">
+                      No persisted contact snapshot is available for this order.
+                    </p>
+                  )}
+
+                  {deliveryLines.length ? (
+                    <div className="mt-4 grid gap-2 border-t border-[var(--stroke)] pt-4 text-sm text-[var(--muted)]">
+                      {deliveryLines.map((line) => (
+                        <p key={line}>{line}</p>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+
                 <div className="rounded-[24px] border border-[var(--stroke)] bg-white px-5 py-5">
                   <h4 className="font-semibold text-[var(--foreground)]">Status timeline</h4>
                   <div className="mt-4 grid gap-3">

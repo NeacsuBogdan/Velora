@@ -1,4 +1,4 @@
-import { Prisma, type Price } from "@prisma/client";
+import { Prisma, type OrderStatus, type Price } from "@prisma/client";
 import {
   sellerListingCatalogOptionSchema,
   sellerListingSummarySchema,
@@ -6,6 +6,10 @@ import {
   sellerOrderSummarySchema
 } from "@velora/contracts";
 
+import {
+  parseCheckoutAddressSnapshot,
+  parseCheckoutContactSnapshot
+} from "../checkout/checkout.helpers";
 import { calculateAvailableQuantity } from "../search/search.helpers";
 
 export function slugify(value: string) {
@@ -232,6 +236,7 @@ function calculateSellerScopedTotals(order: SellerOrderRecord, sellerId: string)
 }
 
 function mapSellerCustomer(
+  customerSnapshot: unknown,
   user:
     | {
         email: string;
@@ -241,6 +246,17 @@ function mapSellerCustomer(
     | null
     | undefined
 ) {
+  const snapshot = parseCheckoutContactSnapshot(customerSnapshot);
+
+  if (snapshot) {
+    const fullName = `${snapshot.firstName} ${snapshot.lastName}`.trim();
+
+    return {
+      label: fullName.length > 0 ? fullName : snapshot.email,
+      email: snapshot.email
+    };
+  }
+
   if (!user) {
     return {
       label: "Guest checkout",
@@ -256,6 +272,60 @@ function mapSellerCustomer(
   };
 }
 
+export const sellerAllowedOrderTransitions: Record<OrderStatus, OrderStatus[]> = {
+  CREATED: [],
+  PAYMENT_PENDING: [],
+  PAID: ["PROCESSING", "CANCELED"],
+  PROCESSING: ["SHIPPED", "CANCELED"],
+  SHIPPED: ["COMPLETED"],
+  COMPLETED: [],
+  CANCELED: [],
+  REFUNDED: []
+};
+
+export function getSellerAllowedNextStatuses(order: SellerOrderRecord, sellerId: string) {
+  const sellerItemCount = order.items.filter(
+    (item) => item.listing.sellerId === sellerId
+  ).length;
+  const foreignItemCount = order.items.length - sellerItemCount;
+
+  if (sellerItemCount === 0) {
+    return {
+      canManageStatus: false,
+      availableNextStatuses: [] as OrderStatus[],
+      statusManagementNote:
+        "This order is outside the active seller scope."
+    };
+  }
+
+  if (foreignItemCount > 0) {
+    return {
+      canManageStatus: false,
+      availableNextStatuses: [] as OrderStatus[],
+      statusManagementNote:
+        "This order contains items from more than one seller. Marketplace staff must coordinate the final order status."
+    };
+  }
+
+  const availableNextStatuses = sellerAllowedOrderTransitions[order.status] ?? [];
+
+  if (availableNextStatuses.length === 0) {
+    return {
+      canManageStatus: false,
+      availableNextStatuses,
+      statusManagementNote:
+        "No further seller-managed fulfillment transitions are available for this order."
+    };
+  }
+
+  return {
+    canManageStatus: true,
+    availableNextStatuses,
+    statusManagementNote:
+      "Seller status changes update the shared customer timeline and marketplace operations view."
+  };
+}
+
 export function mapSellerOrderSummary(order: SellerOrderRecord, sellerId: string) {
   const totals = calculateSellerScopedTotals(order, sellerId);
 
@@ -264,7 +334,7 @@ export function mapSellerOrderSummary(order: SellerOrderRecord, sellerId: string
     number: order.number,
     status: order.status,
     paymentStatus: order.paymentStatus,
-    customer: mapSellerCustomer(order.user),
+    customer: mapSellerCustomer(order.customerSnapshot, order.user),
     itemCount: totals.itemCount,
     subtotal: {
       amount: totals.subtotal,
@@ -286,9 +356,15 @@ export function mapSellerOrderSummary(order: SellerOrderRecord, sellerId: string
 export function mapSellerOrderDetail(order: SellerOrderRecord, sellerId: string) {
   const summary = mapSellerOrderSummary(order, sellerId);
   const totals = calculateSellerScopedTotals(order, sellerId);
+  const fulfillmentControl = getSellerAllowedNextStatuses(order, sellerId);
 
   return sellerOrderDetailSchema.parse({
     ...summary,
+    customerContact: parseCheckoutContactSnapshot(order.customerSnapshot),
+    deliveryAddress: parseCheckoutAddressSnapshot(order.deliveryAddressSnapshot),
+    canManageStatus: fulfillmentControl.canManageStatus,
+    availableNextStatuses: fulfillmentControl.availableNextStatuses,
+    statusManagementNote: fulfillmentControl.statusManagementNote,
     items: totals.scopedItems.map((item) => ({
       orderItemId: item.id,
       listingId: item.listingId,

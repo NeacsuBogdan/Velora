@@ -21,6 +21,10 @@ import {
   type AdminProductSummary
 } from "@velora/contracts";
 
+import {
+  parseCheckoutAddressSnapshot,
+  parseCheckoutContactSnapshot
+} from "../checkout/checkout.helpers";
 import { calculateAvailableQuantity } from "../search/search.helpers";
 
 function resolveActivePrice(prices: Price[], now = new Date()) {
@@ -241,6 +245,30 @@ function mapOrderParty(
   };
 }
 
+function mapCustomerParty(
+  customerSnapshot: unknown,
+  user:
+    | {
+        id: string;
+        email: string;
+      }
+    | null
+    | undefined
+) {
+  const snapshot = parseCheckoutContactSnapshot(customerSnapshot);
+
+  if (snapshot) {
+    const fullName = `${snapshot.firstName} ${snapshot.lastName}`.trim();
+
+    return {
+      id: user?.id ?? `guest:${snapshot.email}`,
+      label: fullName.length > 0 ? fullName : snapshot.email
+    };
+  }
+
+  return mapOrderParty(user ? { id: user.id, email: user.email } : null);
+}
+
 export function mapAdminOrderSummary(order: AdminOrderRecord) {
   return adminOrderSummarySchema.parse({
     orderId: order.id,
@@ -252,14 +280,7 @@ export function mapAdminOrderSummary(order: AdminOrderRecord) {
       currency: order.currency
     },
     itemCount: order.items.reduce((count, item) => count + item.quantity, 0),
-    customer: mapOrderParty(
-      order.user
-        ? {
-            id: order.user.id,
-            email: order.user.email
-          }
-        : null
-    ),
+    customer: mapCustomerParty(order.customerSnapshot, order.user),
     seller: mapOrderParty(
       order.seller
         ? {
@@ -288,6 +309,10 @@ export function mapAdminOrderDetail(order: AdminOrderRecord) {
       amount: order.discountTotal,
       currency: order.currency
     },
+    customerContact: parseCheckoutContactSnapshot(order.customerSnapshot),
+    deliveryAddress: parseCheckoutAddressSnapshot(
+      order.deliveryAddressSnapshot
+    ),
     items: order.items.map((item) => ({
       orderItemId: item.id,
       listingId: item.listingId,

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException
@@ -10,6 +11,7 @@ import {
   createSellerListingRequestSchema,
   sellerDashboardSchema,
   sellerProductCreationOptionsSchema,
+  updateSellerOrderStatusRequestSchema,
   updateSellerCatalogProductRequestSchema,
   updateSellerInventoryRequestSchema,
   updateSellerListingCommercialRequestSchema
@@ -25,6 +27,7 @@ import { SearchProjectionService } from "../search/search.service";
 import {
   mapSellerListingCatalogOption,
   mapSellerListingSummary,
+  getSellerAllowedNextStatuses,
   mapSellerOrderDetail,
   mapSellerOrderSummary,
   resolveActivePrice,
@@ -40,6 +43,8 @@ type PrismaTransactionClient = Prisma.TransactionClient;
 export class SellerService {
   private readonly adminUrl =
     process.env.NEXT_PUBLIC_ADMIN_URL ?? "http://localhost:3001";
+  private readonly storefrontUrl =
+    process.env.NEXT_PUBLIC_STOREFRONT_URL ?? "http://localhost:3000";
 
   constructor(
     private readonly prisma: PrismaService,
@@ -1112,6 +1117,118 @@ export class SellerService {
     }
 
     return mapSellerOrderDetail(order, seller.id);
+  }
+
+  async updateOrderStatus(
+    viewer: AuthenticatedUser,
+    number: string,
+    rawInput: unknown
+  ) {
+    const seller = await this.getSellerScope(viewer.id);
+    const input = updateSellerOrderStatusRequestSchema.parse(rawInput);
+    const order = await this.prisma.order.findFirst({
+      where: {
+        number,
+        items: {
+          some: {
+            listing: {
+              sellerId: seller.id
+            }
+          }
+        }
+      },
+      include: sellerOrderInclude.include
+    });
+
+    if (!order) {
+      throw new NotFoundException(`Order ${number} was not found.`);
+    }
+
+    const fulfillmentControl = getSellerAllowedNextStatuses(order, seller.id);
+
+    if (!fulfillmentControl.canManageStatus) {
+      throw new ConflictException(
+        fulfillmentControl.statusManagementNote ??
+          "This order cannot be managed from the seller workspace."
+      );
+    }
+
+    if (input.status === "REFUNDED") {
+      throw new BadRequestException(
+        "Refunded state is managed through marketplace refund handling, not the seller fulfillment flow."
+      );
+    }
+
+    if (!fulfillmentControl.availableNextStatuses.includes(input.status)) {
+      throw new BadRequestException(
+        `Order ${number} cannot transition from ${order.status} to ${input.status} from the seller workspace.`
+      );
+    }
+
+    const updatedOrder = await this.prisma.$transaction(async (tx) => {
+      await tx.order.update({
+        where: {
+          id: order.id
+        },
+        data: {
+          status: input.status
+        }
+      });
+
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: order.id,
+          actorUserId: viewer.id,
+          status: input.status,
+          note:
+            input.note?.trim() ||
+            `Seller fulfillment update to ${input.status}.`
+        }
+      });
+
+      await tx.auditLog.create({
+        data: {
+          actorUserId: viewer.id,
+          entityType: "ORDER",
+          entityId: order.id,
+          action: "SELLER_ORDER_STATUS_UPDATED",
+          details: {
+            from: order.status,
+            to: input.status,
+            sellerId: seller.id
+          }
+        }
+      });
+
+      return tx.order.findUniqueOrThrow({
+        where: {
+          id: order.id
+        },
+        include: sellerOrderInclude.include
+      });
+    });
+
+    if (updatedOrder.userId) {
+      await this.notificationsService.notifyUser(updatedOrder.userId, {
+        kind: "ORDER",
+        level: "INFO",
+        title: `Order ${updatedOrder.number} updated`,
+        message: `${seller.displayName} moved your order to ${input.status.toLowerCase().replace(/_/g, " ")}.`,
+        linkUrl: `${this.storefrontUrl}/account/orders/${updatedOrder.number}`,
+        actorUserId: viewer.id
+      });
+    }
+
+    await this.notificationsService.notifyAdmins({
+      kind: "OPERATIONS",
+      level: "INFO",
+      title: "Seller updated order status",
+      message: `${seller.displayName} moved order ${updatedOrder.number} from ${order.status.toLowerCase().replace(/_/g, " ")} to ${input.status.toLowerCase().replace(/_/g, " ")}.`,
+      linkUrl: `${this.adminUrl}#orders`,
+      actorUserId: viewer.id
+    });
+
+    return mapSellerOrderDetail(updatedOrder, seller.id);
   }
 
   private async getSellerScope(userId: string) {

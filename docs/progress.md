@@ -193,6 +193,16 @@
 - Verified `pnpm --filter @velora/api lint`, `pnpm --filter @velora/api typecheck`, `pnpm --filter @velora/api test`, `pnpm --filter @velora/api build`, `pnpm --filter @velora/storefront lint`, `pnpm --filter @velora/storefront typecheck`, `pnpm --filter @velora/storefront test`, `pnpm --filter @velora/storefront build`, `pnpm --filter @velora/admin typecheck`, `pnpm --filter @velora/admin build`, plus root `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.
 - Attempted `pnpm test:e2e`, but the Playwright run was blocked because `http://localhost:3000` was already in use by an existing local server process during this session.
 
+### Post Stage 11 follow-up: seller fulfillment controls and delivery visibility
+
+- Extended seller and admin order detail contracts to expose persisted customer-contact and delivery-address snapshots instead of leaving fulfilment teams with only the abstract order status and totals.
+- Updated seller order summaries to use checkout contact snapshots for guest orders, so merchants can still identify the buyer even when the order is not linked to a customer account.
+- Added seller-managed order status transitions for single-seller orders only, with explicit guarded transitions (`PAID -> PROCESSING`, `PROCESSING -> SHIPPED`, `SHIPPED -> COMPLETED`, and guarded cancellation paths) so merchants can move fulfillment forward without corrupting mixed-seller marketplace orders.
+- Wrote seller status changes into shared order status history, which makes the customer order timeline, seller view, and admin backoffice stay aligned on the same persisted operational record.
+- Added marketplace notifications when a seller updates order status, notifying the customer when an account-backed order exists and notifying admins for oversight on every seller-driven fulfillment change.
+- Added seller-side and admin-side delivery/contact panels so the operational views now show the information needed to actually fulfil the order.
+- Verified `pnpm --filter @velora/api test -- seller.service.spec.ts`, `pnpm --filter @velora/api typecheck`, `pnpm --filter @velora/storefront typecheck`, `pnpm --filter @velora/admin typecheck`, root `pnpm lint`, `pnpm test`, `pnpm build`, and a final `pnpm --filter @velora/storefront build` after the last seller-form lint cleanup.
+
 ## Important implementation notes
 
 - Internal packages are designed to build independently so the apps can consume stable outputs.
@@ -247,6 +257,7 @@
 - The storefront header now only exposes the customer account path to sessions that actually carry the `CUSTOMER` role, while `/account` itself redirects admin and seller sessions back to their proper workspaces.
 - Checkout and payment flows now support both authenticated customers and guests, with delivery-contact snapshots persisted on the checkout session and final order for fulfilment correctness.
 - The shared Next normalization script now backfills missing `.next/types/cache-life.d.ts` and `.next/types/validator.ts` stubs, which keeps root workspace typechecking stable after route generation.
+- Seller fulfillment status updates are intentionally limited to single-seller orders, because the current order model does not yet split shipment state by seller. Mixed-seller orders remain an admin-coordinated path for correctness.
 
 ## Known follow-up items
 

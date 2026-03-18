@@ -1230,6 +1230,8 @@ export type AdminOrderSummary = z.infer<
 export const adminOrderDetailSchema = adminOrderSummarySchema.extend({
   subtotal: moneySchema,
   discountTotal: moneySchema,
+  customerContact: checkoutContactSummarySchema.nullable(),
+  deliveryAddress: checkoutAddressSummarySchema.nullable(),
   items: z.array(orderItemDetailSchema),
   discounts: z.array(appliedDiscountSummarySchema),
   statusHistory: z.array(orderStatusHistoryEntrySchema),
@@ -1682,9 +1684,23 @@ export type SellerOrderSummary = z.infer<
 >;
 
 export const sellerOrderDetailSchema = sellerOrderSummarySchema.extend({
+  customerContact: checkoutContactSummarySchema.nullable(),
+  deliveryAddress: checkoutAddressSummarySchema.nullable(),
+  canManageStatus: z.boolean(),
+  availableNextStatuses: z.array(orderStatusSchema),
+  statusManagementNote: z.string().nullable(),
   items: z.array(orderItemDetailSchema),
   statusHistory: z.array(orderStatusHistoryEntrySchema),
   refunds: z.array(refundSummarySchema)
 });
 
 export type SellerOrderDetail = z.infer<typeof sellerOrderDetailSchema>;
+
+export const updateSellerOrderStatusRequestSchema = z.object({
+  status: orderStatusSchema,
+  note: z.string().trim().max(240).nullable().optional()
+});
+
+export type UpdateSellerOrderStatusRequest = z.infer<
+  typeof updateSellerOrderStatusRequestSchema
+>;

@@ -2,8 +2,8 @@ import Image from "next/image";
 import Link from "next/link";
 
 import type { ProductListItem } from "@velora/contracts";
-import { Badge, Panel } from "@velora/ui";
 
+import { AddToCartButton } from "./add-to-cart-button";
 import { formatMoney } from "../lib/formatting";
 
 export function ProductCard({
@@ -11,90 +11,155 @@ export function ProductCard({
 }: {
   item: ProductListItem;
 }): React.JSX.Element {
+  const statusLabel = item.pricing.discountPercentage
+    ? `-${item.pricing.discountPercentage}%`
+    : item.availability.availableQuantity <= 5
+      ? "Limited"
+      : item.availability.inStock
+        ? "Live"
+        : "Sold out";
+
   return (
-    <Link className="block h-full" href={`/products/${item.slug}`}>
-      <Panel className="flex h-full flex-col gap-4 transition-transform duration-200 hover:-translate-y-1">
-        <div className="relative overflow-hidden rounded-[24px] bg-[linear-gradient(160deg,rgba(248,246,241,0.96),rgba(233,238,243,0.96))] p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="space-y-2">
-              {item.brand ? <Badge>{item.brand.name}</Badge> : null}
-              {!item.availability.inStock ? (
-                <Badge className="border-[rgba(215,38,56,0.2)] bg-[rgba(215,38,56,0.08)] text-[var(--accent)]">
-                  Out of stock
-                </Badge>
-              ) : null}
-            </div>
-            {item.pricing.discountPercentage ? (
-              <span className="rounded-full bg-[rgba(16,32,47,0.08)] px-3 py-1 text-xs font-semibold text-[var(--foreground)]">
-                -{item.pricing.discountPercentage}%
-              </span>
-            ) : null}
-          </div>
-          <div className="mt-6 flex aspect-square items-center justify-center rounded-[20px] bg-white/80 p-4">
+    <article className="overflow-hidden rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(112,72,197,0.14),rgba(39,17,86,0.56))] p-3 shadow-[0_18px_44px_rgba(12,4,36,0.24)] backdrop-blur-sm">
+      <div className="relative overflow-hidden rounded-[18px] bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.01))]">
+        <Link className="block" href={`/products/${item.slug}`}>
+          <div className="relative aspect-[0.93] overflow-hidden bg-[radial-gradient(circle_at_62%_22%,rgba(255,208,239,0.16),transparent_22%),linear-gradient(180deg,rgba(91,55,186,0.56),rgba(31,13,72,0.94))]">
             {item.image ? (
               <Image
                 alt={item.image.altText}
-                className="h-full w-full object-contain"
-                height={480}
+                className="object-cover transition-transform duration-500 hover:scale-[1.03]"
+                fill
+                sizes="(min-width: 1280px) 18vw, (min-width: 768px) 32vw, 100vw"
                 src={item.image.url}
-                width={480}
               />
-            ) : (
-              <div className="text-sm text-[var(--muted)]">No image</div>
-            )}
+            ) : null}
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),transparent_30%,rgba(17,7,42,0.2)_100%)]" />
           </div>
+        </Link>
+
+        <div className="pointer-events-none absolute left-3 top-3 flex flex-wrap gap-2">
+          {item.brand ? (
+            <span className="pointer-events-auto rounded-full border border-white/14 bg-[rgba(255,255,255,0.12)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white shadow-[0_8px_24px_rgba(13,5,37,0.18)] backdrop-blur">
+              {item.brand.name}
+            </span>
+          ) : null}
+          <span className="pointer-events-auto rounded-full border border-white/14 bg-[rgba(255,255,255,0.12)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white shadow-[0_8px_24px_rgba(13,5,37,0.18)] backdrop-blur">
+            {statusLabel}
+          </span>
         </div>
 
-        <div className="space-y-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
-              {item.category?.name ?? "Catalog"}
-            </p>
-            <h3 className="mt-2 font-[var(--font-heading)] text-2xl font-bold tracking-tight">
+        <div className="absolute bottom-3 right-3 flex items-center gap-2">
+          <Link
+            aria-label={`Open ${item.title}`}
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/14 bg-[rgba(255,255,255,0.12)] text-white shadow-[0_10px_24px_rgba(13,5,37,0.18)] backdrop-blur transition-colors hover:bg-[rgba(255,255,255,0.18)]"
+            href={`/products/${item.slug}`}
+          >
+            <OpenIcon />
+          </Link>
+          <AddToCartButton
+            className="h-10 w-10 rounded-full border border-white/14 bg-[rgba(255,255,255,0.12)] p-0 text-white shadow-[0_10px_24px_rgba(13,5,37,0.18)] backdrop-blur hover:bg-[rgba(255,255,255,0.18)]"
+            disabled={!item.availability.inStock}
+            label={<CartIcon />}
+            listingId={item.listingId}
+            pendingLabel={<CartIcon />}
+          />
+        </div>
+      </div>
+
+      <div className="space-y-4 px-1 pb-1 pt-4 text-white">
+        <div className="space-y-2">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/50">
+            {item.category?.name ?? "Catalog"}
+          </p>
+          <Link className="block" href={`/products/${item.slug}`}>
+            <h3 className="line-clamp-2 font-[var(--font-heading)] text-[1.6rem] font-bold leading-[1.1] tracking-tight text-white">
               {item.title}
             </h3>
-            {item.subtitle ? (
-              <p className="mt-1 text-sm font-medium text-[var(--muted)]">
-                {item.subtitle}
-              </p>
-            ) : null}
+          </Link>
+          {item.subtitle ? (
+            <p className="line-clamp-1 text-sm text-white/58">{item.subtitle}</p>
+          ) : null}
+        </div>
+
+        <p className="line-clamp-2 text-sm leading-6 text-white/62">
+          {item.description}
+        </p>
+
+        {item.highlights.length ? (
+          <div className="flex flex-wrap gap-2">
+            {item.highlights.slice(0, 2).map((highlight) => (
+              <span
+                className="rounded-full border border-white/8 bg-[rgba(255,255,255,0.05)] px-3 py-1.5 text-xs text-white/62"
+                key={highlight}
+              >
+                {highlight}
+              </span>
+            ))}
           </div>
-          <p className="line-clamp-3 text-sm leading-7 text-[var(--muted)]">
-            {item.description}
-          </p>
-        </div>
+        ) : null}
 
-        <div className="grid gap-2 text-sm text-[var(--muted)]">
-          {item.highlights.slice(0, 3).map((highlight) => (
-            <div key={highlight} className="rounded-2xl bg-black/3 px-3 py-2">
-              {highlight}
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-auto flex items-end justify-between gap-4 pt-2">
+        <div className="flex items-end justify-between gap-3 pt-1">
           <div>
-            <p className="text-2xl font-bold tracking-tight text-[var(--foreground)]">
+            <p className="text-[1.75rem] font-bold tracking-tight text-white">
               {formatMoney(item.pricing.current)}
             </p>
             {item.pricing.compareAt ? (
-              <p className="text-sm text-[var(--muted)] line-through">
+              <p className="text-sm text-white/42 line-through">
                 {formatMoney(item.pricing.compareAt)}
               </p>
             ) : null}
           </div>
-          <div className="text-right text-sm text-[var(--muted)]">
-            <p className="font-semibold text-[var(--foreground)]">
-              {item.seller.name}
-            </p>
+
+          <div className="text-right text-sm text-white/56">
+            <p className="font-semibold text-white/84">{item.seller.name}</p>
             <p>
               {item.availability.inStock
-                ? `${item.availability.availableQuantity} ready to ship`
+                ? `${item.availability.availableQuantity} available`
                 : "Unavailable"}
             </p>
           </div>
         </div>
-      </Panel>
-    </Link>
+      </div>
+    </article>
+  );
+}
+
+function OpenIcon(): React.JSX.Element {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="18"
+      viewBox="0 0 24 24"
+      width="18"
+    >
+      <path
+        d="M8.25 15.75 15.75 8.25m-5.5 0h5.5v5.5M7.75 8.75H7.5A1.75 1.75 0 0 0 5.75 10.5v6A1.75 1.75 0 0 0 7.5 18.25h6a1.75 1.75 0 0 0 1.75-1.75v-.25"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
+function CartIcon(): React.JSX.Element {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="18"
+      viewBox="0 0 24 24"
+      width="18"
+    >
+      <path
+        d="M3.75 5.25h1.5l1.8 8.1a1 1 0 0 0 .98.79h8.9a1 1 0 0 0 .97-.76l1.4-5.63H7.03M9.25 19.25a.75.75 0 1 1 0 1.5a.75.75 0 0 1 0-1.5Zm8 0a.75.75 0 1 1 0 1.5a.75.75 0 0 1 0-1.5Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
   );
 }

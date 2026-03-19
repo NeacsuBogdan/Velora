@@ -7,7 +7,8 @@ import { useRouter } from "next/navigation";
 interface AddToCartButtonProps {
   listingId: string;
   disabled?: boolean;
-  label?: string;
+  label?: React.ReactNode;
+  pendingLabel?: React.ReactNode;
   quantity?: number;
   className?: string;
 }
@@ -16,6 +17,7 @@ export function AddToCartButton({
   listingId,
   disabled = false,
   label = "Add to cart",
+  pendingLabel = "Adding...",
   quantity = 1,
   className
 }: AddToCartButtonProps): React.JSX.Element {
@@ -67,7 +69,7 @@ export function AddToCartButton({
         onClick={handleAddToCart}
         type="button"
       >
-        {isPending ? "Adding..." : label}
+        {isPending ? pendingLabel : label}
       </Button>
       {errorMessage ? (
         <p className="text-sm text-[var(--accent)]">{errorMessage}</p>

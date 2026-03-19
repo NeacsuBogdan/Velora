@@ -244,6 +244,7 @@
 - Replaced the old generic home overview blocks with template-aligned sections for featured collections, trending products, seller spotlights, trust/value messaging, a seller acquisition banner, and a testimonial panel.
 - Tightened the first home-page pass so the hero artwork now fills the stage more convincingly, the heavy panel-border feel is reduced, and section/card spacing reads more like the reference rather than a compressed grid.
 - Restructured the storefront shell and home page again into a slimmer top navigation plus one continuous showcase board with internal section dividers, a fuller hero stage, cleaner logo treatment, and section compositions that track the reference template much more closely.
+- Rebuilt the shared catalog browser and product-card surfaces into the same premium purple-glass design language, so `/products`, `/search`, and category listing pages now use a template-aligned search header, filter rail, results toolbar, and image-first product grid without changing query behavior.
 - Verified `pnpm --filter @velora/storefront lint`, `pnpm --filter @velora/storefront typecheck`, `pnpm --filter @velora/storefront test`, `pnpm --filter @velora/storefront build`, plus root `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.
 
 ## Important implementation notes

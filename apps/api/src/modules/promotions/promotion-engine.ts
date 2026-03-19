@@ -3,6 +3,7 @@ import type { PromotionStackingMode, PromotionType } from "@prisma/client";
 
 export interface PricingLine {
   listingId: string;
+  sellerId: string;
   productId: string;
   title: string;
   quantity: number;
@@ -15,6 +16,7 @@ export interface PricingPromotionCandidate {
   promotionId: string;
   name: string;
   description: string;
+  ownerSellerId: string | null;
   type: PromotionType;
   fundingSource: PromotionFundingSource;
   sellerFundingSharePercent: number | null;
@@ -216,29 +218,38 @@ function calculatePromotionEffect(
       return calculateScopedPercentageEffect(
         promotion.configuration,
         lines,
-        lineTotals
+        lineTotals,
+        promotion.ownerSellerId
       );
     case "FIXED_AMOUNT":
       return calculateScopedFixedAmountEffect(
         promotion.configuration,
         lines,
-        lineTotals
+        lineTotals,
+        promotion.ownerSellerId
       );
     case "CART_THRESHOLD":
       return calculateCartThresholdEffect(
         promotion.configuration,
         lines,
         lineTotals,
-        cartSubtotal
+        cartSubtotal,
+        promotion.ownerSellerId
       );
     case "CATEGORY_DISCOUNT":
       return calculateCategoryDiscountEffect(
         promotion.configuration,
         lines,
-        lineTotals
+        lineTotals,
+        promotion.ownerSellerId
       );
     case "BUY_X_GET_Y":
-      return calculateBuyXGetYEffect(promotion.configuration, lines, lineTotals);
+      return calculateBuyXGetYEffect(
+        promotion.configuration,
+        lines,
+        lineTotals,
+        promotion.ownerSellerId
+      );
     default:
       return null;
   }
@@ -247,9 +258,15 @@ function calculatePromotionEffect(
 function calculateScopedPercentageEffect(
   configuration: PromotionRuleConfiguration,
   lines: PricingLine[],
-  lineTotals: LineTotals
+  lineTotals: LineTotals,
+  ownerSellerId: string | null
 ) {
-  const eligibleLines = getEligibleLines(lines, lineTotals, configuration);
+  const eligibleLines = getEligibleLines(
+    lines,
+    lineTotals,
+    configuration,
+    ownerSellerId
+  );
   const eligibleSubtotal = sumEligibleLines(eligibleLines);
   const amount = calculatePercentageAmount(
     eligibleSubtotal,
@@ -269,9 +286,15 @@ function calculateScopedPercentageEffect(
 function calculateScopedFixedAmountEffect(
   configuration: PromotionRuleConfiguration,
   lines: PricingLine[],
-  lineTotals: LineTotals
+  lineTotals: LineTotals,
+  ownerSellerId: string | null
 ) {
-  const eligibleLines = getEligibleLines(lines, lineTotals, configuration);
+  const eligibleLines = getEligibleLines(
+    lines,
+    lineTotals,
+    configuration,
+    ownerSellerId
+  );
   const eligibleSubtotal = sumEligibleLines(eligibleLines);
   const amount = Math.min(
     clampIntegerAmount(configuration.amount),
@@ -292,7 +315,8 @@ function calculateCartThresholdEffect(
   configuration: PromotionRuleConfiguration,
   lines: PricingLine[],
   lineTotals: LineTotals,
-  cartSubtotal: number
+  cartSubtotal: number,
+  ownerSellerId: string | null
 ) {
   if (
     configuration.thresholdAmount === undefined ||
@@ -301,7 +325,12 @@ function calculateCartThresholdEffect(
     return null;
   }
 
-  const eligibleLines = getEligibleLines(lines, lineTotals);
+  const eligibleLines = getEligibleLines(
+    lines,
+    lineTotals,
+    undefined,
+    ownerSellerId
+  );
   const eligibleSubtotal = sumEligibleLines(eligibleLines);
 
   if (eligibleSubtotal <= 0) {
@@ -326,7 +355,8 @@ function calculateCartThresholdEffect(
 function calculateCategoryDiscountEffect(
   configuration: PromotionRuleConfiguration,
   lines: PricingLine[],
-  lineTotals: LineTotals
+  lineTotals: LineTotals,
+  ownerSellerId: string | null
 ) {
   const categorySlugs = configuration.categorySlugs ?? [];
 
@@ -334,7 +364,12 @@ function calculateCategoryDiscountEffect(
     return null;
   }
 
-  const eligibleLines = getEligibleLines(lines, lineTotals, configuration);
+  const eligibleLines = getEligibleLines(
+    lines,
+    lineTotals,
+    configuration,
+    ownerSellerId
+  );
   const eligibleSubtotal = sumEligibleLines(eligibleLines);
 
   if (eligibleSubtotal <= 0) {
@@ -359,7 +394,8 @@ function calculateCategoryDiscountEffect(
 function calculateBuyXGetYEffect(
   configuration: PromotionRuleConfiguration,
   lines: PricingLine[],
-  lineTotals: LineTotals
+  lineTotals: LineTotals,
+  ownerSellerId: string | null
 ) {
   const buyQuantity = configuration.buyQuantity ?? 0;
   const getQuantity = configuration.getQuantity ?? 0;
@@ -368,7 +404,12 @@ function calculateBuyXGetYEffect(
     return null;
   }
 
-  const eligibleLines = getEligibleLines(lines, lineTotals, configuration);
+  const eligibleLines = getEligibleLines(
+    lines,
+    lineTotals,
+    configuration,
+    ownerSellerId
+  );
   const totalEligibleQuantity = eligibleLines.reduce(
     (sum, line) => sum + line.quantity,
     0
@@ -423,7 +464,8 @@ function calculateBuyXGetYEffect(
 function getEligibleLines(
   lines: PricingLine[],
   lineTotals: LineTotals,
-  configuration?: PromotionRuleConfiguration
+  configuration?: PromotionRuleConfiguration,
+  ownerSellerId?: string | null
 ) {
   return lines
     .map((line) => ({
@@ -431,7 +473,11 @@ function getEligibleLines(
       amount: lineTotals.get(line.listingId) ?? 0
     }))
     .filter((line) => line.amount > 0)
-    .filter((line) => (configuration ? matchesScopedLine(line, configuration) : true));
+    .filter((line) =>
+      configuration
+        ? matchesScopedLine(line, configuration, ownerSellerId ?? null)
+        : !ownerSellerId || line.sellerId === ownerSellerId
+    );
 }
 
 function sumEligibleLines(
@@ -542,8 +588,13 @@ function splitFunding(
 
 function matchesScopedLine(
   line: PricingLine,
-  configuration: PromotionRuleConfiguration
+  configuration: PromotionRuleConfiguration,
+  ownerSellerId: string | null
 ) {
+  if (ownerSellerId && line.sellerId !== ownerSellerId) {
+    return false;
+  }
+
   const hasListingScope = (configuration.listingIds?.length ?? 0) > 0;
   const hasCategoryScope = (configuration.categorySlugs?.length ?? 0) > 0;
 

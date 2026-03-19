@@ -123,6 +123,9 @@ const foreignListingId = "cksellerlisting000000000999";
 describe("PromotionsService", () => {
   const prisma = {
     $transaction: vi.fn(),
+    category: {
+      findMany: vi.fn()
+    },
     promotion: {
       findMany: vi.fn()
     },
@@ -312,6 +315,97 @@ describe("PromotionsService", () => {
     expect(openSearchService.invalidateProjection).toHaveBeenCalled();
   });
 
+  it("creates a seller-funded category campaign for the active merchant catalog", async () => {
+    prisma.category.findMany.mockResolvedValue([
+      {
+        id: "ccategory001",
+        slug: "electronics",
+        parentId: null
+      },
+      {
+        id: "ccategory002",
+        slug: "phones",
+        parentId: "ccategory001"
+      }
+    ]);
+    prisma.sellerProductListing.findMany.mockResolvedValue([
+      {
+        id: ownedListingId,
+        product: {
+          categoryId: "ccategory002"
+        }
+      },
+      {
+        id: "cksellerlisting000000000002",
+        product: {
+          categoryId: "ccategory002"
+        }
+      }
+    ]);
+    prisma.promotion.findMany.mockResolvedValue([]);
+    prisma.$transaction.mockImplementation(async (callback) =>
+      callback({
+        promotion: {
+          create: vi.fn().mockResolvedValue({
+            id: "promotion-seller-category-1",
+            name: "Seller electronics week",
+            code: null,
+            description: "Merchant-funded category markdown",
+            type: "CATEGORY_DISCOUNT",
+            fundingSource: "SELLER",
+            sellerFundingSharePercent: null,
+            stackingMode: "STACKABLE",
+            priority: 300,
+            isActive: true,
+            startsAt: null,
+            endsAt: null,
+            createdAt: new Date("2026-03-18T09:00:00.000Z"),
+            updatedAt: new Date("2026-03-18T09:00:00.000Z"),
+            ownerSellerId: "seller-1",
+            ownerSeller: {
+              id: "seller-1",
+              slug: "north-star-electronics",
+              displayName: "North Star Electronics"
+            },
+            rules: [
+              {
+                id: "rule-seller-category-1",
+                promotionId: "promotion-seller-category-1",
+                name: "Seller electronics week category rule",
+                configuration: {
+                  categorySlugs: ["electronics"],
+                  percentage: 6
+                },
+                createdAt: new Date("2026-03-18T09:00:00.000Z")
+              }
+            ],
+            coupons: []
+          })
+        },
+        auditLog: {
+          create: vi.fn().mockResolvedValue(undefined)
+        }
+      })
+    );
+
+    const promotion = await promotionsService.createSellerPromotion(viewer, "seller-1", {
+      name: "Seller electronics week",
+      description: "Merchant-funded category markdown",
+      type: "CATEGORY_DISCOUNT",
+      categorySlug: "electronics",
+      percentage: 6,
+      isActive: true,
+      startsAt: null,
+      endsAt: null
+    });
+
+    expect(promotion.type).toBe("CATEGORY_DISCOUNT");
+    expect(promotion.rules[0]?.configuration.categorySlugs).toEqual([
+      "electronics"
+    ]);
+    expect(promotion.rules[0]?.configuration.percentage).toBe(6);
+  });
+
   it("rejects seller campaigns that target another merchant's offer", async () => {
     prisma.sellerProductListing.findMany.mockResolvedValue([]);
 
@@ -384,6 +478,39 @@ describe("PromotionsService", () => {
       })
     ).rejects.toThrow(
       "Another active seller campaign already overlaps this offer and time window."
+    );
+  });
+
+  it("rejects seller category campaigns outside the merchant catalog", async () => {
+    prisma.category.findMany.mockResolvedValue([
+      {
+        id: "ccategory001",
+        slug: "electronics",
+        parentId: null
+      }
+    ]);
+    prisma.sellerProductListing.findMany.mockResolvedValue([
+      {
+        id: ownedListingId,
+        product: {
+          categoryId: "ccategory001"
+        }
+      }
+    ]);
+
+    await expect(
+      promotionsService.createSellerPromotion(viewer, "seller-1", {
+        name: "Foreign category",
+        description: "Should fail on category ownership validation.",
+        type: "CATEGORY_DISCOUNT",
+        categorySlug: "home-living",
+        percentage: 12,
+        isActive: true,
+        startsAt: null,
+        endsAt: null
+      })
+    ).rejects.toThrow(
+      "Seller category campaigns can only target categories already present in the active merchant catalog."
     );
   });
 });

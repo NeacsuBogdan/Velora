@@ -13,6 +13,7 @@ function createDocument(
 ): SearchProjectionDocument {
   return {
     listingId: "listing-1",
+    sellerId: "seller-1",
     productId: "product-1",
     slug: "nordwave-edge-s",
     title: "NordWave Edge S",

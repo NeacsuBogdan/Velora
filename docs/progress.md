@@ -218,13 +218,22 @@
 ### Post Stage 11 follow-up: seller-funded campaign controls
 
 - Added a seller-owned promotion scope so merchant-created campaigns are explicit platform data rather than inferred from ad hoc price changes.
-- Added seller-only promotion endpoints for listing-scoped campaigns, with strict validation that the campaign is seller-funded, targets only the active merchant's listings, and does not overlap another active seller campaign on the same offer.
+- Added seller-only promotion endpoints with strict validation that the campaign is seller-funded, targets only the active merchant's catalog footprint, and does not overlap another active seller campaign on the same offer set.
 - Extended the seller workspace with a campaign panel inside the existing listing detail flow, so merchants can create, edit, pause, and delete their own offer discounts without leaving the operational listing workspace.
 - Added seller-facing expected-price preview in the workspace so merchants can see the customer-facing result before saving the campaign.
 - Added seeded seller-funded campaign data and admin visibility for seller-managed campaigns inside the promotion console.
 - Added service coverage for seller-campaign creation, ownership rejection, and overlap rejection.
 - Verified `pnpm db:migrate`, `pnpm db:seed`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.
 - Attempted `pnpm test:e2e`, but the Playwright run was blocked because `http://localhost:3000` was already occupied by an existing local server process during this session.
+
+### Post Stage 11 follow-up: dedicated seller promotions workspace
+
+- Moved seller campaign management into a dedicated `/seller/promotions` workspace instead of embedding it inside the listings editor, which keeps stock, pricing, and discount operations separated more cleanly.
+- Expanded seller-managed campaign support beyond one-off listing markdowns to include seller-safe category campaigns and buy-x-get-y bundles while keeping seller funding mandatory.
+- Added seller ownership enforcement inside the promotion engine itself, so seller category campaigns only affect that merchant's own offers even when the category exists across multiple marketplace sellers.
+- Fixed the seller campaign creation UX so `New campaign` always opens a real draft instead of snapping back to the first saved campaign, and widened the schedule fields to avoid cramped date input layout.
+- Updated seller navigation and listings guidance so merchants can move between catalog operations and campaign management intentionally instead of using a mixed panel.
+- Verified `pnpm --filter @velora/api typecheck`, `pnpm --filter @velora/api test -- src/modules/promotions/promotion-engine.spec.ts src/modules/promotions/promotions.service.spec.ts`, `pnpm --filter @velora/storefront lint`, `pnpm --filter @velora/storefront typecheck`, and `pnpm --filter @velora/storefront build`.
 
 ## Important implementation notes
 

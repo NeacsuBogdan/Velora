@@ -71,6 +71,7 @@ export function normalizePromotionCandidates(
       promotionId: promotion.id,
       name: promotion.name,
       description: promotion.description,
+      ownerSellerId: promotion.ownerSellerId,
       type: promotion.type,
       fundingSource: promotion.fundingSource as PromotionFundingSource,
       sellerFundingSharePercent: promotion.sellerFundingSharePercent ?? null,

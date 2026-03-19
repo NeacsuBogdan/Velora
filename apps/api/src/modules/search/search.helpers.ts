@@ -127,6 +127,7 @@ export interface NormalizedSearchQuery {
 }
 
 export interface SearchProjectionDocument extends ProductListItem {
+  sellerId: string;
   brandFacet: string | null;
   categoryFacet: string | null;
   categoryPathSlugs: string[];
@@ -136,6 +137,7 @@ export interface SearchProjectionDocument extends ProductListItem {
 }
 
 export const searchProjectionDocumentSchema = productListItemSchema.extend({
+  sellerId: z.string().default(""),
   brandFacet: z.string().nullable(),
   categoryFacet: z.string().nullable(),
   categoryPathSlugs: z.array(z.string()),
@@ -331,6 +333,7 @@ export function buildSearchDocument(
 
   return {
     ...item,
+    sellerId: listing.sellerId,
     brandFacet: toFacetValue(item.brand?.slug, item.brand?.name),
     categoryFacet: toFacetValue(item.category?.slug, item.category?.name),
     categoryPathSlugs: item.category?.path.map((entry) => entry.slug) ?? [],

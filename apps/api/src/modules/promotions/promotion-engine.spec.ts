@@ -9,6 +9,7 @@ describe("promotion engine", () => {
     lines: [
       {
         listingId: "listing-1",
+        sellerId: "seller-1",
         productId: "product-1",
         title: "NordWave Edge S",
         quantity: 2,
@@ -18,6 +19,7 @@ describe("promotion engine", () => {
       },
       {
         listingId: "listing-2",
+        sellerId: "seller-2",
         productId: "product-2",
         title: "NovaSound Mini",
         quantity: 1,
@@ -37,6 +39,7 @@ describe("promotion engine", () => {
           promotionId: "promo-1",
           name: "10% catalog boost",
           description: "Auto percentage discount",
+          ownerSellerId: null,
           type: "PERCENTAGE",
           fundingSource: "PLATFORM",
           sellerFundingSharePercent: null,
@@ -51,6 +54,7 @@ describe("promotion engine", () => {
           promotionId: "promo-2",
           name: "Threshold bonus",
           description: "Spend over 4000 RON",
+          ownerSellerId: null,
           type: "CART_THRESHOLD",
           fundingSource: "PLATFORM",
           sellerFundingSharePercent: null,
@@ -83,6 +87,7 @@ describe("promotion engine", () => {
           promotionId: "promo-1",
           name: "10% catalog boost",
           description: "Stackable percentage discount",
+          ownerSellerId: null,
           type: "PERCENTAGE",
           fundingSource: "PLATFORM",
           sellerFundingSharePercent: null,
@@ -97,6 +102,7 @@ describe("promotion engine", () => {
           promotionId: "promo-2",
           name: "Weekend exclusive",
           description: "Exclusive fixed discount",
+          ownerSellerId: null,
           type: "FIXED_AMOUNT",
           fundingSource: "SELLER",
           sellerFundingSharePercent: null,
@@ -124,6 +130,7 @@ describe("promotion engine", () => {
           promotionId: "promo-1",
           name: "Audio focus",
           description: "Category promotion",
+          ownerSellerId: null,
           type: "CATEGORY_DISCOUNT",
           fundingSource: "PLATFORM",
           sellerFundingSharePercent: null,
@@ -149,6 +156,7 @@ describe("promotion engine", () => {
       lines: [
         {
           listingId: "listing-1",
+          sellerId: "seller-1",
           productId: "product-1",
           title: "Pack A",
           quantity: 2,
@@ -158,6 +166,7 @@ describe("promotion engine", () => {
         },
         {
           listingId: "listing-2",
+          sellerId: "seller-1",
           productId: "product-2",
           title: "Pack B",
           quantity: 1,
@@ -171,6 +180,7 @@ describe("promotion engine", () => {
           promotionId: "promo-1",
           name: "Buy two get one",
           description: "Accessory bundle",
+          ownerSellerId: null,
           type: "BUY_X_GET_Y",
           fundingSource: "SHARED",
           sellerFundingSharePercent: 40,
@@ -200,6 +210,7 @@ describe("promotion engine", () => {
           promotionId: "promo-1",
           name: "Launch discount",
           description: "Scoped listing markdown",
+          ownerSellerId: null,
           type: "FIXED_AMOUNT",
           fundingSource: "PLATFORM",
           sellerFundingSharePercent: null,
@@ -219,6 +230,38 @@ describe("promotion engine", () => {
       {
         listingId: "listing-2",
         amount: 15000
+      }
+    ]);
+  });
+
+  it("keeps seller-funded category promotions on the owning merchant only", () => {
+    const result = evaluatePromotions({
+      ...baseInput,
+      promotions: [
+        {
+          promotionId: "promo-seller-1",
+          name: "Merchant electronics week",
+          description: "Seller-funded category campaign",
+          ownerSellerId: "seller-1",
+          type: "CATEGORY_DISCOUNT",
+          fundingSource: "SELLER",
+          sellerFundingSharePercent: null,
+          stackingMode: "STACKABLE",
+          priority: 10,
+          couponCode: null,
+          configuration: {
+            categorySlugs: ["electronics"],
+            percentage: 10
+          }
+        }
+      ]
+    });
+
+    expect(result.discountTotal).toBe(40000);
+    expect(result.discounts[0]?.allocations).toEqual([
+      {
+        listingId: "listing-1",
+        amount: 40000
       }
     ]);
   });

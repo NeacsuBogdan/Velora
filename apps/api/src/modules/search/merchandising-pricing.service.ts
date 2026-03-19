@@ -45,6 +45,7 @@ export class MerchandisingPricingService {
         lines: [
           {
             listingId: document.listingId,
+            sellerId: document.sellerId,
             productId: document.productId,
             title: document.title,
             quantity: 1,

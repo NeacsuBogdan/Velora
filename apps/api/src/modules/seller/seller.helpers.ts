@@ -134,6 +134,7 @@ export function mapSellerListingSummary(listing: SellerListingRecord) {
     title: listing.product.title,
     productDescription: listing.product.description,
     categoryId: listing.product.categoryId,
+    categorySlug: listing.product.category?.slug ?? null,
     categoryName: listing.product.category?.name ?? null,
     brandName: listing.product.brand?.name ?? null,
     variantTitle: listing.variant?.title ?? null,

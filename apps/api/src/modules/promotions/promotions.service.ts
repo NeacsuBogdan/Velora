@@ -333,16 +333,24 @@ export class PromotionsService {
   ) {
     const input = parseWithSchema(upsertSellerPromotionRequestSchema, rawInput);
     this.validateDateRange(input.startsAt ?? null, input.endsAt ?? null);
-    await this.assertSellerOwnedListings(sellerId, [input.listingId]);
+    const configuration = this.buildSellerPromotionConfiguration(input);
+    this.validatePromotionRule(
+      input.type,
+      configuration as unknown as Prisma.JsonValue
+    );
+    const targetedListingIds = await this.resolveSellerPromotionTargetListingIds(
+      sellerId,
+      configuration,
+      true
+    );
     await this.ensureNoOverlappingSellerPromotion(
       sellerId,
-      [input.listingId],
+      targetedListingIds,
       input.startsAt ?? null,
       input.endsAt ?? null,
       null,
       input.isActive
     );
-    const configuration = this.buildSellerPromotionConfiguration(input);
 
     const promotion = await this.prisma.$transaction(async (tx) => {
       const createdPromotion = await tx.promotion.create({
@@ -377,7 +385,8 @@ export class PromotionsService {
           action: "SELLER_PROMOTION_CREATED",
           details: {
             sellerId,
-            listingIds: [input.listingId],
+            listingIds: targetedListingIds,
+            categorySlugs: configuration.categorySlugs ?? [],
             type: input.type,
             fundingSource: "SELLER"
           }
@@ -400,16 +409,24 @@ export class PromotionsService {
   ) {
     const input = parseWithSchema(upsertSellerPromotionRequestSchema, rawInput);
     this.validateDateRange(input.startsAt ?? null, input.endsAt ?? null);
-    await this.assertSellerOwnedListings(sellerId, [input.listingId]);
+    const configuration = this.buildSellerPromotionConfiguration(input);
+    this.validatePromotionRule(
+      input.type,
+      configuration as unknown as Prisma.JsonValue
+    );
+    const targetedListingIds = await this.resolveSellerPromotionTargetListingIds(
+      sellerId,
+      configuration,
+      true
+    );
     await this.ensureNoOverlappingSellerPromotion(
       sellerId,
-      [input.listingId],
+      targetedListingIds,
       input.startsAt ?? null,
       input.endsAt ?? null,
       promotionId,
       input.isActive
     );
-    const configuration = this.buildSellerPromotionConfiguration(input);
 
     const promotion = await this.prisma.$transaction(async (tx) => {
       const existingPromotion = await tx.promotion.findFirst({
@@ -470,7 +487,8 @@ export class PromotionsService {
           action: "SELLER_PROMOTION_UPDATED",
           details: {
             sellerId,
-            listingIds: [input.listingId],
+            listingIds: targetedListingIds,
+            categorySlugs: configuration.categorySlugs ?? [],
             type: input.type,
             fundingSource: "SELLER"
           }
@@ -597,6 +615,7 @@ export class PromotionsService {
 
         return {
           listingId: item.listingId,
+          sellerId: item.listing.sellerId,
           productId: projection.productId,
           title: projection.title,
           quantity: item.quantity,
@@ -737,18 +756,47 @@ export class PromotionsService {
     input: UpsertSellerPromotionRequest
   ) {
     return {
-      listingIds: [input.listingId],
+      ...(input.listingId ? { listingIds: [input.listingId] } : {}),
+      ...(input.categorySlug ? { categorySlugs: [input.categorySlug] } : {}),
       ...(input.type === "PERCENTAGE"
         ? { percentage: input.percentage }
-        : { amount: input.amount })
+        : {}),
+      ...(input.type === "FIXED_AMOUNT"
+        ? { amount: input.amount }
+        : {}),
+      ...(input.type === "CATEGORY_DISCOUNT"
+        ? {
+            ...(input.percentage !== undefined
+              ? { percentage: input.percentage }
+              : {}),
+            ...(input.amount !== undefined ? { amount: input.amount } : {})
+          }
+        : {}),
+      ...(input.type === "BUY_X_GET_Y"
+        ? {
+            buyQuantity: input.buyQuantity,
+            getQuantity: input.getQuantity
+          }
+        : {})
     };
   }
 
   private buildSellerPromotionRuleName(
     name: string,
-    type: "PERCENTAGE" | "FIXED_AMOUNT"
+    type: UpsertSellerPromotionRequest["type"]
   ) {
-    return `${name} ${type === "PERCENTAGE" ? "percentage" : "fixed"} rule`;
+    switch (type) {
+      case "PERCENTAGE":
+        return `${name} percentage rule`;
+      case "FIXED_AMOUNT":
+        return `${name} fixed rule`;
+      case "CATEGORY_DISCOUNT":
+        return `${name} category rule`;
+      case "BUY_X_GET_Y":
+        return `${name} bundle rule`;
+      default:
+        return `${name} rule`;
+    }
   }
 
   private async assertSellerOwnedListings(sellerId: string, listingIds: string[]) {
@@ -758,7 +806,10 @@ export class PromotionsService {
         id: {
           in: uniqueListingIds
         },
-        sellerId
+        sellerId,
+        status: {
+          not: "ARCHIVED"
+        }
       },
       select: {
         id: true
@@ -798,18 +849,31 @@ export class PromotionsService {
       },
       include: promotionReadInclude.include
     });
+    const existingPromotionTargetEntries = await Promise.all(
+      promotions.map(async (promotion) => {
+        const rule = promotion.rules[0];
+
+        if (!rule) {
+          return [promotion.id, [] as string[]] as const;
+        }
+
+        const configuration = promotionRuleConfigurationSchema.parse(
+          rule.configuration ?? {}
+        );
+        const targetedListingIds =
+          await this.resolveSellerPromotionTargetListingIds(
+            sellerId,
+            configuration,
+            false
+          );
+
+        return [promotion.id, targetedListingIds] as const;
+      })
+    );
+    const existingPromotionTargetMap = new Map(existingPromotionTargetEntries);
 
     const hasConflict = promotions.some((promotion) => {
-      const rule = promotion.rules[0];
-
-      if (!rule) {
-        return false;
-      }
-
-      const configuration = promotionRuleConfigurationSchema.parse(
-        rule.configuration ?? {}
-      );
-      const targetedListingIds = configuration.listingIds ?? [];
+      const targetedListingIds = existingPromotionTargetMap.get(promotion.id) ?? [];
 
       if (!targetedListingIds.some((listingId) => listingIds.includes(listingId))) {
         return false;
@@ -828,6 +892,121 @@ export class PromotionsService {
         "Another active seller campaign already overlaps this offer and time window."
       );
     }
+  }
+
+  private async resolveSellerPromotionTargetListingIds(
+    sellerId: string,
+    configuration: {
+      listingIds?: string[];
+      categorySlugs?: string[];
+    },
+    validateOwnership: boolean
+  ) {
+    const listingIds = [...new Set(configuration.listingIds ?? [])];
+
+    if (listingIds.length > 0) {
+      if (validateOwnership) {
+        await this.assertSellerOwnedListings(sellerId, listingIds);
+      }
+
+      return listingIds;
+    }
+
+    const categorySlugs = [...new Set(configuration.categorySlugs ?? [])];
+
+    if (categorySlugs.length === 0) {
+      throw new BadRequestException(
+        "Seller campaigns require either a listing target or a category target."
+      );
+    }
+
+    const scopedListings = await this.collectSellerScopedCategoryListings(sellerId);
+    const allowedCategorySlugs = new Set(
+      scopedListings.flatMap((listing) => listing.categoryPathSlugs)
+    );
+
+    if (
+      validateOwnership &&
+      categorySlugs.some((categorySlug) => !allowedCategorySlugs.has(categorySlug))
+    ) {
+      throw new BadRequestException(
+        "Seller category campaigns can only target categories already present in the active merchant catalog."
+      );
+    }
+
+    return scopedListings
+      .filter((listing) =>
+        listing.categoryPathSlugs.some((categorySlug) =>
+          categorySlugs.includes(categorySlug)
+        )
+      )
+      .map((listing) => listing.id);
+  }
+
+  private async collectSellerScopedCategoryListings(sellerId: string) {
+    const [categories, listings] = await Promise.all([
+      this.prisma.category.findMany({
+        select: {
+          id: true,
+          slug: true,
+          parentId: true
+        }
+      }),
+      this.prisma.sellerProductListing.findMany({
+        where: {
+          sellerId,
+          status: {
+            not: "ARCHIVED"
+          }
+        },
+        select: {
+          id: true,
+          product: {
+            select: {
+              categoryId: true
+            }
+          }
+        }
+      })
+    ]);
+
+    const categoryMap = new Map(
+      categories.map((category) => [category.id, category])
+    );
+
+    return listings.map((listing) => ({
+      id: listing.id,
+      categoryPathSlugs: this.buildCategoryPathSlugs(
+        listing.product.categoryId,
+        categoryMap
+      )
+    }));
+  }
+
+  private buildCategoryPathSlugs(
+    categoryId: string | null,
+    categoryMap: Map<
+      string,
+      {
+        id: string;
+        slug: string;
+        parentId: string | null;
+      }
+    >
+  ) {
+    if (!categoryId) {
+      return [];
+    }
+
+    const path: string[] = [];
+    let current = categoryMap.get(categoryId);
+
+    while (current) {
+      path.unshift(current.slug);
+      current = current.parentId ? categoryMap.get(current.parentId) : undefined;
+    }
+
+    return path;
   }
 
   private mapPromotionSummary(promotion: PromotionRecord) {

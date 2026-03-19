@@ -407,7 +407,7 @@ Notes:
 - Rule targeting can use listing IDs, category slugs, or coupon scope depending on the promotion type.
 - Product and category promotions feed both checkout pricing and storefront merchandising, including current-price and compare-at presentation.
 
-### Create a seller-funded listing campaign
+### Create a seller-funded merchant campaign
 
 Request:
 
@@ -419,8 +419,8 @@ Cookie: velora_session=...
 {
   "name": "Weekend merchant markdown",
   "description": "Seller-funded campaign for the active flagship offer.",
-  "type": "PERCENTAGE",
-  "listingId": "cksellerlisting000000000001",
+  "type": "CATEGORY_DISCOUNT",
+  "categorySlug": "electronics",
   "percentage": 8,
   "isActive": true,
   "startsAt": "2026-03-18T09:00:00.000Z",
@@ -431,9 +431,10 @@ Cookie: velora_session=...
 Notes:
 
 - Seller routes create only `SELLER`-funded campaigns.
-- Seller campaigns are restricted to offers owned by the active merchant.
-- Seller campaigns are listing-scoped and cannot target global categories or other merchants.
-- Overlapping active seller campaigns on the same offer are rejected to keep pricing deterministic.
+- Seller campaigns can target either one owned offer or one category already present in the active merchant catalog.
+- Supported seller campaign types are `PERCENTAGE`, `FIXED_AMOUNT`, `CATEGORY_DISCOUNT`, and `BUY_X_GET_Y`.
+- Seller campaigns never apply to another merchant's listings, even when the category path overlaps in the shared marketplace catalog.
+- Overlapping active seller campaigns on the same affected offer set are rejected to keep pricing deterministic.
 
 Response shape:
 

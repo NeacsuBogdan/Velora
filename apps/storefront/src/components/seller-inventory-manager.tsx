@@ -1,17 +1,16 @@
 "use client";
 
 import type {
-  PromotionSummary,
   SellerProductCreationOptions,
   SellerListingCatalogOption,
   SellerListingSummary
 } from "@velora/contracts";
 import { Button, Panel } from "@velora/ui";
+import Link from "next/link";
 import { startTransition, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { formatMoney } from "../lib/formatting";
-import { SellerPromotionManager } from "./seller-promotion-manager";
 import { StatusBadge } from "./status-badge";
 
 const sellerApiBaseUrl = "/api/seller";
@@ -19,13 +18,11 @@ const sellerApiBaseUrl = "/api/seller";
 export function SellerInventoryManager({
   catalogOptions,
   creationOptions,
-  listings,
-  promotions
+  listings
 }: {
   catalogOptions: SellerListingCatalogOption[];
   creationOptions: SellerProductCreationOptions | null;
   listings: SellerListingSummary[];
-  promotions: PromotionSummary[];
 }): React.JSX.Element {
   const router = useRouter();
   const [pendingKey, setPendingKey] = useState<string | null>(null);
@@ -1367,10 +1364,24 @@ export function SellerInventoryManager({
                 </div>
               )}
 
-              <SellerPromotionManager
-                promotions={promotions}
-                selectedListing={selectedListing}
-              />
+              <div className="flex flex-col gap-4 rounded-[28px] border border-[var(--stroke)] bg-white/70 p-5 xl:flex-row xl:items-end xl:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
+                    Promotions
+                  </p>
+                  <p className="mt-2 max-w-3xl text-sm leading-7 text-[var(--muted)]">
+                    Seller-funded campaigns now live in the dedicated promotions
+                    workspace, so discount management stays separate from offer
+                    pricing and stock operations.
+                  </p>
+                </div>
+                <Link
+                  className="inline-flex items-center justify-center rounded-full border border-[var(--stroke)] bg-white px-5 py-3 text-sm font-semibold text-[var(--foreground)] transition-colors hover:border-[var(--foreground)]"
+                  href="/seller/promotions"
+                >
+                  Open promotions
+                </Link>
+              </div>
 
               <div className="grid gap-5 xl:grid-cols-2">
                 <form

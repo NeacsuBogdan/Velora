@@ -10,6 +10,11 @@ export const sellerNavigation = [
     description: "Review catalog offers, stock posture, and lead times."
   },
   {
+    href: "/seller/promotions",
+    label: "Promotions",
+    description: "Create seller-funded campaigns for your own offers and categories."
+  },
+  {
     href: "/seller/orders",
     label: "Orders",
     description: "Track seller-scoped order demand and fulfillment state."

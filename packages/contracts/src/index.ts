@@ -1568,6 +1568,7 @@ export const sellerListingSummarySchema = z.object({
   title: z.string(),
   productDescription: z.string(),
   categoryId: z.string().nullable(),
+  categorySlug: z.string().nullable(),
   categoryName: z.string().nullable(),
   brandName: z.string().nullable(),
   variantTitle: z.string().nullable(),
@@ -1715,7 +1716,9 @@ export type UpdateSellerListingCommercialRequest = z.infer<
 
 export const sellerPromotionTypeSchema = z.enum([
   "PERCENTAGE",
-  "FIXED_AMOUNT"
+  "FIXED_AMOUNT",
+  "CATEGORY_DISCOUNT",
+  "BUY_X_GET_Y"
 ]);
 
 export type SellerPromotionType = z.infer<
@@ -1727,14 +1730,28 @@ export const upsertSellerPromotionRequestSchema = z
     name: z.string().trim().min(3).max(120),
     description: z.string().trim().min(8).max(400),
     type: sellerPromotionTypeSchema,
-    listingId: z.string().cuid(),
+    listingId: z.string().cuid().nullable().optional(),
+    categorySlug: z.string().trim().min(1).nullable().optional(),
     percentage: z.number().positive().max(100).optional(),
     amount: z.number().int().positive().optional(),
+    buyQuantity: z.number().int().positive().optional(),
+    getQuantity: z.number().int().positive().optional(),
     isActive: z.boolean().default(true),
     startsAt: z.string().datetime().nullable().optional(),
     endsAt: z.string().datetime().nullable().optional()
   })
   .superRefine((value, context) => {
+    const hasListingScope = Boolean(value.listingId);
+    const hasCategoryScope = Boolean(value.categorySlug);
+
+    if (hasListingScope === hasCategoryScope) {
+      context.addIssue({
+        code: "custom",
+        path: hasListingScope ? ["listingId"] : ["categorySlug"],
+        message: "Choose either a specific offer or a category scope."
+      });
+    }
+
     if (value.type === "PERCENTAGE" && value.percentage === undefined) {
       context.addIssue({
         code: "custom",
@@ -1748,6 +1765,42 @@ export const upsertSellerPromotionRequestSchema = z
         code: "custom",
         path: ["amount"],
         message: "Fixed campaigns require a discount amount."
+      });
+    }
+
+    if (
+      value.type === "CATEGORY_DISCOUNT" &&
+      value.amount === undefined &&
+      value.percentage === undefined
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["percentage"],
+        message: "Category campaigns require either a percentage or a fixed amount."
+      });
+    }
+
+    if (value.type === "CATEGORY_DISCOUNT" && !value.categorySlug) {
+      context.addIssue({
+        code: "custom",
+        path: ["categorySlug"],
+        message: "Category campaigns require a category target."
+      });
+    }
+
+    if (value.type === "BUY_X_GET_Y" && value.buyQuantity === undefined) {
+      context.addIssue({
+        code: "custom",
+        path: ["buyQuantity"],
+        message: "Buy X get Y campaigns require a buy quantity."
+      });
+    }
+
+    if (value.type === "BUY_X_GET_Y" && value.getQuantity === undefined) {
+      context.addIssue({
+        code: "custom",
+        path: ["getQuantity"],
+        message: "Buy X get Y campaigns require a reward quantity."
       });
     }
 

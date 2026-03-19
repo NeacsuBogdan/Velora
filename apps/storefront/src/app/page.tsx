@@ -19,6 +19,9 @@ const primaryLinkClass =
 const secondaryLinkClass =
   "inline-flex items-center justify-center rounded-full border border-white/12 bg-white/8 px-6 py-3.5 text-sm font-semibold text-white/88 transition-all hover:-translate-y-0.5 hover:border-white/18 hover:bg-white/12";
 
+const lightActionClass =
+  "inline-flex items-center justify-center rounded-full border border-[rgba(107,80,201,0.12)] bg-white/80 px-5 py-3 text-sm font-semibold text-[var(--foreground)] shadow-[0_10px_30px_rgba(33,18,74,0.08)] transition-all hover:-translate-y-0.5 hover:bg-white";
+
 const benefitItems = [
   {
     title: "Curated marketplace",
@@ -61,11 +64,11 @@ export default async function HomePage(): Promise<React.JSX.Element> {
 
   return (
     <StorefrontChrome>
-      <section className="relative overflow-hidden rounded-[40px] border border-white/10 bg-[linear-gradient(140deg,rgba(52,25,110,0.95),rgba(20,9,48,0.98))] px-6 py-8 text-white shadow-[0_34px_120px_rgba(7,3,24,0.42)] sm:px-8 lg:px-10 lg:py-10">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_22%,rgba(207,143,255,0.34),transparent_20%),radial-gradient(circle_at_82%_8%,rgba(255,176,222,0.26),transparent_24%),linear-gradient(135deg,rgba(255,255,255,0.04),transparent_42%)]" />
+      <section className="relative overflow-hidden rounded-[40px] bg-[linear-gradient(140deg,rgba(52,25,110,0.95),rgba(20,9,48,0.98))] px-6 py-8 text-white shadow-[0_34px_120px_rgba(7,3,24,0.42)] sm:px-8 lg:px-10 lg:py-12">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_22%,rgba(207,143,255,0.34),transparent_20%),radial-gradient(circle_at_82%_8%,rgba(255,176,222,0.22),transparent_24%),linear-gradient(135deg,rgba(255,255,255,0.04),transparent_42%)]" />
         <div className="pointer-events-none absolute left-0 top-0 h-full w-full bg-[linear-gradient(130deg,transparent_0%,transparent_48%,rgba(255,255,255,0.08)_49%,transparent_69%)] opacity-60" />
 
-        <div className="relative grid gap-10 lg:grid-cols-[minmax(0,0.92fr)_minmax(420px,1.08fr)] lg:items-center">
+        <div className="relative grid gap-12 lg:grid-cols-[minmax(0,0.82fr)_minmax(520px,1.18fr)] lg:items-center">
           <div className="space-y-7">
             <Badge className="border-white/10 bg-white/8 text-white/68">
               Curated marketplace experience
@@ -110,7 +113,7 @@ export default async function HomePage(): Promise<React.JSX.Element> {
               </Link>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-3">
               {reviewHighlights.map((highlight) => (
                 <span
                   key={highlight}
@@ -137,10 +140,19 @@ export default async function HomePage(): Promise<React.JSX.Element> {
             </div>
           </div>
 
-          <div className="relative min-h-[420px]">
-            <div className="absolute inset-x-[12%] bottom-0 h-32 rounded-[48px] bg-[radial-gradient(circle,rgba(255,181,228,0.34),transparent_68%)] blur-2xl" />
-            <div className="absolute inset-x-8 bottom-3 h-[74%] rounded-[42px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.14),rgba(255,255,255,0.02))] shadow-[0_24px_90px_rgba(7,3,24,0.44)]" />
-            <div className="absolute right-[6%] top-[6%] rounded-[28px] border border-white/10 bg-white/10 px-5 py-4 backdrop-blur">
+          <div className="relative min-h-[520px] overflow-hidden rounded-[36px] bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))] shadow-[0_28px_90px_rgba(7,3,24,0.48)] lg:min-h-[620px]">
+            <div className="pointer-events-none absolute inset-0 z-10 bg-[radial-gradient(circle_at_78%_18%,rgba(255,189,228,0.18),transparent_22%),linear-gradient(180deg,rgba(255,255,255,0.04),transparent_18%)]" />
+            <div className="absolute inset-0">
+              <Image
+                alt="Velora hero"
+                className="object-cover object-center"
+                fill
+                priority
+                sizes="(min-width: 1024px) 50vw, 100vw"
+                src="/brand/hero-img.png"
+              />
+            </div>
+            <div className="absolute right-[4%] top-[6%] z-20 rounded-[28px] bg-[linear-gradient(180deg,rgba(18,9,47,0.56),rgba(18,9,47,0.32))] px-5 py-4 backdrop-blur">
               <p className="text-xs uppercase tracking-[0.28em] text-white/60">
                 Trending now
               </p>
@@ -149,7 +161,7 @@ export default async function HomePage(): Promise<React.JSX.Element> {
                 pricing.
               </p>
             </div>
-            <div className="absolute bottom-[8%] left-[4%] rounded-[26px] border border-white/10 bg-white/10 px-5 py-4 backdrop-blur">
+            <div className="absolute bottom-[5%] left-[4%] z-20 rounded-[26px] bg-[linear-gradient(180deg,rgba(18,9,47,0.58),rgba(18,9,47,0.34))] px-5 py-4 backdrop-blur">
               <p className="text-xs uppercase tracking-[0.28em] text-white/60">
                 Marketplace pulse
               </p>
@@ -160,22 +172,12 @@ export default async function HomePage(): Promise<React.JSX.Element> {
                 indexed across seeded category depth
               </p>
             </div>
-            <div className="relative h-full min-h-[420px]">
-              <Image
-                alt="Velora hero"
-                className="object-contain object-center drop-shadow-[0_36px_70px_rgba(7,3,24,0.56)]"
-                fill
-                priority
-                sizes="(min-width: 1024px) 50vw, 100vw"
-                src="/brand/hero-img.png"
-              />
-            </div>
           </div>
         </div>
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <Panel className="overflow-hidden border-white/8 bg-[linear-gradient(180deg,rgba(42,20,96,0.84),rgba(25,13,62,0.92))] text-white shadow-[0_22px_80px_rgba(8,3,26,0.34)]">
+      <div className="grid gap-8 xl:grid-cols-2">
+        <Panel className="overflow-hidden border-transparent bg-[linear-gradient(180deg,rgba(42,20,96,0.84),rgba(25,13,62,0.92))] px-7 py-7 text-white shadow-[0_22px_80px_rgba(8,3,26,0.34)]">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/58">
@@ -191,7 +193,7 @@ export default async function HomePage(): Promise<React.JSX.Element> {
           </div>
 
           {categories.length ? (
-            <div className="mt-6 grid gap-4 md:grid-cols-3">
+            <div className="mt-8 grid gap-5 md:grid-cols-3">
               {categories.map((category, index) => (
                 <CollectionCard
                   category={category}
@@ -201,7 +203,7 @@ export default async function HomePage(): Promise<React.JSX.Element> {
               ))}
             </div>
           ) : (
-            <div className="mt-6">
+            <div className="mt-8">
               <ApiUnavailablePanel
                 message="The category feed is not available right now. Start the API and refresh to load the live marketplace tree."
                 retryHref="/"
@@ -212,7 +214,7 @@ export default async function HomePage(): Promise<React.JSX.Element> {
           )}
         </Panel>
 
-        <Panel className="overflow-hidden border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,232,255,0.9))] shadow-[0_22px_80px_rgba(8,3,26,0.18)]">
+        <Panel className="overflow-hidden border-transparent bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,232,255,0.9))] px-7 py-7 shadow-[0_22px_80px_rgba(8,3,26,0.18)]">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
@@ -222,19 +224,19 @@ export default async function HomePage(): Promise<React.JSX.Element> {
                 Freshly indexed offers with live pricing.
               </h2>
             </div>
-            <Link className={primaryLinkClass} href="/products?sort=newest">
+            <Link className={lightActionClass} href="/products?sort=newest">
               See all
             </Link>
           </div>
 
           {trendingProducts.length ? (
-            <div className="mt-6 grid gap-4 md:grid-cols-3">
+            <div className="mt-8 grid gap-5 md:grid-cols-3">
               {trendingProducts.map((item) => (
                 <TrendingProductCard item={item} key={item.listingId} />
               ))}
             </div>
           ) : (
-            <div className="mt-6">
+            <div className="mt-8">
               <ApiUnavailablePanel
                 message="The storefront could not load the trending product feed from the API."
                 retryHref="/"
@@ -246,8 +248,8 @@ export default async function HomePage(): Promise<React.JSX.Element> {
         </Panel>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]">
-        <Panel className="overflow-hidden border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(245,239,255,0.92))] shadow-[0_22px_80px_rgba(8,3,26,0.16)]">
+      <div className="grid gap-8 xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]">
+        <Panel className="overflow-hidden border-transparent bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(245,239,255,0.92))] px-7 py-7 shadow-[0_22px_80px_rgba(8,3,26,0.16)]">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
@@ -257,19 +259,19 @@ export default async function HomePage(): Promise<React.JSX.Element> {
                 Marketplace operators already seeded into Velora.
               </h2>
             </div>
-            <Link className={secondaryLinkClass} href="/become-a-seller">
+            <Link className={lightActionClass} href="/become-a-seller">
               Join sellers
             </Link>
           </div>
 
-          <div className="mt-6 grid gap-4 md:grid-cols-3">
+          <div className="mt-8 grid gap-5 md:grid-cols-3">
             {spotlightSellers.map((seller) => (
               <SellerSpotlightCard key={seller.slug} seller={seller} />
             ))}
           </div>
         </Panel>
 
-        <Panel className="overflow-hidden border-white/8 bg-[linear-gradient(180deg,rgba(44,20,98,0.88),rgba(24,11,57,0.96))] text-white shadow-[0_22px_80px_rgba(8,3,26,0.34)]">
+        <Panel className="overflow-hidden border-transparent bg-[linear-gradient(180deg,rgba(44,20,98,0.88),rgba(24,11,57,0.96))] px-7 py-7 text-white shadow-[0_22px_80px_rgba(8,3,26,0.34)]">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/58">
@@ -284,7 +286,7 @@ export default async function HomePage(): Promise<React.JSX.Element> {
             </Link>
           </div>
 
-          <div className="mt-6 grid gap-4">
+          <div className="mt-8 grid gap-5">
             {benefitItems.map((item, index) => (
               <BenefitCard index={index} item={item} key={item.title} />
             ))}
@@ -292,8 +294,8 @@ export default async function HomePage(): Promise<React.JSX.Element> {
         </Panel>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_420px]">
-        <Panel className="overflow-hidden border-white/10 bg-[linear-gradient(135deg,rgba(58,29,126,0.94),rgba(24,11,59,0.98))] px-8 py-10 text-white shadow-[0_24px_90px_rgba(8,3,26,0.4)]">
+      <div className="grid gap-8 xl:grid-cols-[minmax(0,1.1fr)_420px]">
+        <Panel className="overflow-hidden border-transparent bg-[linear-gradient(135deg,rgba(58,29,126,0.94),rgba(24,11,59,0.98))] px-8 py-10 text-white shadow-[0_24px_90px_rgba(8,3,26,0.4)]">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,rgba(255,177,223,0.24),transparent_25%),linear-gradient(115deg,transparent_0%,rgba(255,255,255,0.06)_48%,transparent_72%)]" />
           <div className="relative max-w-3xl space-y-5">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/58">
@@ -319,12 +321,12 @@ export default async function HomePage(): Promise<React.JSX.Element> {
           </div>
         </Panel>
 
-        <Panel className="overflow-hidden border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,244,255,0.92))] shadow-[0_22px_80px_rgba(8,3,26,0.18)]">
+        <Panel className="overflow-hidden border-transparent bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,244,255,0.92))] px-7 py-7 shadow-[0_22px_80px_rgba(8,3,26,0.18)]">
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
             Customer review
           </p>
           <h2 className="mt-3 font-[var(--font-heading)] text-3xl font-bold tracking-tight text-[var(--foreground)]">
-            “Velora already feels like a real marketplace build.”
+            &ldquo;Velora already feels like a real marketplace build.&rdquo;
           </h2>
           <p className="mt-5 text-base leading-8 text-[var(--muted)]">
             The storefront, checkout, seller tools, and admin console all stay
@@ -382,13 +384,13 @@ function CollectionCard({
 
   return (
     <Link
-      className="group block rounded-[28px] border border-white/10 bg-white/6 p-4 transition-transform hover:-translate-y-1"
+      className="group block rounded-[28px] bg-white/6 p-4 transition-transform hover:-translate-y-1"
       href={`/categories/${category.slug}`}
     >
       <div
         className={`relative min-h-[260px] overflow-hidden rounded-[24px] bg-gradient-to-br ${gradients[index % gradients.length]} p-5`}
       >
-        <div className="absolute inset-x-5 bottom-5 rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(22,10,55,0.82),rgba(22,10,55,0.96))] px-4 py-4 backdrop-blur">
+        <div className="absolute inset-x-5 bottom-5 rounded-[22px] bg-[linear-gradient(180deg,rgba(22,10,55,0.82),rgba(22,10,55,0.96))] px-4 py-4 backdrop-blur">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/54">
             Featured collection
           </p>
@@ -412,15 +414,15 @@ function TrendingProductCard({
 }): React.JSX.Element {
   return (
     <Link
-      className="group block rounded-[28px] border border-[rgba(110,78,241,0.1)] bg-white p-4 shadow-[0_18px_40px_rgba(27,14,67,0.08)] transition-transform hover:-translate-y-1"
+      className="group block rounded-[28px] bg-white p-4 shadow-[0_18px_40px_rgba(27,14,67,0.08)] transition-transform hover:-translate-y-1"
       href={`/products/${item.slug}`}
     >
       <div className="relative aspect-[0.94] overflow-hidden rounded-[22px] bg-[linear-gradient(180deg,rgba(37,17,83,0.92),rgba(83,51,167,0.82))]">
         {item.image ? (
-            <Image
-              alt={item.image.altText}
-              className="object-cover transition-transform duration-500 group-hover:scale-105"
-              fill
+          <Image
+            alt={item.image.altText}
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
+            fill
             sizes="(min-width: 1280px) 24vw, (min-width: 768px) 30vw, 100vw"
             src={item.image.url}
           />
@@ -476,7 +478,7 @@ function SellerSpotlightCard({
   };
 }): React.JSX.Element {
   return (
-    <div className="overflow-hidden rounded-[28px] border border-[rgba(110,78,241,0.1)] bg-white shadow-[0_18px_40px_rgba(27,14,67,0.08)]">
+    <div className="overflow-hidden rounded-[28px] bg-white shadow-[0_18px_40px_rgba(27,14,67,0.08)]">
       <div className="relative aspect-[1.08] bg-[linear-gradient(180deg,rgba(42,20,96,0.94),rgba(95,66,176,0.8))]">
         {seller.image ? (
           <Image
@@ -488,7 +490,7 @@ function SellerSpotlightCard({
           />
         ) : null}
       </div>
-      <div className="space-y-3 px-5 py-5">
+      <div className="space-y-4 px-5 py-5">
         <div className="flex items-center justify-between gap-3">
           <h3 className="font-[var(--font-heading)] text-2xl font-bold tracking-tight text-[var(--foreground)]">
             {seller.name}
@@ -500,7 +502,7 @@ function SellerSpotlightCard({
         <p className="text-sm leading-7 text-[var(--muted)]">
           Category footprint: {seller.categories.join(" / ")}
         </p>
-        <div className="grid gap-2">
+        <div className="grid gap-3">
           {seller.highlightedTitles.map((title) => (
             <div
               className="rounded-[18px] bg-[rgba(143,107,255,0.08)] px-3 py-2 text-sm text-[var(--foreground)]"
@@ -525,7 +527,7 @@ function BenefitCard({
   const iconLabels = ["CM", "SP", "OC"];
 
   return (
-    <div className="rounded-[26px] border border-white/10 bg-white/6 px-5 py-5 backdrop-blur">
+    <div className="rounded-[28px] bg-white/6 px-6 py-6 backdrop-blur">
       <div className="flex items-start gap-4">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,rgba(255,255,255,0.14),rgba(255,255,255,0.04))] text-sm font-bold text-white">
           {iconLabels[index]}

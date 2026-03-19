@@ -235,6 +235,15 @@
 - Updated seller navigation and listings guidance so merchants can move between catalog operations and campaign management intentionally instead of using a mixed panel.
 - Verified `pnpm --filter @velora/api typecheck`, `pnpm --filter @velora/api test -- src/modules/promotions/promotion-engine.spec.ts src/modules/promotions/promotions.service.spec.ts`, `pnpm --filter @velora/storefront lint`, `pnpm --filter @velora/storefront typecheck`, and `pnpm --filter @velora/storefront build`.
 
+### Post Stage 11 follow-up: storefront visual redesign foundation
+
+- Added the provided Velora brand assets into the storefront app and rebuilt the shared shell around a premium purple-glass visual system instead of the original light neutral scaffolding.
+- Reworked the shared storefront header with the Velora mark, denser marketplace navigation, icon-based cart and notification actions, session-aware utility links, and a dark branded search bar that now anchors every public page.
+- Rebuilt the home page into a multi-section merchandising surface that mirrors the requested template structure while still reading from live catalog, promotions, and seeded product data instead of static design-only placeholders.
+- Added a new hero section that uses the supplied hero artwork, live marketplace metrics, search entry, seller CTA, featured-category chips, and a stronger premium visual hierarchy.
+- Replaced the old generic home overview blocks with template-aligned sections for featured collections, trending products, seller spotlights, trust/value messaging, a seller acquisition banner, and a testimonial panel.
+- Verified `pnpm --filter @velora/storefront lint`, `pnpm --filter @velora/storefront typecheck`, `pnpm --filter @velora/storefront test`, `pnpm --filter @velora/storefront build`, plus root `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.
+
 ## Important implementation notes
 
 - Internal packages are designed to build independently so the apps can consume stable outputs.

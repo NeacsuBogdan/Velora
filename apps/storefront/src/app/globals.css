@@ -2,13 +2,17 @@
 
 :root {
   color-scheme: light;
-  --background: #f4f4f1;
-  --surface: rgba(255, 255, 255, 0.92);
-  --foreground: #10202f;
-  --muted: #5f7185;
-  --accent: #d72638;
-  --accent-dark: #ac1f2f;
-  --stroke: rgba(16, 32, 47, 0.1);
+  --background: #160a37;
+  --surface: rgba(255, 255, 255, 0.9);
+  --surface-soft: rgba(255, 255, 255, 0.08);
+  --surface-strong: rgba(21, 9, 52, 0.78);
+  --foreground: #23154f;
+  --muted: #76689c;
+  --accent: #8f6bff;
+  --accent-dark: #6e4ef1;
+  --accent-soft: #e88cff;
+  --stroke: rgba(85, 56, 175, 0.14);
+  --stroke-strong: rgba(255, 255, 255, 0.14);
 }
 
 * {
@@ -23,14 +27,32 @@ body {
 body {
   margin: 0;
   background:
-    radial-gradient(circle at top left, rgba(215, 38, 56, 0.18), transparent 30%),
-    radial-gradient(circle at top right, rgba(16, 32, 47, 0.12), transparent 28%),
-    linear-gradient(180deg, #f8f6f1 0%, #f1f4f8 100%);
+    radial-gradient(circle at 14% 16%, rgba(183, 121, 255, 0.36), transparent 24%),
+    radial-gradient(circle at 84% 12%, rgba(116, 74, 255, 0.32), transparent 26%),
+    radial-gradient(circle at 50% 42%, rgba(255, 160, 228, 0.12), transparent 25%),
+    linear-gradient(180deg, #1b0c45 0%, #12072f 44%, #140833 100%);
   color: var(--foreground);
   font-family: var(--font-body), sans-serif;
+  position: relative;
+}
+
+body::before {
+  background:
+    linear-gradient(115deg, rgba(255, 255, 255, 0.04), transparent 45%),
+    radial-gradient(circle at 35% 50%, rgba(255, 255, 255, 0.04), transparent 42%),
+    radial-gradient(circle at 70% 25%, rgba(212, 141, 255, 0.12), transparent 28%);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: fixed;
+  z-index: -1;
 }
 
 a {
   color: inherit;
   text-decoration: none;
+}
+
+::selection {
+  background: rgba(160, 116, 255, 0.3);
 }

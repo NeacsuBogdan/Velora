@@ -32,18 +32,27 @@ export function ProductCard({
                 sizes="(min-width: 1280px) 18vw, (min-width: 768px) 32vw, 100vw"
                 src={item.image.url}
               />
-            ) : null}
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),transparent_30%,rgba(17,7,42,0.2)_100%)]" />
+            ) : (
+              <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-[linear-gradient(180deg,rgba(88,52,182,0.72),rgba(31,13,72,0.94))] px-6 text-center text-white/78">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full border border-white/14 bg-[rgba(255,255,255,0.08)]">
+                  <ImageIcon />
+                </div>
+                <p className="line-clamp-2 font-[var(--font-heading)] text-2xl font-bold tracking-tight text-white/88">
+                  {item.title}
+                </p>
+              </div>
+            )}
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,4,28,0.1),transparent_28%,rgba(12,5,31,0.34)_100%)]" />
           </div>
         </Link>
 
         <div className="pointer-events-none absolute left-3 top-3 flex flex-wrap gap-2">
           {item.brand ? (
-            <span className="pointer-events-auto rounded-full border border-white/14 bg-[rgba(255,255,255,0.12)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white shadow-[0_8px_24px_rgba(13,5,37,0.18)] backdrop-blur">
+            <span className="pointer-events-auto rounded-full border border-white/12 bg-[linear-gradient(135deg,rgba(49,22,118,0.84),rgba(83,47,178,0.7))] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white shadow-[0_10px_28px_rgba(10,4,30,0.24)] backdrop-blur">
               {item.brand.name}
             </span>
           ) : null}
-          <span className="pointer-events-auto rounded-full border border-white/14 bg-[rgba(255,255,255,0.12)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white shadow-[0_8px_24px_rgba(13,5,37,0.18)] backdrop-blur">
+          <span className="pointer-events-auto rounded-full border border-white/12 bg-[linear-gradient(135deg,rgba(79,44,170,0.88),rgba(117,78,215,0.72))] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white shadow-[0_10px_28px_rgba(10,4,30,0.24)] backdrop-blur">
             {statusLabel}
           </span>
         </div>
@@ -51,13 +60,13 @@ export function ProductCard({
         <div className="absolute bottom-3 right-3 flex items-center gap-2">
           <Link
             aria-label={`Open ${item.title}`}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/14 bg-[rgba(255,255,255,0.12)] text-white shadow-[0_10px_24px_rgba(13,5,37,0.18)] backdrop-blur transition-colors hover:bg-[rgba(255,255,255,0.18)]"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/12 bg-[rgba(30,12,78,0.78)] text-white shadow-[0_12px_28px_rgba(10,4,30,0.28)] backdrop-blur transition-colors hover:bg-[rgba(49,22,118,0.88)]"
             href={`/products/${item.slug}`}
           >
             <OpenIcon />
           </Link>
           <AddToCartButton
-            className="h-10 w-10 rounded-full border border-white/14 bg-[rgba(255,255,255,0.12)] p-0 text-white shadow-[0_10px_24px_rgba(13,5,37,0.18)] backdrop-blur hover:bg-[rgba(255,255,255,0.18)]"
+            className="h-10 w-10 rounded-full border border-white/12 bg-[rgba(30,12,78,0.78)] p-0 text-white shadow-[0_12px_28px_rgba(10,4,30,0.28)] backdrop-blur hover:bg-[rgba(49,22,118,0.88)]"
             disabled={!item.availability.inStock}
             label={<CartIcon />}
             listingId={item.listingId}
@@ -121,6 +130,26 @@ export function ProductCard({
         </div>
       </div>
     </article>
+  );
+}
+
+function ImageIcon(): React.JSX.Element {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="22"
+      viewBox="0 0 24 24"
+      width="22"
+    >
+      <path
+        d="M6.5 5.75h11A1.75 1.75 0 0 1 19.25 7.5v9A1.75 1.75 0 0 1 17.5 18.25h-11A1.75 1.75 0 0 1 4.75 16.5v-9A1.75 1.75 0 0 1 6.5 5.75Zm0 10.5 4.25-4.5 2.75 2.75 1.75-1.75 2.25 3.5m-8-5.75h.01"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
   );
 }
 

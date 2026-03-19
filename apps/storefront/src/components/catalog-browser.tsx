@@ -27,6 +27,8 @@ const sortOptions = [
   { value: "price_desc", label: "Price: high to low" }
 ] as const;
 
+type CatalogViewMode = "feature" | "grid" | "dense";
+
 export function CatalogBrowser({
   action,
   eyebrow,
@@ -43,7 +45,7 @@ export function CatalogBrowser({
   const selectedCategory = getQueryValue(searchParams, "category");
   const availability = getQueryValue(searchParams, "availability") || "all";
   const sort = getQueryValue(searchParams, "sort") || "relevance";
-  const featureChips = buildFeatureChips(results);
+  const viewMode = getViewMode(getQueryValue(searchParams, "view"));
   const resultCount = results?.pagination.totalItems ?? 0;
   const appliedPills = buildAppliedPills({
     query,
@@ -55,6 +57,7 @@ export function CatalogBrowser({
 
   return (
     <form action={action}>
+      <input name="view" type="hidden" value={viewMode} />
       {lockCategory && selectedCategory ? (
         <input name="category" type="hidden" value={selectedCategory} />
       ) : null}
@@ -76,10 +79,7 @@ export function CatalogBrowser({
               </p>
             </div>
 
-            <div className="flex min-w-0 items-center gap-3 rounded-full bg-white px-3 py-3 text-[var(--foreground)] shadow-[0_24px_60px_rgba(17,7,43,0.3)]">
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[rgba(108,78,212,0.12)] text-[var(--accent-dark)]">
-                <SearchIcon />
-              </span>
+            <div className="flex min-w-0 items-center gap-3 rounded-full bg-white px-5 py-3 text-[var(--foreground)] shadow-[0_24px_60px_rgba(17,7,43,0.3)]">
               <input
                 aria-label="Search products"
                 className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-[var(--muted)]"
@@ -92,23 +92,10 @@ export function CatalogBrowser({
                 aria-label="Search"
                 className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--foreground)] text-white transition-colors hover:bg-[rgba(35,21,79,0.92)]"
                 type="submit"
-              >
-                <SearchIcon />
-              </button>
-            </div>
-
-            {featureChips.length ? (
-              <div className="flex flex-wrap gap-2">
-                {featureChips.map((chip) => (
-                  <span
-                    className="rounded-[14px] border border-white/10 bg-[rgba(24,10,57,0.44)] px-4 py-2 text-sm text-white/76 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
-                    key={chip}
-                  >
-                    {chip}
-                  </span>
-                ))}
+                >
+                  <SearchIcon />
+                </button>
               </div>
-            ) : null}
           </div>
         </section>
 
@@ -136,9 +123,14 @@ export function CatalogBrowser({
                       className={fieldClassName}
                       defaultValue={sort}
                       name="sort"
+                      style={selectFieldStyle}
                     >
                       {(results?.availableSorts ?? sortOptions).map((option) => (
-                        <option key={option.value} value={option.value}>
+                        <option
+                          key={option.value}
+                          style={selectOptionStyle}
+                          value={option.value}
+                        >
                           {option.label}
                         </option>
                       ))}
@@ -253,9 +245,27 @@ export function CatalogBrowser({
                     </span>
                   ))}
                   <div className="hidden items-center gap-2 lg:flex">
-                    <ToolbarIcon active icon={<GridIcon />} />
-                    <ToolbarIcon icon={<RowsIcon />} />
-                    <ToolbarIcon icon={<SortIcon />} />
+                    <ToolbarLink
+                      action={action}
+                      active={viewMode === "feature"}
+                      icon={<FeatureGridIcon />}
+                      searchParams={searchParams}
+                      viewMode="feature"
+                    />
+                    <ToolbarLink
+                      action={action}
+                      active={viewMode === "grid"}
+                      icon={<GridIcon />}
+                      searchParams={searchParams}
+                      viewMode="grid"
+                    />
+                    <ToolbarLink
+                      action={action}
+                      active={viewMode === "dense"}
+                      icon={<DenseGridIcon />}
+                      searchParams={searchParams}
+                      viewMode="dense"
+                    />
                   </div>
                 </div>
               </div>
@@ -268,7 +278,7 @@ export function CatalogBrowser({
                   title="Catalog data is unavailable"
                 />
               ) : results.items.length ? (
-                <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                <div className={getResultsGridClass(viewMode)}>
                   {results.items.map((item) => (
                     <ProductCard key={item.listingId} item={item} />
                   ))}
@@ -387,35 +397,32 @@ function FilterRadio({
   );
 }
 
-function ToolbarIcon({
+function ToolbarLink({
+  action,
+  searchParams,
   icon,
-  active = false
+  active = false,
+  viewMode
 }: {
+  action: string;
+  searchParams: CatalogQueryInput;
   icon: React.ReactNode;
   active?: boolean;
+  viewMode: CatalogViewMode;
 }): React.JSX.Element {
   return (
-    <span
+    <Link
+      aria-label={`Switch to ${viewMode} view`}
       className={`flex h-10 w-10 items-center justify-center rounded-full border transition-colors ${
         active
           ? "border-white/20 bg-[rgba(255,255,255,0.12)] text-white"
           : "border-white/10 bg-[rgba(255,255,255,0.05)] text-white/68"
       }`}
+      href={buildCatalogHref(action, searchParams, { view: viewMode })}
     >
       {icon}
-    </span>
+    </Link>
   );
-}
-
-function buildFeatureChips(results: CatalogSearchResponse | null): string[] {
-  if (!results) {
-    return [];
-  }
-
-  const categories = results.facets.categories.slice(0, 3).map((item) => item.label);
-  const brands = results.facets.brands.slice(0, 2).map((item) => item.label);
-
-  return [...categories, ...brands];
 }
 
 function buildAppliedPills({
@@ -460,7 +467,76 @@ function buildAppliedPills({
 }
 
 const fieldClassName =
-  "w-full rounded-[18px] border border-white/10 bg-[rgba(255,255,255,0.06)] px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-white/38 focus:border-white/20";
+  "w-full rounded-[18px] border border-white/10 bg-[rgba(255,255,255,0.06)] px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-white/38 focus:border-white/20 [color-scheme:dark]";
+
+const selectFieldStyle = {
+  colorScheme: "dark"
+} as const;
+
+const selectOptionStyle = {
+  backgroundColor: "#2b165c",
+  color: "#ffffff"
+} as const;
+
+function getViewMode(value: string): CatalogViewMode {
+  if (value === "feature" || value === "dense") {
+    return value;
+  }
+
+  return "grid";
+}
+
+function getResultsGridClass(viewMode: CatalogViewMode): string {
+  if (viewMode === "feature") {
+    return "grid gap-6 md:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3";
+  }
+
+  if (viewMode === "dense") {
+    return "grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4";
+  }
+
+  return "grid gap-5 md:grid-cols-2 xl:grid-cols-3";
+}
+
+function buildCatalogHref(
+  action: string,
+  searchParams: CatalogQueryInput,
+  overrides: Record<string, string | string[] | null>
+): string {
+  const params = new URLSearchParams();
+
+  for (const [key, rawValue] of Object.entries(searchParams)) {
+    if (rawValue === undefined || key in overrides) {
+      continue;
+    }
+
+    const values = Array.isArray(rawValue) ? rawValue : [rawValue];
+    for (const value of values) {
+      if (value) {
+        params.append(key, value);
+      }
+    }
+  }
+
+  for (const [key, value] of Object.entries(overrides)) {
+    if (value === null) {
+      continue;
+    }
+
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (item) {
+          params.append(key, item);
+        }
+      }
+    } else if (value) {
+      params.set(key, value);
+    }
+  }
+
+  const query = params.toString();
+  return query ? `${action}?${query}` : action;
+}
 
 function SearchIcon(): React.JSX.Element {
   return (
@@ -521,7 +597,7 @@ function GridIcon(): React.JSX.Element {
   );
 }
 
-function RowsIcon(): React.JSX.Element {
+function FeatureGridIcon(): React.JSX.Element {
   return (
     <svg
       aria-hidden="true"
@@ -531,16 +607,16 @@ function RowsIcon(): React.JSX.Element {
       width="18"
     >
       <path
-        d="M5.25 7.25h13.5M5.25 12h13.5M5.25 16.75h13.5"
+        d="M5.25 5.25h13.5v5.5H5.25zm0 8.5h5.5v5H5.25zm8 0h5.5v5h-5.5z"
         stroke="currentColor"
-        strokeLinecap="round"
+        strokeLinejoin="round"
         strokeWidth="1.8"
       />
     </svg>
   );
 }
 
-function SortIcon(): React.JSX.Element {
+function DenseGridIcon(): React.JSX.Element {
   return (
     <svg
       aria-hidden="true"
@@ -550,9 +626,9 @@ function SortIcon(): React.JSX.Element {
       width="18"
     >
       <path
-        d="M7.75 6.25h8.5M6.25 12h11.5m-8.5 5.75h5.5"
+        d="M5.25 6.25h3.5v3.5h-3.5zm5.25 0H14v3.5h-3.5zm5.25 0h3.5v3.5h-3.5zm-10.5 5.75h3.5v3.5h-3.5zm5.25 0H14v3.5h-3.5zm5.25 0h3.5v3.5h-3.5z"
         stroke="currentColor"
-        strokeLinecap="round"
+        strokeLinejoin="round"
         strokeWidth="1.8"
       />
     </svg>

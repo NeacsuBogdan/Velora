@@ -45,14 +45,25 @@ export default async function CategoriesPage(): Promise<React.JSX.Element> {
     <StorefrontChrome>
       <div className="overflow-hidden rounded-[40px] border border-white/8 bg-[linear-gradient(180deg,rgba(46,20,104,0.96),rgba(24,10,57,0.98))] shadow-[0_38px_110px_rgba(7,3,24,0.42)]">
         <section className="relative border-b border-white/10 px-6 py-8 text-white sm:px-8 lg:px-10 lg:py-10 xl:px-12 xl:py-12">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(226,147,255,0.16),transparent_22%),radial-gradient(circle_at_86%_14%,rgba(255,203,234,0.16),transparent_18%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_34%)]" />
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            <Image
+              alt="Velora categories"
+              className="object-cover object-[64%_center]"
+              fill
+              priority
+              sizes="100vw"
+              src="/brand/hero-img.png"
+            />
+            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(30,11,72,0.94)_0%,rgba(38,16,88,0.82)_34%,rgba(50,23,109,0.54)_58%,rgba(22,9,52,0.42)_100%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(226,147,255,0.16),transparent_22%),radial-gradient(circle_at_86%_14%,rgba(255,203,234,0.16),transparent_18%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_34%)]" />
+          </div>
 
-          <div className="relative grid gap-10 xl:grid-cols-[minmax(0,0.82fr)_minmax(520px,1.18fr)] xl:items-center">
+          <div className="relative flex min-h-[520px] items-center xl:min-h-[560px]">
             <div className="max-w-[34rem] space-y-5">
               <p className="text-xs font-semibold uppercase tracking-[0.26em] text-white/56">
                 Category discovery
               </p>
-              <h1 className="max-w-3xl font-[var(--font-heading)] text-5xl font-extrabold tracking-[-0.04em] sm:text-6xl xl:text-[4.6rem] xl:leading-[0.94]">
+              <h1 className="max-w-3xl pb-2 font-[var(--font-heading)] text-5xl font-extrabold tracking-[-0.04em] sm:text-6xl xl:text-[4.6rem] xl:leading-[1.03]">
                 <span className="block bg-[linear-gradient(135deg,#ffc8f6_0%,#cf9dff_45%,#f4d0ff_100%)] bg-clip-text text-transparent">
                   Explore Categories
                 </span>
@@ -74,18 +85,6 @@ export default async function CategoriesPage(): Promise<React.JSX.Element> {
                   </Link>
                 ))}
               </div>
-            </div>
-
-            <div className="relative min-h-[320px] sm:min-h-[390px] lg:min-h-[470px] xl:min-h-[520px]">
-              <div className="pointer-events-none absolute inset-0 rounded-[34px] bg-[radial-gradient(circle_at_84%_16%,rgba(255,205,235,0.2),transparent_18%),radial-gradient(circle_at_34%_36%,rgba(133,116,255,0.2),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_18%)]" />
-              <Image
-                alt="Velora categories"
-                className="object-cover object-[64%_center]"
-                fill
-                priority
-                sizes="(min-width: 1280px) 54vw, 100vw"
-                src="/brand/hero-img.png"
-              />
             </div>
           </div>
         </section>

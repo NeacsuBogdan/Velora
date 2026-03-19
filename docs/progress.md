@@ -247,6 +247,7 @@
 - Rebuilt the shared catalog browser and product-card surfaces into the same premium purple-glass design language, so `/products`, `/search`, and category listing pages now use a template-aligned search header, filter rail, results toolbar, and image-first product grid without changing query behavior.
 - Refined the catalog/search pass by removing redundant search-chip decoration, wiring the three catalog toolbar buttons to real layout modes, darkening the image-overlay controls for readability, and forcing the sort select onto a dark-purple native color scheme so option text stays legible when opened.
 - Rebuilt the `/categories` landing page into a merchandising surface with a branded category hero, featured-category cards, a denser all-categories grid, and a live trending strip tied to a real category branch from the seeded navigation tree.
+- Converted the home and categories hero sections from split text/image layouts into full-width background-image stages with overlaid copy, simplified the home search bar to a single clear search icon, and loosened headline line-height so large display text no longer clips.
 - Verified `pnpm --filter @velora/storefront lint`, `pnpm --filter @velora/storefront typecheck`, `pnpm --filter @velora/storefront test`, `pnpm --filter @velora/storefront build`, plus root `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.
 
 ## Important implementation notes

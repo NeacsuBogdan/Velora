@@ -82,13 +82,24 @@ export default async function HomePage(): Promise<React.JSX.Element> {
     <StorefrontChrome>
       <div className="overflow-hidden rounded-[40px] border border-white/8 bg-[linear-gradient(180deg,rgba(46,20,104,0.96),rgba(24,10,57,0.98))] shadow-[0_40px_120px_rgba(7,3,24,0.44)]">
         <section className="relative border-b border-white/10 px-6 py-8 text-white sm:px-8 lg:px-10 lg:py-10 xl:px-12 xl:py-12">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(226,147,255,0.18),transparent_20%),radial-gradient(circle_at_82%_6%,rgba(255,203,234,0.18),transparent_16%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_32%)]" />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-[linear-gradient(180deg,transparent,rgba(255,255,255,0.04))]" />
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            <Image
+              alt="Velora hero"
+              className="object-cover object-[62%_center]"
+              fill
+              priority
+              sizes="100vw"
+              src="/brand/hero-img.png"
+            />
+            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(30,11,72,0.94)_0%,rgba(38,16,88,0.82)_32%,rgba(50,23,109,0.54)_58%,rgba(22,9,52,0.42)_100%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(226,147,255,0.18),transparent_20%),radial-gradient(circle_at_82%_6%,rgba(255,203,234,0.18),transparent_16%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_32%)]" />
+            <div className="absolute inset-x-0 bottom-0 h-32 bg-[linear-gradient(180deg,transparent,rgba(255,255,255,0.04))]" />
+          </div>
 
-          <div className="relative grid gap-10 xl:grid-cols-[minmax(0,0.78fr)_minmax(560px,1.22fr)] xl:items-center">
+          <div className="relative flex min-h-[560px] items-center xl:min-h-[620px]">
             <div className="z-10 max-w-[34rem] space-y-7 xl:pl-2">
               <div className="space-y-4">
-                <h1 className="max-w-2xl font-[var(--font-heading)] text-5xl font-extrabold tracking-[-0.04em] sm:text-6xl xl:text-[5rem] xl:leading-[0.9]">
+                <h1 className="max-w-2xl font-[var(--font-heading)] text-5xl font-extrabold tracking-[-0.04em] sm:text-6xl xl:text-[5rem] xl:leading-[1.02]">
                   <span className="block text-white">Discover &amp; Shop</span>
                   <span className="block bg-[linear-gradient(135deg,#ffc8f6_0%,#cf9dff_45%,#f4d0ff_100%)] bg-clip-text text-transparent">
                     Unique Products
@@ -101,11 +112,8 @@ export default async function HomePage(): Promise<React.JSX.Element> {
 
               <form
                 action="/search"
-                className="flex min-w-0 items-center gap-3 rounded-full bg-white px-3 py-3 text-[var(--foreground)] shadow-[0_24px_60px_rgba(17,7,43,0.32)]"
+                className="flex min-w-0 items-center gap-3 rounded-full bg-white px-5 py-3 text-[var(--foreground)] shadow-[0_24px_60px_rgba(17,7,43,0.32)]"
               >
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[rgba(108,78,212,0.12)] text-[var(--accent-dark)]">
-                  <SearchIcon />
-                </span>
                 <input
                   aria-label="Search products"
                   className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-[var(--muted)]"
@@ -151,19 +159,6 @@ export default async function HomePage(): Promise<React.JSX.Element> {
                 active campaigns, and a seeded multi-seller catalog already wired
                 into the platform.
               </p>
-            </div>
-
-            <div className="relative min-h-[360px] sm:min-h-[430px] lg:min-h-[500px] xl:min-h-[560px]">
-              <div className="pointer-events-none absolute inset-0 rounded-[34px] bg-[radial-gradient(circle_at_82%_14%,rgba(255,205,235,0.22),transparent_18%),radial-gradient(circle_at_64%_50%,rgba(133,116,255,0.22),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_18%)]" />
-              <div className="pointer-events-none absolute inset-x-[2%] bottom-[8%] top-[12%] rounded-[38px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] blur-[0.2px]" />
-              <Image
-                alt="Velora hero"
-                className="object-cover object-[60%_center]"
-                fill
-                priority
-                sizes="(min-width: 1280px) 56vw, 100vw"
-                src="/brand/hero-img.png"
-              />
             </div>
           </div>
         </section>

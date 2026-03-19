@@ -27,20 +27,21 @@ body {
 body {
   margin: 0;
   background:
-    radial-gradient(circle at 14% 16%, rgba(183, 121, 255, 0.36), transparent 24%),
-    radial-gradient(circle at 84% 12%, rgba(116, 74, 255, 0.32), transparent 26%),
-    radial-gradient(circle at 50% 42%, rgba(255, 160, 228, 0.12), transparent 25%),
-    linear-gradient(180deg, #1b0c45 0%, #12072f 44%, #140833 100%);
+    radial-gradient(circle at 14% 12%, rgba(183, 121, 255, 0.22), transparent 18%),
+    radial-gradient(circle at 84% 10%, rgba(255, 176, 222, 0.16), transparent 18%),
+    radial-gradient(circle at 56% 28%, rgba(138, 103, 255, 0.16), transparent 24%),
+    linear-gradient(180deg, #1b0c45 0%, #16083b 34%, #12072f 100%);
   color: var(--foreground);
   font-family: var(--font-body), sans-serif;
+  overflow-x: hidden;
   position: relative;
 }
 
 body::before {
   background:
-    linear-gradient(115deg, rgba(255, 255, 255, 0.04), transparent 45%),
-    radial-gradient(circle at 35% 50%, rgba(255, 255, 255, 0.04), transparent 42%),
-    radial-gradient(circle at 70% 25%, rgba(212, 141, 255, 0.12), transparent 28%);
+    linear-gradient(115deg, rgba(255, 255, 255, 0.035), transparent 45%),
+    radial-gradient(circle at 35% 50%, rgba(255, 255, 255, 0.03), transparent 42%),
+    radial-gradient(circle at 70% 25%, rgba(212, 141, 255, 0.08), transparent 24%);
   content: "";
   inset: 0;
   pointer-events: none;

@@ -7,7 +7,7 @@ export function StorefrontChrome({
   children: React.ReactNode;
 }): React.JSX.Element {
   return (
-    <main className="relative mx-auto flex min-h-screen w-full max-w-[1520px] flex-col gap-8 px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
+    <main className="relative mx-auto flex min-h-screen w-full max-w-[1640px] flex-col gap-6 px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
       <StorefrontHeader />
       <div className="relative flex-1">{children}</div>
       <footer className="overflow-hidden rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(38,18,86,0.9),rgba(18,9,47,0.94))] px-6 py-8 text-white shadow-[0_24px_70px_rgba(8,3,26,0.34)]">

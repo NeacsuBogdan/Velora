@@ -16,27 +16,19 @@ export function StorefrontLogo({
     tone === "light" ? "text-white" : "text-[var(--foreground)]";
   const subtitleClass =
     tone === "light" ? "text-white/60" : "text-[var(--muted)]";
-  const shellClass =
-    tone === "light"
-      ? "border-white/12 bg-white/10 shadow-[0_12px_34px_rgba(8,3,26,0.36)]"
-      : "border-[var(--stroke)] bg-white/70 shadow-[0_16px_34px_rgba(34,18,70,0.08)]";
 
   return (
-    <Link className="inline-flex items-center gap-3" href={href}>
-      <span
-        className={`inline-flex h-14 w-14 items-center justify-center rounded-[20px] border backdrop-blur ${shellClass}`}
-      >
-        <Image
-          alt="Velora"
-          className="h-9 w-9"
-          height={36}
-          src="/brand/velora-logo-singlepiece.svg"
-          width={36}
-        />
-      </span>
+    <Link className="inline-flex items-center gap-3.5" href={href}>
+      <Image
+        alt="Velora"
+        className="h-11 w-11 drop-shadow-[0_10px_24px_rgba(17,8,44,0.24)]"
+        height={44}
+        src="/brand/velora-logo-singlepiece.svg"
+        width={44}
+      />
       <span className="grid gap-1">
         <span
-          className={`font-[var(--font-heading)] text-3xl font-extrabold tracking-tight ${titleClass}`}
+          className={`font-[var(--font-heading)] text-[2.5rem] font-extrabold tracking-tight ${titleClass}`}
         >
           Velora
         </span>
